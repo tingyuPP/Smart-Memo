@@ -1,0 +1,9 @@
+{
+    "MainWindow": {
+        "ExportDir": "D:/study/NIS3366/Smart-Memo-Manager"
+    },
+    "QFluentWidgets": {
+        "ThemeColor": "#ff009faa",
+        "ThemeMode": "Light"
+    }
+}

@@ -2,6 +2,7 @@
 
 from qfluentwidgets import NavigationItemPosition, FluentWindow, SubtitleLabel, setFont
 from qfluentwidgets import FluentIcon as FIF
+from mainWindow.settingInterface import SettingInterface
 from PyQt5.QtWidgets import QApplication, QFrame, QHBoxLayout
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt
@@ -33,7 +34,7 @@ class MainWindow(FluentWindow):
         self.homeInterface = Widget('Home Interface', self)
         self.musicInterface = Widget('Music Interface', self)
         self.videoInterface = Widget('Video Interface', self)
-        self.settingInterface = Widget('Setting Interface', self)
+        self.settingInterface = SettingInterface('设置', self)
         self.albumInterface = Widget('Album Interface', self)
         self.albumInterface1 = Widget('Album Interface 1', self)
 
