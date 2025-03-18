@@ -174,3 +174,4 @@ cython_debug/
 .pypirc
 
 test_smart_memo.db
+smart_memo.db

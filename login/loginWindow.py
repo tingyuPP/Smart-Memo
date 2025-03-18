@@ -12,7 +12,7 @@ class LoginWindow(QWidget):
         self.vBoxLayout = QVBoxLayout(self)
         self.setWindowTitle("SmartMemo")
 
-        self.accountInterface = AccountInterface()
+        self.accountInterface = AccountInterface(self)
         self.accountInterface.loginSuccess.connect(self.on_login_success)
         self.albumInterface = QLabel('Album Interface', self)
         self.artistInterface = QLabel('Artist Interface', self)
@@ -55,11 +55,11 @@ class LoginWindow(QWidget):
         widget = self.stackedWidget.widget(index)
         self.segmentedWidget.setCurrentItem(widget.objectName())
     
-    def on_login_success(self, username):
-        print(f"登录成功：{username}")
+    def on_login_success(self, user):
+        print(f"登录成功：{user}")
         self.hide()
         from mainWindow.mainWindow import MainWindow
-        self.mainWindow = MainWindow()
+        self.mainWindow = MainWindow(user)
         self.mainWindow.show()
         # print("这里应该打开主窗口")
 

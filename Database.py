@@ -170,20 +170,41 @@ class DatabaseManager:
         
         memos = self.cursor.fetchall()
         return memos
+
+    def account_login(self, username, password):
+        """用户登录，返回用户信息字典或None"""
+        hashed_pwd = self.hash(password)
+        
+        self.cursor.execute("SELECT id, username, avatar FROM users WHERE username = ? AND password = ?", 
+                            (username, hashed_pwd))
+        user_data = self.cursor.fetchone()
+        
+        if user_data:
+            print(f"用户 {username} 登录成功")
+            # 转换为字典格式，便于使用和理解
+            user_dict = {
+                "id": user_data[0],
+                "username": user_data[1],
+                "avatar": user_data[2]
+            }
+            return user_dict
+        else:
+            print("用户名或密码错误")
+            return None
     
     def hash(self, text):
         """密码哈希函数（示例实现）"""
-        # todo: 实现真正的安全哈希
+        # TODO: 实现真正的安全哈希
         return text[::-1]  # 简单反转演示
     
     def encrypt(self, text):
         """加密函数（示例实现）"""
-        # todo: 实现真正的加密
+        # TODO: 实现真正的加密
         return f"ENC_{text}"  # 示例加密
     
     def decrypt(self, encrypted_text):
         """解密函数（示例实现）"""
-        # todo: 实现真正的解密
+        # TODO: 实现真正的解密
         return encrypted_text[4:] if encrypted_text.startswith("ENC_") else encrypted_text
     
     def format_datetime(self, datetime_str):

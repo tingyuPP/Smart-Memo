@@ -25,10 +25,11 @@ class Widget(QFrame):
 class MainWindow(FluentWindow):
     """ 主界面 """
 
-    def __init__(self):
+    def __init__(self, user = None):
         super().__init__()
 
         # 创建子界面，实际使用时将 Widget 换成自己的子界面
+        self.user_data = user
         self.homeInterface = Widget('Home Interface', self)
         self.musicInterface = Widget('Music Interface', self)
         self.videoInterface = Widget('Video Interface', self)
