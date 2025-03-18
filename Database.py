@@ -3,6 +3,8 @@ import time
 from datetime import datetime
 import pytz
 
+# TODO: 备忘录信息的类别还没有定义，需要添加一个枚举类别。
+
 class DatabaseManager:
     def __init__(self, db_name='smart_memo.db'):
         """初始化数据库管理器"""
