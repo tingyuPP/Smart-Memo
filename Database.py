@@ -66,7 +66,7 @@ class DatabaseManager:
         # 提交更改
         self.conn.commit()
     
-    def create_user(self, username, password, face_data=None, fingerprint_data=None, avatar=None):
+    def create_user(self, username, password, face_data=None, fingerprint_data=None, avatar="resource/default_avatar.jpg"):
         """创建用户（密码需要加密）
         
         参数:
@@ -125,6 +125,17 @@ class DatabaseManager:
         print("备忘录创建成功")
         return self.cursor.lastrowid
     
+    def get_certain_user(self, username):
+        """获取特定用户信息"""
+        self.cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+        user_data = self.cursor.fetchone()
+        user_dict = {
+            "id": user_data[0],
+            "username": user_data[1],
+            "avatar": user_data[5]
+        }
+        return user_dict
+    
     def update_memo(self, memo_id, title=None, content=None, category=None):
         """更新备忘录内容"""
         update_parts = []
@@ -160,6 +171,12 @@ class DatabaseManager:
         else:
             print(f"备忘录 ID {memo_id} 不存在或未更改")
             return False
+        
+    def update_user_avatar(self, user_id, avatar_path):
+        """更新用户头像路径"""
+        self.cursor.execute("UPDATE users SET avatar = ? WHERE id = ?", (avatar_path, user_id))
+        self.conn.commit()
+        return self.cursor.rowcount > 0
     
     def get_memos(self, user_id=None):
         """获取备忘录列表，可选按用户ID过滤"""

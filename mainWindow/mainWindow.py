@@ -1,11 +1,13 @@
 # 这是一个demo，展示了如何使用PyQt-Fluent-Widgets库中的FluentWindow类来创建一个主窍口。
 
-from qfluentwidgets import NavigationItemPosition, FluentWindow, SubtitleLabel, setFont
+from qfluentwidgets import (NavigationItemPosition, FluentWindow, SubtitleLabel, setFont, AvatarWidget
+                            , isDarkTheme, NavigationWidget)
 from qfluentwidgets import FluentIcon as FIF
 from mainWindow.settingInterface import SettingInterface
+from mainWindow.myInterface import MyInterface
 from PyQt5.QtWidgets import QApplication, QFrame, QHBoxLayout
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon, QImage, QPainter, QColor, QBrush, QFont
+from PyQt5.QtCore import Qt, QRect
 import sys
 
 class Widget(QFrame):
@@ -22,7 +24,6 @@ class Widget(QFrame):
         # 必须给子界面设置全局唯一的对象名
         self.setObjectName(text.replace(' ', '-'))
 
-
 class MainWindow(FluentWindow):
     """ 主界面 """
 
@@ -37,6 +38,8 @@ class MainWindow(FluentWindow):
         self.settingInterface = SettingInterface('设置', self)
         self.albumInterface = Widget('Album Interface', self)
         self.albumInterface1 = Widget('Album Interface 1', self)
+        self.myInterface = MyInterface('My Interface', user["username"], self)
+        # print(self.myInterface.objectName())
 
         self.initNavigation()
         self.initWindow()
@@ -51,13 +54,65 @@ class MainWindow(FluentWindow):
         self.addSubInterface(self.albumInterface, FIF.ALBUM, 'Albums', NavigationItemPosition.SCROLL)
         self.addSubInterface(self.albumInterface1, FIF.ALBUM, 'Album 1', parent=self.albumInterface)
 
-        self.addSubInterface(self.settingInterface, FIF.SETTING, 'Settings', NavigationItemPosition.BOTTOM)
+        # if self.user_data["avatar"]:
+        #     self.addSubInterface(self.myInterface, self.create_round_icon(self.user_data["avatar"]), 'My Page', NavigationItemPosition.BOTTOM)
+        # else:
+        #     self.addSubInterface(self.myInterface, self.create_round_icon("resource/default_avatar.jpg"), 'My Page', NavigationItemPosition.BOTTOM)
+        self.addSubInterface(self.myInterface, FIF.PEOPLE, '个性化', NavigationItemPosition.BOTTOM)
+        self.addSubInterface(self.settingInterface, FIF.SETTING, '设置', NavigationItemPosition.BOTTOM)
+
 
     def initWindow(self):
         self.resize(900, 700)
+        self.setMinimumWidth(600)
         self.setWindowIcon(QIcon(':/qfluentwidgets/images/logo.png'))
         self.setWindowTitle('PyQt-Fluent-Widgets')
 
+    def create_round_icon(self, image_path):
+        """创建圆形图标"""
+        from PyQt5.QtGui import QPainter, QPainterPath, QPixmap, QColor, QPen
+        from PyQt5.QtCore import QSize, Qt
+        
+        # 加载原始图像
+        original_pixmap = QPixmap(image_path)
+        if original_pixmap.isNull():
+            return QIcon()  # 如果无法加载图像，返回空图标
+        
+        # 创建透明背景的目标pixmap
+        size = min(original_pixmap.width(), original_pixmap.height())
+        target_pixmap = QPixmap(size, size)
+        target_pixmap.fill(Qt.transparent)
+        
+        # 创建圆形裁剪路径
+        path = QPainterPath()
+        path.addEllipse(0, 0, size, size)
+        
+        # 开始绘制
+        painter = QPainter(target_pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)  # 抗锯齿
+        painter.setClipPath(path)
+        
+        # 如果原图和目标大小不同，进行缩放
+        if original_pixmap.width() != size or original_pixmap.height() != size:
+            original_pixmap = original_pixmap.scaled(size, size, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+        
+        # 居中绘制原始图像
+        x = (size - original_pixmap.width()) // 2 if original_pixmap.width() < size else 0
+        y = (size - original_pixmap.height()) // 2 if original_pixmap.height() < size else 0
+        
+        painter.drawPixmap(x, y, original_pixmap)
+        
+        # 画一个圆形边框（可选）
+        painter.setClipping(False)  # 取消裁剪以便绘制边框
+        pen = QPen(QColor(200, 200, 200))  # 浅灰色边框
+        pen.setWidth(2)
+        painter.setPen(pen)
+        painter.drawEllipse(1, 1, size-2, size-2)
+        
+        painter.end()
+        
+        # 创建并返回图标
+        return QIcon(target_pixmap)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

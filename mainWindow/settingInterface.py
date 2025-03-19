@@ -66,7 +66,7 @@ class SettingInterface(ScrollArea):
             text="打开帮助页面",
             icon=FluentIcon.HELP,
             title="帮助",
-            content="详细了解SafeKey的功能与使用方法"
+            content="详细了解Smart-Memo-Manager的功能与使用方法"
         )
         self.aboutCard = PrimaryPushSettingCard(
             text="仓库地址",
