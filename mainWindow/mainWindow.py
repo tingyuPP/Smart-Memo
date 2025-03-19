@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import QApplication, QFrame, QHBoxLayout
 from PyQt5.QtGui import QIcon, QImage, QPainter, QColor, QBrush, QFont
 from PyQt5.QtCore import Qt, QRect
 import sys
+from mainWindow.ui.view.mainpage import mainInterface
 
 class Widget(QFrame):
 
@@ -32,7 +33,7 @@ class MainWindow(FluentWindow):
 
         # 创建子界面，实际使用时将 Widget 换成自己的子界面
         self.user_data = user
-        self.homeInterface = Widget('Home Interface', self)
+        self.homeInterface = mainInterface(self)
         self.musicInterface = Widget('Music Interface', self)
         self.videoInterface = Widget('Video Interface', self)
         self.settingInterface = SettingInterface('设置', self)
@@ -61,7 +62,6 @@ class MainWindow(FluentWindow):
         self.addSubInterface(self.myInterface, FIF.PEOPLE, '个性化', NavigationItemPosition.BOTTOM)
         self.addSubInterface(self.settingInterface, FIF.SETTING, '设置', NavigationItemPosition.BOTTOM)
 
-
     def initWindow(self):
         self.resize(900, 700)
         self.setMinimumWidth(600)
@@ -72,45 +72,45 @@ class MainWindow(FluentWindow):
         """创建圆形图标"""
         from PyQt5.QtGui import QPainter, QPainterPath, QPixmap, QColor, QPen
         from PyQt5.QtCore import QSize, Qt
-        
+
         # 加载原始图像
         original_pixmap = QPixmap(image_path)
         if original_pixmap.isNull():
             return QIcon()  # 如果无法加载图像，返回空图标
-        
+
         # 创建透明背景的目标pixmap
         size = min(original_pixmap.width(), original_pixmap.height())
         target_pixmap = QPixmap(size, size)
         target_pixmap.fill(Qt.transparent)
-        
+
         # 创建圆形裁剪路径
         path = QPainterPath()
         path.addEllipse(0, 0, size, size)
-        
+
         # 开始绘制
         painter = QPainter(target_pixmap)
         painter.setRenderHint(QPainter.Antialiasing)  # 抗锯齿
         painter.setClipPath(path)
-        
+
         # 如果原图和目标大小不同，进行缩放
         if original_pixmap.width() != size or original_pixmap.height() != size:
             original_pixmap = original_pixmap.scaled(size, size, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
-        
+
         # 居中绘制原始图像
         x = (size - original_pixmap.width()) // 2 if original_pixmap.width() < size else 0
         y = (size - original_pixmap.height()) // 2 if original_pixmap.height() < size else 0
-        
+
         painter.drawPixmap(x, y, original_pixmap)
-        
+
         # 画一个圆形边框（可选）
         painter.setClipping(False)  # 取消裁剪以便绘制边框
         pen = QPen(QColor(200, 200, 200))  # 浅灰色边框
         pen.setWidth(2)
         painter.setPen(pen)
         painter.drawEllipse(1, 1, size-2, size-2)
-        
+
         painter.end()
-        
+
         # 创建并返回图标
         return QIcon(target_pixmap)
 
