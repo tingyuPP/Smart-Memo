@@ -184,7 +184,7 @@ class AvatarCard(CardWidget):
         self.titleLabel = BodyLabel(title, self)
         self.contentLabel = CaptionLabel(content, self)
         self.addButton = TransparentToolButton(FluentIcon.ADD, self)
-        self.avatar = AvatarWidget(parent.user_data["avatar"], self)
+        self.avatar = AvatarWidget(parent.user_data["avatar"])
         self.avatar.setRadius(24)
 
         self.hBoxLayout = QHBoxLayout(self)
