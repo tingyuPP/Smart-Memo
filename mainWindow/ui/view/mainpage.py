@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import QWidget, QMenu, QAction
 from qfluentwidgets import FluentIcon
 
 from mainWindow.ui.view.Ui_mainpage import Ui_mainwindow
+
 # from Ui_mainpage import Ui_mainwindow
 
 from qfluentwidgets import (
@@ -62,8 +63,6 @@ class AppCard(CardWidget):
 
         self.construct_layout()
 
-        
-
     def construct_layout(self):
         # 中间文本
         self.mainLayout.addSpacing(15)
@@ -94,21 +93,39 @@ class AppCard(CardWidget):
 
         # 逐个添加动作，Action 继承自 QAction，接受 FluentIconBase 类型的图标
         self.menu.addAction(
-            Action(FluentIcon.COPY, "复制", triggered=lambda: print("复制成功"))
+            Action(
+                FluentIcon.DELETE,
+                "删除",
+                triggered=lambda: print("删除成功"),
+            )
         )
         self.menu.addAction(
-            Action(FluentIcon.CUT, "剪切", triggered=lambda: print("剪切成功"))
+            Action(FluentIcon.ACCEPT, "收藏", triggered=lambda: print("收藏成功"))
         )
-
-        # 批量添加动作
-        self.menu.addActions(
-            [Action(FluentIcon.PASTE, "粘贴"), Action(FluentIcon.CANCEL, "撤销")]
-        )
-
         # 添加分割线
         self.menu.addSeparator()
 
-        self.menu.addAction(QAction("全选", self, shortcut="Ctrl+A"))
+        # 导出为子菜单
+        export_submenu = RoundMenu("导出为", self)
+        export_submenu.setIcon(FluentIcon.ZOOM_OUT)  # 设置图标
+        export_submenu.addActions(
+            [
+                Action("PDF", triggered=lambda: print("导出为PDF")),  # 导出为 PDF
+                Action("Word", triggered=lambda: print("导出为Word")),  # 导出为 Word
+            ]
+        )
+        self.menu.addMenu(export_submenu)
+
+        # 分享到子菜单
+        share_submenu = RoundMenu("分享到", self)
+        share_submenu.setIcon(FluentIcon.SHARE)  # 设置图标
+        share_submenu.addActions(
+            [
+                Action("微信", triggered=lambda: print("分享到微信")),  # 分享到微信
+                Action("QQ", triggered=lambda: print("分享到QQ")),  # 分享到 QQ
+            ]
+        )
+        self.menu.addMenu(share_submenu)
 
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         # self.customContextMenuRequested.connect(self.showContextMenu)  # 注释掉这行
@@ -132,6 +149,9 @@ class mainInterface(Ui_mainwindow, QWidget):
         self.toolButton.setIcon(FluentIcon.ADD)
         self.toolButton_2.setIcon(FluentIcon.SYNC)
 
+        # 连接 toolButton 的点击事件
+        self.toolButton.clicked.connect(self.switch_to_music_interface)
+
         # 创建 QVBoxLayout
         self.cardLayout = QVBoxLayout()
 
@@ -139,8 +159,9 @@ class mainInterface(Ui_mainwindow, QWidget):
             self.cardLayout
         )  # 将布局设置到已有的 Widget 中
 
-        self.scrollArea.setStyleSheet("QScrollArea{background: transparent; border: none}")
-
+        self.scrollArea.setStyleSheet(
+            "QScrollArea{background: transparent; border: none}"
+        )
 
         self.scrollAreaWidgetContents.setStyleSheet("QWidget{background: transparent}")
 
@@ -156,6 +177,12 @@ class mainInterface(Ui_mainwindow, QWidget):
         self.cardLayout.addWidget(AppCard("Weather", "Check the weather"))
         self.cardLayout.addWidget(AppCard("Calculator", "Do some math"))
         self.cardLayout.addWidget(AppCard("Notes", "Write a note"))
+
+    def switch_to_music_interface(self):
+        # 调用父窗口 (MainWindow) 的方法来切换到 musicInterface
+        main_window = self.window()
+        if hasattr(main_window, "switch_to_newmemo_interface"):
+            main_window.switch_to_newmemo_interface()
 
 
 if __name__ == "__main__":

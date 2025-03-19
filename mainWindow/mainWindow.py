@@ -1,7 +1,14 @@
 # 这是一个demo，展示了如何使用PyQt-Fluent-Widgets库中的FluentWindow类来创建一个主窍口。
 
-from qfluentwidgets import (NavigationItemPosition, FluentWindow, SubtitleLabel, setFont, AvatarWidget
-                            , isDarkTheme, NavigationWidget)
+from qfluentwidgets import (
+    NavigationItemPosition,
+    FluentWindow,
+    SubtitleLabel,
+    setFont,
+    AvatarWidget,
+    isDarkTheme,
+    NavigationWidget,
+)
 from qfluentwidgets import FluentIcon as FIF
 from mainWindow.settingInterface import SettingInterface
 from mainWindow.myInterface import MyInterface
@@ -10,6 +17,8 @@ from PyQt5.QtGui import QIcon, QImage, QPainter, QColor, QBrush, QFont
 from PyQt5.QtCore import Qt, QRect
 import sys
 from mainWindow.ui.view.mainpage import mainInterface
+from mainWindow.ui.view.memo import memoInterface
+
 
 class Widget(QFrame):
 
@@ -23,50 +32,65 @@ class Widget(QFrame):
         self.hBoxLayout.addWidget(self.label, 1, Qt.AlignCenter)
 
         # 必须给子界面设置全局唯一的对象名
-        self.setObjectName(text.replace(' ', '-'))
+        self.setObjectName(text.replace(" ", "-"))
+
 
 class MainWindow(FluentWindow):
-    """ 主界面 """
+    """主界面"""
 
-    def __init__(self, user = None):
+    def __init__(self, user=None):
         super().__init__()
 
         # 创建子界面，实际使用时将 Widget 换成自己的子界面
         self.user_data = user
         self.homeInterface = mainInterface(self)
-        self.musicInterface = Widget('Music Interface', self)
-        self.videoInterface = Widget('Video Interface', self)
-        self.settingInterface = SettingInterface('设置', self)
-        self.albumInterface = Widget('Album Interface', self)
-        self.albumInterface1 = Widget('Album Interface 1', self)
-        self.myInterface = MyInterface('My Interface', user["username"], self)
+        self.memoInterface = memoInterface(self)
+        self.videoInterface = Widget("Video Interface", self)
+        self.settingInterface = SettingInterface("设置", self)
+        self.albumInterface = Widget("Album Interface", self)
+        self.albumInterface1 = Widget("Album Interface 1", self)
+        self.myInterface = MyInterface("My Interface", user["username"], self)
         # print(self.myInterface.objectName())
 
         self.initNavigation()
         self.initWindow()
 
     def initNavigation(self):
-        self.addSubInterface(self.homeInterface, FIF.HOME, 'Home')
-        self.addSubInterface(self.musicInterface, FIF.MUSIC, 'Music library')
-        self.addSubInterface(self.videoInterface, FIF.VIDEO, 'Video library')
+        self.addSubInterface(self.homeInterface, FIF.HOME, "Home")
+        self.addSubInterface(self.memoInterface, FIF.BOOK_SHELF, "Music library")
+        self.addSubInterface(self.videoInterface, FIF.VIDEO, "Video library")
 
         self.navigationInterface.addSeparator()
 
-        self.addSubInterface(self.albumInterface, FIF.ALBUM, 'Albums', NavigationItemPosition.SCROLL)
-        self.addSubInterface(self.albumInterface1, FIF.ALBUM, 'Album 1', parent=self.albumInterface)
+        self.addSubInterface(
+            self.albumInterface, FIF.ALBUM, "Albums", NavigationItemPosition.SCROLL
+        )
+        self.addSubInterface(
+            self.albumInterface1, FIF.ALBUM, "Album 1", parent=self.albumInterface
+        )
 
         # if self.user_data["avatar"]:
         #     self.addSubInterface(self.myInterface, self.create_round_icon(self.user_data["avatar"]), 'My Page', NavigationItemPosition.BOTTOM)
         # else:
         #     self.addSubInterface(self.myInterface, self.create_round_icon("resource/default_avatar.jpg"), 'My Page', NavigationItemPosition.BOTTOM)
-        self.addSubInterface(self.myInterface, FIF.PEOPLE, '个性化', NavigationItemPosition.BOTTOM)
-        self.addSubInterface(self.settingInterface, FIF.SETTING, '设置', NavigationItemPosition.BOTTOM)
+        self.addSubInterface(
+            self.myInterface, FIF.PEOPLE, "个性化", NavigationItemPosition.BOTTOM
+        )
+        self.addSubInterface(
+            self.settingInterface, FIF.SETTING, "设置", NavigationItemPosition.BOTTOM
+        )
 
     def initWindow(self):
         self.resize(900, 700)
         self.setMinimumWidth(600)
-        self.setWindowIcon(QIcon(':/qfluentwidgets/images/logo.png'))
-        self.setWindowTitle('PyQt-Fluent-Widgets')
+        self.setWindowIcon(QIcon(":/qfluentwidgets/images/logo.png"))
+        self.setWindowTitle("PyQt-Fluent-Widgets")
+
+    def switch_to_newmemo_interface(self):
+        # 切换到 memoInterface
+        self.navigationInterface.setCurrentItem(self.memoInterface.objectName())
+        # 直接设置内容区域的当前页面
+        self.switchTo(self.memoInterface)
 
     def create_round_icon(self, image_path):
         """创建圆形图标"""
@@ -94,11 +118,21 @@ class MainWindow(FluentWindow):
 
         # 如果原图和目标大小不同，进行缩放
         if original_pixmap.width() != size or original_pixmap.height() != size:
-            original_pixmap = original_pixmap.scaled(size, size, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+            original_pixmap = original_pixmap.scaled(
+                size, size, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
+            )
 
         # 居中绘制原始图像
-        x = (size - original_pixmap.width()) // 2 if original_pixmap.width() < size else 0
-        y = (size - original_pixmap.height()) // 2 if original_pixmap.height() < size else 0
+        x = (
+            (size - original_pixmap.width()) // 2
+            if original_pixmap.width() < size
+            else 0
+        )
+        y = (
+            (size - original_pixmap.height()) // 2
+            if original_pixmap.height() < size
+            else 0
+        )
 
         painter.drawPixmap(x, y, original_pixmap)
 
@@ -107,14 +141,15 @@ class MainWindow(FluentWindow):
         pen = QPen(QColor(200, 200, 200))  # 浅灰色边框
         pen.setWidth(2)
         painter.setPen(pen)
-        painter.drawEllipse(1, 1, size-2, size-2)
+        painter.drawEllipse(1, 1, size - 2, size - 2)
 
         painter.end()
 
         # 创建并返回图标
         return QIcon(target_pixmap)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     app = QApplication(sys.argv)
     w = MainWindow()
     w.show()
