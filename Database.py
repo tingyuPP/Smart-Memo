@@ -172,11 +172,62 @@ class DatabaseManager:
             print(f"备忘录 ID {memo_id} 不存在或未更改")
             return False
         
-    def update_user_avatar(self, user_id, avatar_path):
-        """更新用户头像路径"""
-        self.cursor.execute("UPDATE users SET avatar = ? WHERE id = ?", (avatar_path, user_id))
+    def update_user(self, user_id, **kwargs):
+        """
+        更新用户信息
+        
+        参数:
+            user_id: 要更新的用户ID
+            **kwargs: 需要更新的字段和值的键值对
+                    可以包含: username, password, face_data, fingerprint_data, avatar
+        
+        返回:
+            bool: 更新成功返回True，失败返回False
+        """
+        if not kwargs:
+            print("没有提供要更新的内容")
+            return False
+        
+        # 可更新字段的白名单
+        allowed_fields = ['username', 'password', 'face_data', 'fingerprint_data', 'avatar']
+        
+        # 过滤非法字段
+        update_fields = {k: v for k, v in kwargs.items() if k in allowed_fields}
+        
+        if not update_fields:
+            print("没有提供有效的更新字段")
+            return False
+        
+        # 特殊处理密码字段 - 如果更新密码，需要先加密
+        if 'password' in update_fields:
+            update_fields['password'] = self.hash(update_fields['password'])
+        
+        # 特殊处理生物识别数据 - 如果提供，需要加密
+        if 'face_data' in update_fields and update_fields['face_data'] is not None:
+            update_fields['face_data'] = self.encrypt(str(update_fields['face_data']))
+            
+        if 'fingerprint_data' in update_fields and update_fields['fingerprint_data'] is not None:
+            update_fields['fingerprint_data'] = self.encrypt(str(update_fields['fingerprint_data']))
+        
+        # 构建UPDATE语句
+        placeholders = ", ".join([f"{field} = ?" for field in update_fields.keys()])
+        query = f"UPDATE users SET {placeholders} WHERE id = ?"
+        
+        # 创建参数列表
+        values = list(update_fields.values())
+        values.append(user_id)  # 添加WHERE子句的参数
+        
+        # 执行更新
+        self.cursor.execute(query, values)
         self.conn.commit()
-        return self.cursor.rowcount > 0
+        
+        # 检查是否有行被更新
+        if self.cursor.rowcount > 0:
+            print(f"用户ID {user_id} 更新成功")
+            return True
+        else:
+            print(f"用户ID {user_id} 不存在或未更改")
+            return False
     
     def get_memos(self, user_id=None):
         """获取备忘录列表，可选按用户ID过滤"""

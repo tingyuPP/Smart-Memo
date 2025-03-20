@@ -1,6 +1,8 @@
 from qfluentwidgets import (ScrollArea, ElevatedCardWidget, AvatarWidget, TitleLabel, BodyLabel,
                             SettingCardGroup, CardWidget, IconWidget, CaptionLabel, PushButton,
-                            TransparentToolButton, FluentIcon, InfoBar, InfoBarPosition)
+                            TransparentToolButton, FluentIcon, InfoBar, InfoBarPosition,
+                            ExpandGroupSettingCard, ComboBox, SwitchButton, IndicatorPosition,
+                            LineEdit)
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
@@ -28,6 +30,8 @@ class MyInterface(ScrollArea):
         # self.descriptionLabel = BodyLabel("在这里查看和管理您的个人信息")
         self.personalGroup = SettingCardGroup(self.tr('个人资料'), self.scrollWidget)
         self.avatarCard = AvatarCard(FluentIcon.PEOPLE, "修改头像", "更改您的头像", self)
+        self.securityGroup = SettingCardGroup(self.tr('安全与密码'), self.scrollWidget)
+        self.passwordCard = PasswordCard(self)
 
 
         self.__initWidget()
@@ -40,6 +44,7 @@ class MyInterface(ScrollArea):
         self.enableTransparentBackground()
         self.setViewportMargins(0, 60, 0, 20)
         self.personalGroup.addSettingCard(self.avatarCard)
+        self.securityGroup.addSettingCard(self.passwordCard)
 
     def __initLayout(self):
         # 创建主布局
@@ -61,6 +66,7 @@ class MyInterface(ScrollArea):
         self.cardLayout.addStretch(1)
         self.vBoxLayout.addLayout(self.cardLayout)
         self.vBoxLayout.addWidget(self.personalGroup)
+        self.vBoxLayout.addWidget(self.securityGroup)
         
         # 添加弹性空间
         self.vBoxLayout.addStretch(1)
@@ -191,10 +197,10 @@ class AvatarCard(CardWidget):
         self.vBoxLayout = QVBoxLayout()
 
         self.setFixedHeight(73)
-        self.iconWidget.setFixedSize(24, 24)
+        self.iconWidget.setFixedSize(16, 16)
         self.contentLabel.setTextColor("#606060", "#d2d2d2")
 
-        self.hBoxLayout.setContentsMargins(20, 11, 11, 11)
+        self.hBoxLayout.setContentsMargins(15, 11, 11, 11)
         self.hBoxLayout.setSpacing(15)
         self.hBoxLayout.addWidget(self.iconWidget)
 
@@ -267,7 +273,7 @@ class AvatarCard(CardWidget):
                 try:
                     db = DatabaseManager()
                     avatar_path = str(target_path).replace("\\", "/")  # 确保路径格式一致
-                    db.update_user_avatar(user_id, avatar_path)
+                    db.update_user(user_id, avatar=avatar_path)
                     
                     # 更新本地用户数据
                     self.parent.user_data["avatar"] = avatar_path
@@ -318,3 +324,47 @@ class AvatarCard(CardWidget):
                     parent=self.parent
                 )
                 print(f"头像处理错误: {str(e)}")
+
+class PasswordCard(ExpandGroupSettingCard):
+    def __init__(self, parent=None):
+        super().__init__(FluentIcon.VPN, "修改密码", "更换一个新密码", parent)
+
+        # 第一组
+        self.oldPassLabel = BodyLabel("旧密码")
+        self.oldPassEdit = LineEdit()
+        self.oldPassEdit.setClearButtonEnabled(True)
+        self.oldPassEdit.setFixedWidth(135)
+
+        # 第二组
+        self.autoLabel = BodyLabel("自动开启节电模式")
+        self.autoComboBox = ComboBox()
+        self.autoComboBox.addItems(["10%", "20%", "30%"])
+        self.autoComboBox.setFixedWidth(135)
+
+        # 第三组
+        self.lightnessLabel = BodyLabel("使用节电模式时屏幕亮度较低")
+        self.lightnessSwitchButton = SwitchButton("关", self, IndicatorPosition.RIGHT)
+        self.lightnessSwitchButton.setOnText("开")
+
+        # 调整内部布局
+        self.viewLayout.setContentsMargins(0, 0, 0, 0)
+        self.viewLayout.setSpacing(0)
+
+        # 添加各组到设置卡中
+        self.add(self.oldPassLabel, self.oldPassEdit)
+        self.add(self.autoLabel, self.autoComboBox)
+        self.add(self.lightnessLabel, self.lightnessSwitchButton)
+
+    def add(self, label, widget):
+        w = QWidget()
+        w.setFixedHeight(60)
+
+        layout = QHBoxLayout(w)
+        layout.setContentsMargins(48, 12, 48, 12)
+
+        layout.addWidget(label)
+        layout.addStretch(1)
+        layout.addWidget(widget)
+
+        # 添加组件到设置卡
+        self.addGroupWidget(w)
