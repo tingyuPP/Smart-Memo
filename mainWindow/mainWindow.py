@@ -56,8 +56,8 @@ class MainWindow(FluentWindow):
         self.initWindow()
 
     def initNavigation(self):
-        self.addSubInterface(self.homeInterface, FIF.HOME, "Home")
-        self.addSubInterface(self.memoInterface, FIF.BOOK_SHELF, "Music library")
+        self.addSubInterface(self.homeInterface, FIF.HOME, "主页")
+        self.addSubInterface(self.memoInterface, FIF.ADD, "新建备忘录")
         self.addSubInterface(self.videoInterface, FIF.VIDEO, "Video library")
 
         self.navigationInterface.addSeparator()

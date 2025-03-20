@@ -42,6 +42,8 @@ class AppCard(CardWidget):
         self.moreButton.clicked.connect(
             self.showContextMenu
         )  # 连接 moreButton 的点击信号
+        
+        
 
     def setup_ui(self, title, content):
         # 文本区域
@@ -151,6 +153,10 @@ class mainInterface(Ui_mainwindow, QWidget):
 
         # 连接 toolButton 的点击事件
         self.toolButton.clicked.connect(self.switch_to_music_interface)
+        
+        self.pushButton.addItem("按名称排序")
+        self.pushButton.addItem("按时间排序")
+        self.pushButton.addItem("按标签排序")
 
         # 创建 QVBoxLayout
         self.cardLayout = QVBoxLayout()

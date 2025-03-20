@@ -52,7 +52,7 @@ class memoInterface(Ui_memo, QWidget):
                 Action(
                     FluentIcon.SAVE,
                     "保存",
-                    checkable=True,
+                    
                     triggered=lambda: print("编辑"),
                 ),
                 Action(FluentIcon.DELETE, "清空"),
