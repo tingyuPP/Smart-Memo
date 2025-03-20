@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QStackedWidget
 from PyQt5.QtCore import Qt
 from qfluentwidgets import Pivot, SegmentedWidget
 from login.accountInterface import AccountInterface
+from mainWindow.mainWindow import MainWindow
 
 class LoginWindow(QWidget):
 
@@ -58,7 +59,7 @@ class LoginWindow(QWidget):
     def on_login_success(self, user):
         print(f"登录成功：{user}")
         self.hide()
-        from mainWindow.mainWindow import MainWindow
+        # from mainWindow.mainWindow import MainWindow
         self.mainWindow = MainWindow(user)
         self.mainWindow.show()
         # print("这里应该打开主窗口")
