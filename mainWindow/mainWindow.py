@@ -43,8 +43,8 @@ class MainWindow(FluentWindow):
 
         # 创建子界面，实际使用时将 Widget 换成自己的子界面
         self.user_data = user
-        self.homeInterface = mainInterface(self)
-        self.memoInterface = memoInterface(self)
+        self.homeInterface = mainInterface(self, user["id"])
+        self.memoInterface = memoInterface(self, user["id"])
         self.videoInterface = Widget("Video Interface", self)
         self.settingInterface = SettingInterface("设置", self)
         self.albumInterface = Widget("Album Interface", self)

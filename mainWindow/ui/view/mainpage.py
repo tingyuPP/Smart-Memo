@@ -5,8 +5,6 @@ from qfluentwidgets import FluentIcon
 
 from mainWindow.ui.view.Ui_mainpage import Ui_mainwindow
 
-# from Ui_mainpage import Ui_mainwindow
-
 from qfluentwidgets import (
     TitleLabel,
     BodyLabel,
@@ -18,6 +16,8 @@ from qfluentwidgets import (
     PrimaryPushButton,
     RoundMenu,
     Action,
+    InfoBar,
+    SubtitleLabel,
 )
 from PyQt5.QtWidgets import (
     QWidget,
@@ -26,29 +26,30 @@ from PyQt5.QtWidgets import (
     QApplication,
     QScrollArea,
 )
-from PyQt5.QtCore import Qt, QPoint, QSize, QRect
+from PyQt5.QtCore import Qt, QPoint, QSize, QRect, QTimer
 from PyQt5.QtGui import QFont, QColor
 
-
 import sys
+from Database import DatabaseManager  # 导入数据库管理类
 
 
 class AppCard(CardWidget):
-    def __init__(self, title, content, parent=None):
+    def __init__(self, title, content, modified_time=None, category=None, parent=None):
         super().__init__(parent)
+        self.modified_time = modified_time
+        self.category = category
         self.setup_ui(title, content)
         self.setup_context_menu()
         self.clicked.connect(self.on_double_clicked)  # 连接双击信号
         self.moreButton.clicked.connect(
             self.showContextMenu
         )  # 连接 moreButton 的点击信号
-        
-        
 
     def setup_ui(self, title, content):
         # 文本区域
-        self.titleLabel = TitleLabel(title, self)
-        self.contentLabel = BodyLabel(content, self)
+        self.titleLabel = SubtitleLabel(title, self)
+        truncated_content = content[:50] + "..." if len(content) > 50 else content
+        self.contentLabel = BodyLabel(truncated_content, self)
         self.contentLabel.setWordWrap(True)
 
         # 操作按钮
@@ -56,7 +57,11 @@ class AppCard(CardWidget):
         self.moreButton = TransparentToolButton(FluentIcon.MORE, self)
 
         # 时间标签
-        self.timeLabel = CaptionLabel("10:30 AM", self)
+        if self.modified_time:
+            self.timeLabel = CaptionLabel(str(self.modified_time), self)
+        else:
+            self.timeLabel = CaptionLabel("No time", self)
+
 
         # 布局系统
         self.mainLayout = QHBoxLayout(self)
@@ -72,6 +77,7 @@ class AppCard(CardWidget):
         self.textLayout.addWidget(self.titleLabel)
         self.textLayout.addWidget(self.contentLabel)
         self.textLayout.addWidget(self.timeLabel)
+        # self.textLayout.addWidget(self.categoryLabel)
         self.mainLayout.addLayout(self.textLayout)
 
         # 右侧操作区
@@ -144,7 +150,7 @@ class AppCard(CardWidget):
 
 
 class mainInterface(Ui_mainwindow, QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, user_id=None):
         super().__init__(parent=parent)
         self.setupUi(self)
 
@@ -153,7 +159,7 @@ class mainInterface(Ui_mainwindow, QWidget):
 
         # 连接 toolButton 的点击事件
         self.toolButton.clicked.connect(self.switch_to_music_interface)
-        
+
         self.pushButton.addItem("按名称排序")
         self.pushButton.addItem("按时间排序")
         self.pushButton.addItem("按标签排序")
@@ -171,24 +177,53 @@ class mainInterface(Ui_mainwindow, QWidget):
 
         self.scrollAreaWidgetContents.setStyleSheet("QWidget{background: transparent}")
 
+        # 初始化数据库连接
+        self.db = DatabaseManager()
+        self.user_id = user_id
+        # 定时器，定期更新备忘录列表
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_memo_list)
+        self.timer.start(6000)  # 每6秒更新一次
+
+        # 初始加载备忘录列表
+        self.update_memo_list()
+
+    def update_memo_list(self):
+        """从数据库获取备忘录并更新列表"""
+        # 清空现有布局
+        for i in reversed(range(self.cardLayout.count())):
+            widget = self.cardLayout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+
+        # 从数据库获取备忘录
+        memos = self.db.get_memos(user_id=self.user_id)
+
         # 添加 AppCard 到 cardLayout
-        self.cardLayout.addWidget(
-            AppCard("Calendar", "Manage your schedule")
-        )  # 修改参数
-        self.cardLayout.addWidget(AppCard("Camera", "Take a photo"))  # 修改参数
-        self.cardLayout.addWidget(AppCard("Mail", "Send an email"))  # 修改参数
-        self.cardLayout.addWidget(AppCard("Music", "Listen to music"))
-        self.cardLayout.addWidget(AppCard("Video", "Watch a movie"))
-        self.cardLayout.addWidget(AppCard("Settings", "Change your preferences"))
-        self.cardLayout.addWidget(AppCard("Weather", "Check the weather"))
-        self.cardLayout.addWidget(AppCard("Calculator", "Do some math"))
-        self.cardLayout.addWidget(AppCard("Notes", "Write a note"))
+        for memo in memos:
+            # 从数据库中获取的数据
+            memo_id = memo[0]
+            user_id = memo[1]
+            created_time = memo[2]
+            modified_time = memo[3]
+            title = self.db.decrypt(memo[4])  # 解密标题
+            content = self.db.decrypt(memo[5])  # 解密内容
+            category = memo[6]
+
+            self.cardLayout.addWidget(
+                AppCard(title, content, modified_time=modified_time, category=category)
+            )  # 修改参数
 
     def switch_to_music_interface(self):
         # 调用父窗口 (MainWindow) 的方法来切换到 musicInterface
         main_window = self.window()
         if hasattr(main_window, "switch_to_newmemo_interface"):
             main_window.switch_to_newmemo_interface()
+
+    def closeEvent(self, event):
+        """关闭窗口时关闭数据库连接"""
+        self.db.close()
+        event.accept()
 
 
 if __name__ == "__main__":
