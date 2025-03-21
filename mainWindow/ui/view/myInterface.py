@@ -1,12 +1,14 @@
 from qfluentwidgets import (ScrollArea, ElevatedCardWidget, AvatarWidget, TitleLabel, BodyLabel,
                             SettingCardGroup, CardWidget, IconWidget, CaptionLabel, PushButton,
                             TransparentToolButton, FluentIcon, InfoBar, InfoBarPosition,
-                            ExpandGroupSettingCard, ComboBox, SwitchButton, IndicatorPosition,
-                            LineEdit)
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
+                            ExpandGroupSettingCard,LineEdit, PasswordLineEdit, PrimaryPushButton,
+                            ToolTipFilter, ToolButton, ToolTipPosition)
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QApplication
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 from Database import DatabaseManager
+import string
+import random
 
 class MyInterface(ScrollArea):
     def __init__(self, text : str, username : str, parent=None):
@@ -328,23 +330,35 @@ class AvatarCard(CardWidget):
 class PasswordCard(ExpandGroupSettingCard):
     def __init__(self, parent=None):
         super().__init__(FluentIcon.VPN, "修改密码", "更换一个新密码", parent)
+        self.parent = parent
 
         # 第一组
         self.oldPassLabel = BodyLabel("旧密码")
         self.oldPassEdit = LineEdit()
         self.oldPassEdit.setClearButtonEnabled(True)
-        self.oldPassEdit.setFixedWidth(135)
+        self.oldPassEdit.setFixedWidth(200)
 
         # 第二组
-        self.autoLabel = BodyLabel("自动开启节电模式")
-        self.autoComboBox = ComboBox()
-        self.autoComboBox.addItems(["10%", "20%", "30%"])
-        self.autoComboBox.setFixedWidth(135)
+        self.newPassLabel = BodyLabel("新密码")
+        self.generateButton = ToolButton(FluentIcon.SYNC)
+        self.generateButton.setToolTip("随机生成密码，请妥善保存")
+        self.generateButton.setToolTipDuration(1000)
+        self.generateButton.installEventFilter(ToolTipFilter(self.generateButton, 
+                                                            showDelay=300, 
+                                                            position=ToolTipPosition.TOP))
+        self.newPassEdit = PasswordLineEdit()
+        self.newPassEdit.setClearButtonEnabled(True)
+        self.newPassEdit.setFixedWidth(200)
 
         # 第三组
-        self.lightnessLabel = BodyLabel("使用节电模式时屏幕亮度较低")
-        self.lightnessSwitchButton = SwitchButton("关", self, IndicatorPosition.RIGHT)
-        self.lightnessSwitchButton.setOnText("开")
+        self.confirmLabel = BodyLabel("确认密码")
+        self.confirmEdit = PasswordLineEdit()
+        self.confirmEdit.setClearButtonEnabled(True)
+        self.confirmEdit.setFixedWidth(200)
+
+        # 第四组
+        self.reviseLabel = BodyLabel("确认修改")
+        self.reviseButton = PrimaryPushButton(FluentIcon.EDIT,"修改密码")
 
         # 调整内部布局
         self.viewLayout.setContentsMargins(0, 0, 0, 0)
@@ -352,19 +366,177 @@ class PasswordCard(ExpandGroupSettingCard):
 
         # 添加各组到设置卡中
         self.add(self.oldPassLabel, self.oldPassEdit)
-        self.add(self.autoLabel, self.autoComboBox)
-        self.add(self.lightnessLabel, self.lightnessSwitchButton)
+        self.add(self.newPassLabel, self.newPassEdit, self.generateButton)
+        self.add(self.confirmLabel, self.confirmEdit)
+        self.add(self.reviseLabel , self.reviseButton)
 
-    def add(self, label, widget):
+        # 信号绑定
+        self.reviseButton.clicked.connect(self.revise_password)
+        self.generateButton.clicked.connect(self.generate_password)
+
+    def add(self, label = None, widget = None, button = None):
         w = QWidget()
         w.setFixedHeight(60)
 
         layout = QHBoxLayout(w)
         layout.setContentsMargins(48, 12, 48, 12)
-
-        layout.addWidget(label)
+        
+        if (label):
+            layout.addWidget(label)
         layout.addStretch(1)
+        if (button):
+            layout.addWidget(button)
         layout.addWidget(widget)
 
         # 添加组件到设置卡
         self.addGroupWidget(w)
+    
+    def generate_password(self):
+        """生成一个包含大写字母、小写字母、数字和符号的复杂密码"""
+        
+        # 定义字符集
+        lowercase = string.ascii_lowercase  # 小写字母 a-z
+        uppercase = string.ascii_uppercase  # 大写字母 A-Z
+        digits = string.digits  # 数字 0-9
+        # 安全的特殊字符，避免使用可能导致问题的符号
+        symbols = "!@#$%^&*()-_=+[]{}|;:,.<>?"
+        
+        # 设置密码长度 (12-16位)
+        length = random.randint(12, 16)
+        
+        # 确保每种字符至少出现一次
+        password = [
+            random.choice(lowercase),
+            random.choice(uppercase),
+            random.choice(digits),
+            random.choice(symbols)
+        ]
+        
+        # 填充剩余长度的随机字符
+        remaining_length = length - len(password)
+        all_chars = lowercase + uppercase + digits + symbols
+        password.extend(random.choice(all_chars) for _ in range(remaining_length))
+        
+        # 打乱密码字符顺序
+        random.shuffle(password)
+        password = ''.join(password)
+        
+        # 设置密码到输入框
+        self.newPassEdit.setText(password)
+        
+        # 自动将密码复制到剪贴板
+        clipboard = QApplication.clipboard()
+        clipboard.setText(password)
+        
+        # 显示成功提示
+        InfoBar.success(
+            title="密码已生成",
+            content="已创建强密码并复制到剪贴板",
+            orient=Qt.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.BOTTOM_RIGHT,
+            duration=3000,
+            parent=self.parent
+        )
+        
+        # 自动填充确认密码框
+        self.confirmEdit.setText(password)
+
+    def revise_password(self):
+        """修改密码"""
+        old_password = self.oldPassEdit.text()
+        new_password = self.newPassEdit.text()
+        confirm_password = self.confirmEdit.text()
+
+        if not old_password or not new_password or not confirm_password:
+            InfoBar.error(
+                title="密码修改失败",
+                content="请填写完整的密码信息",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.BOTTOM_RIGHT,
+                duration=3000,
+                parent=self.parent
+            )
+            return
+
+        if new_password != confirm_password:
+            InfoBar.error(
+                title="密码修改失败",
+                content="新密码和确认密码不一致",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.BOTTOM_RIGHT,
+                duration=3000,
+                parent=self.parent
+            )
+            return
+        
+        if len(new_password) < 6:
+            InfoBar.error(
+                title="密码修改失败",
+                content="新密码长度不能少于6位",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.BOTTOM_RIGHT,
+                duration=3000,
+                parent=self.parent
+            )
+            return
+        
+        if new_password == old_password:
+            InfoBar.error(
+                title="密码修改失败",
+                content="新密码不能和旧密码相同",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.BOTTOM_RIGHT,
+                duration=3000,
+                parent=self.parent
+            )
+            return
+
+        db = None
+        try:
+            db = DatabaseManager()
+            username = self.parent.user_data["username"]
+            user_id = self.parent.user_data["id"]
+            result = db.check_password(username, old_password)
+            if result:
+                db.update_user(user_id, password=new_password)
+                InfoBar.success(
+                    title="密码修改成功",
+                    content="您的密码已经修改成功",
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.BOTTOM_RIGHT,
+                    duration=3000,
+                    parent=self.parent
+                )
+                self.oldPassEdit.clear()
+                self.newPassEdit.clear()
+                self.confirmEdit.clear()
+            else:
+                InfoBar.error(
+                    title="密码修改失败",
+                    content="旧密码错误",
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.BOTTOM_RIGHT,
+                    duration=3000,
+                    parent=self.parent
+                )
+        except Exception as e:
+            InfoBar.error(
+                title="密码修改失败",
+                content=f"修改密码时发生错误: {str(e)}",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.BOTTOM_RIGHT,
+                duration=3000,
+                parent=self.parent
+            )
+            print(f"密码修改错误: {str(e)}")
+        finally:
+            if db:
+                db.close()

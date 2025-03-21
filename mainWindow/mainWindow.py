@@ -10,8 +10,8 @@ from qfluentwidgets import (
     NavigationWidget,
 )
 from qfluentwidgets import FluentIcon as FIF
-from mainWindow.settingInterface import SettingInterface
-from mainWindow.myInterface import MyInterface
+from mainWindow.ui.view.settingInterface import SettingInterface
+from mainWindow.ui.view.myInterface import MyInterface
 from PyQt5.QtWidgets import QApplication, QFrame, QHBoxLayout
 from PyQt5.QtGui import QIcon, QImage, QPainter, QColor, QBrush, QFont
 from PyQt5.QtCore import Qt, QRect

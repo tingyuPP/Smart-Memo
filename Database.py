@@ -136,6 +136,12 @@ class DatabaseManager:
         }
         return user_dict
     
+    def check_password(self, username, password):
+        """检查密码是否正确"""
+        hashed_pwd = self.hash(password)
+        self.cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, hashed_pwd))
+        return self.cursor.fetchone() is not None
+    
     def update_memo(self, memo_id, title=None, content=None, category=None):
         """更新备忘录内容"""
         update_parts = []
