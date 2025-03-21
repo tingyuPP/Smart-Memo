@@ -2,6 +2,13 @@ import sqlite3
 import time
 from datetime import datetime
 import pytz
+import hashlib
+import secrets
+import base64
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+import os
+
 
 # TODO: 备忘录信息的类别还没有定义，需要添加一个枚举类别。
 
@@ -138,9 +145,43 @@ class DatabaseManager:
     
     def check_password(self, username, password):
         """检查密码是否正确"""
-        hashed_pwd = self.hash(password)
-        self.cursor.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, hashed_pwd))
-        return self.cursor.fetchone() is not None
+        self.cursor.execute("SELECT password FROM users WHERE username = ?", (username,))
+        result = self.cursor.fetchone()
+        
+        if not result:
+            return False
+            
+        stored_password = result[0]
+        
+        # 验证密码
+        return self.verify_password(password, stored_password)
+    
+    def verify_password(self, password, stored_password):
+        """验证密码是否与存储的哈希匹配"""
+        import hashlib
+        import base64
+        
+        # 从存储的字符串中分离盐和哈希
+        try:
+            salt_b64, hash_b64 = stored_password.split(':')
+            salt = base64.b64decode(salt_b64)
+            stored_hash = base64.b64decode(hash_b64)
+        except (ValueError, base64.Error):
+            # 如果格式不正确或解码失败，返回False
+            return False
+        
+        # 使用相同参数重新计算哈希
+        hash_obj = hashlib.pbkdf2_hmac(
+            'sha256',
+            password.encode('utf-8'),
+            salt,
+            100000,
+            dklen=64
+        )
+        
+        # 使用安全的比较方法，防止时序攻击
+        import hmac
+        return hmac.compare_digest(hash_obj, stored_hash)
     
     def update_memo(self, memo_id, title=None, content=None, category=None):
         """更新备忘录内容"""
@@ -247,39 +288,137 @@ class DatabaseManager:
 
     def account_login(self, username, password):
         """用户登录，返回用户信息字典或None"""
-        hashed_pwd = self.hash(password)
-        
-        self.cursor.execute("SELECT id, username, avatar FROM users WHERE username = ? AND password = ?", 
-                            (username, hashed_pwd))
+        # 首先根据用户名查找用户
+        self.cursor.execute("SELECT id, username, password, avatar FROM users WHERE username = ?", (username,))
         user_data = self.cursor.fetchone()
         
-        if user_data:
+        if not user_data:
+            print(f"用户 {username} 不存在")
+            return None
+        
+        # 验证密码
+        stored_password = user_data[2]
+        if self.verify_password(password, stored_password):
             print(f"用户 {username} 登录成功")
             # 转换为字典格式，便于使用和理解
             user_dict = {
                 "id": user_data[0],
                 "username": user_data[1],
-                "avatar": user_data[2]
+                "avatar": user_data[3]
             }
             return user_dict
         else:
-            print("用户名或密码错误")
+            print("密码错误")
             return None
     
     def hash(self, text):
-        """密码哈希函数（示例实现）"""
-        # TODO: 实现真正的安全哈希
-        return text[::-1]  # 简单反转演示
+        # 生成一个随机盐值
+        salt = secrets.token_bytes(32)  # 使用32字节(256位)的随机盐
+        
+        # 使用PBKDF2-HMAC-SHA256算法，迭代100,000次
+        hash_obj = hashlib.pbkdf2_hmac(
+            'sha256',  # 哈希算法
+            text.encode('utf-8'),  # 密码编码为bytes
+            salt,  # 盐值
+            100000,  # 迭代次数
+            dklen=64  # 派生密钥长度为64字节(512位)
+        )
+        
+        # 将盐和哈希结果编码为base64字符串
+        salt_b64 = base64.b64encode(salt).decode('utf-8')
+        hash_b64 = base64.b64encode(hash_obj).decode('utf-8')
+        
+        # 返回格式为"salt:hash"的字符串
+        return f"{salt_b64}:{hash_b64}"
     
     def encrypt(self, text):
-        """加密函数（示例实现）"""
-        # TODO: 实现真正的加密
-        return f"ENC_{text}"  # 示例加密
-    
+        """
+        使用AES-256-CBC模式加密文本
+        
+        参数:
+            text: 要加密的文本
+            
+        返回:
+            str: base64编码的加密数据，格式为 'iv:ciphertext'
+        """
+
+        
+        # 检查输入
+        if text is None:
+            return None
+        
+        # 将文本转换为字节
+        plaintext = text.encode('utf-8')
+        
+        # 生成随机16字节IV
+        iv = os.urandom(16)
+        
+        # 加密密钥，使用固定密钥（生产环境应从安全存储中获取）
+        key = b'ThisIsA32ByteKeyForAES256Encryption'
+        
+        # 创建加密对象
+        cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+        encryptor = cipher.encryptor()
+        
+        # PKCS7填充
+        block_size = 16
+        padding_length = block_size - (len(plaintext) % block_size)
+        padding = bytes([padding_length]) * padding_length
+        padded_data = plaintext + padding
+        
+        # 加密
+        ciphertext = encryptor.update(padded_data) + encryptor.finalize()
+        
+        # 编码为Base64字符串（IV和密文）
+        iv_b64 = base64.b64encode(iv).decode('utf-8')
+        ciphertext_b64 = base64.b64encode(ciphertext).decode('utf-8')
+        
+        # 返回格式为 "iv:ciphertext" 的字符串
+        return f"{iv_b64}:{ciphertext_b64}"
+
     def decrypt(self, encrypted_text):
-        """解密函数（示例实现）"""
-        # TODO: 实现真正的解密
-        return encrypted_text[4:] if encrypted_text.startswith("ENC_") else encrypted_text
+        """
+        解密AES-256-CBC加密的文本
+        
+        参数:
+            encrypted_text: 格式为 'iv:ciphertext' 的加密文本
+            
+        返回:
+            str: 解密后的原始文本
+        """     
+        # 检查输入
+        if encrypted_text is None:
+            return None
+        
+        # 兼容旧格式数据
+        if encrypted_text.startswith("ENC_"):
+            return encrypted_text[4:]
+            
+        try:
+            # 分离IV和密文
+            iv_b64, ciphertext_b64 = encrypted_text.split(':')
+            iv = base64.b64decode(iv_b64)
+            ciphertext = base64.b64decode(ciphertext_b64)
+            
+            # 解密密钥，与加密使用相同的密钥
+            key = b'ThisIsA32ByteKeyForAES256Encryption'
+            
+            # 创建解密对象
+            cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+            decryptor = cipher.decryptor()
+            
+            # 解密
+            padded_data = decryptor.update(ciphertext) + decryptor.finalize()
+            
+            # 移除PKCS7填充
+            padding_length = padded_data[-1]
+            data = padded_data[:-padding_length]
+            
+            # 将字节转换回文本
+            return data.decode('utf-8')
+        except Exception as e:
+            print(f"解密错误: {e}")
+            return encrypted_text  # 返回原始文本作为降级处理
     
     def format_datetime(self, datetime_str):
         """格式化日期时间为易读格式"""
