@@ -1,8 +1,27 @@
-from qfluentwidgets import (ScrollArea, ElevatedCardWidget, AvatarWidget, TitleLabel, BodyLabel,
-                            SettingCardGroup, CardWidget, IconWidget, CaptionLabel, PushButton,
-                            TransparentToolButton, FluentIcon, InfoBar, InfoBarPosition,
-                            ExpandGroupSettingCard,LineEdit, PasswordLineEdit, PrimaryPushButton,
-                            ToolTipFilter, ToolButton, ToolTipPosition, PrimaryPushSettingCard)
+from qfluentwidgets import (
+    ScrollArea,
+    ElevatedCardWidget,
+    AvatarWidget,
+    TitleLabel,
+    BodyLabel,
+    SettingCardGroup,
+    CardWidget,
+    IconWidget,
+    CaptionLabel,
+    PushButton,
+    TransparentToolButton,
+    FluentIcon,
+    InfoBar,
+    InfoBarPosition,
+    ExpandGroupSettingCard,
+    LineEdit,
+    PasswordLineEdit,
+    PrimaryPushButton,
+    ToolTipFilter,
+    ToolButton,
+    ToolTipPosition,
+    PrimaryPushSettingCard,
+)
 from faceRecognition.faceMessageBox import FaceRegistrationMessageBox
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QApplication
 from PyQt5.QtCore import Qt
@@ -11,8 +30,9 @@ from Database import DatabaseManager
 import string
 import random
 
+
 class MyInterface(ScrollArea):
-    def __init__(self, text : str, username : str, parent=None):
+    def __init__(self, text: str, username: str, parent=None):
         super().__init__(parent=parent)
         try:
             self.db = DatabaseManager()
@@ -31,15 +51,17 @@ class MyInterface(ScrollArea):
         self.titleLabel = TitleLabel("个人中心", self)
         self.titleLabel.setFont(font)
         # self.descriptionLabel = BodyLabel("在这里查看和管理您的个人信息")
-        self.personalGroup = SettingCardGroup(self.tr('个人资料'), self.scrollWidget)
-        self.avatarCard = AvatarCard(FluentIcon.PEOPLE, "修改头像", "更改您的头像", self)
-        self.securityGroup = SettingCardGroup(self.tr('安全与密码'), self.scrollWidget)
+        self.personalGroup = SettingCardGroup(self.tr("个人资料"), self.scrollWidget)
+        self.avatarCard = AvatarCard(
+            FluentIcon.PEOPLE, "修改头像", "更改您的头像", self
+        )
+        self.securityGroup = SettingCardGroup(self.tr("安全与密码"), self.scrollWidget)
         self.passwordCard = PasswordCard(self)
         self.faceCard = FaceCard(self)
 
         self.__initWidget()
         self.__initLayout()
-        self.setObjectName(text.replace(' ', '-'))
+        self.setObjectName(text.replace(" ", "-"))
 
     def __initWidget(self):
         self.setWidget(self.scrollWidget)
@@ -54,15 +76,15 @@ class MyInterface(ScrollArea):
         # 创建主布局
         self.titleLabel.move(36, 30)
         self.titleLabel.raise_()
-        
+
         self.vBoxLayout.setContentsMargins(36, 10, 36, 0)
         self.vBoxLayout.setSpacing(20)
-        
+
         # 添加标题和描述
         # self.vBoxLayout.addWidget(self.titleLabel)
         # self.vBoxLayout.addWidget(self.descriptionLabel)
         self.vBoxLayout.addSpacing(10)
-        
+
         # 添加信息卡片并水平居中
         self.cardLayout = QHBoxLayout()
         self.cardLayout.addStretch(1)
@@ -71,22 +93,23 @@ class MyInterface(ScrollArea):
         self.vBoxLayout.addLayout(self.cardLayout)
         self.vBoxLayout.addWidget(self.personalGroup)
         self.vBoxLayout.addWidget(self.securityGroup)
-        
+
         # 添加弹性空间
         self.vBoxLayout.addStretch(1)
-        
+
+
 class InfoCard(ElevatedCardWidget):
-    def __init__(self, user_data : dict, parent=None):
+    def __init__(self, user_data: dict, parent=None):
         super().__init__(parent=parent)
         self.user_data = user_data
         self.id = user_data["id"]
         self.avatar = AvatarWidget(user_data["avatar"])
-        self.avatar.setRadius(48)           
+        self.avatar.setRadius(48)
         self.username = user_data["username"]
-        
+
         # 获取或设置备忘录数量（默认为15篇，实际开发中应从数据库获取）
         self.memo_count = user_data.get("memo_count", 15)
-        
+
         self.__initWidget()
         self.__initLayout()
 
@@ -101,28 +124,28 @@ class InfoCard(ElevatedCardWidget):
         font = QFont("黑体", 16)
         font.setBold(True)
         self.usernameLabel.setFont(font)
-        
+
         # 创建用户ID标签
         self.idLabel = BodyLabel(f"ID: {self.id}", self)
-        
+
         # 设置头像大小
         self.avatar.setFixedSize(100, 100)  # 保持您的原始设置
-        
+
         # 创建分割线
         self.separator = QWidget(self)
         self.separator.setFixedHeight(1)
         self.separator.setStyleSheet("background-color: rgba(0, 0, 0, 0.1);")
-        
+
         # 创建垂直分割线
         self.verticalSeparator = QWidget(self)
         self.verticalSeparator.setFixedWidth(1)
         self.verticalSeparator.setMinimumHeight(100)  # 设置最小高度
         self.verticalSeparator.setStyleSheet("background-color: rgba(0, 0, 0, 0.1);")
-        
+
         # 创建备忘录标题标签
         self.memoTitleLabel = BodyLabel("备忘录数量", self)
         self.memoTitleLabel.setAlignment(Qt.AlignCenter)
-        
+
         # 创建备忘录数量标签（数字部分）
         self.memoCountLabel = TitleLabel(str(self.memo_count), self)
         count_font = QFont("黑体", 24)
@@ -136,55 +159,56 @@ class InfoCard(ElevatedCardWidget):
         mainLayout = QHBoxLayout(self)
         mainLayout.setContentsMargins(20, 20, 20, 20)
         mainLayout.setSpacing(20)  # 增加间距以分隔各部分
-        
+
         # 添加头像到左侧，垂直居中
         mainLayout.addWidget(self.avatar, 0, Qt.AlignVCenter)
-        
+
         # 创建中间的垂直布局，放置用户名和ID信息
         infoLayout = QVBoxLayout()
         infoLayout.setSpacing(10)
         infoLayout.addStretch(1)
-        
+
         # 添加用户名，左对齐
         infoLayout.addWidget(self.usernameLabel, 0, Qt.AlignLeft)
-        
+
         # 添加分割线
         infoLayout.addWidget(self.separator)
-        
+
         # 添加ID信息，左对齐
         infoLayout.addWidget(self.idLabel, 0, Qt.AlignLeft)
-        
+
         # 添加弹性空间，使内容垂直居中
         infoLayout.addStretch(1)
-        
+
         # 将中间信息布局添加到主布局
         mainLayout.addLayout(infoLayout)
-        
+
         # 添加垂直分割线
         mainLayout.addWidget(self.verticalSeparator, 0, Qt.AlignVCenter)
-        
+
         # 创建右侧的垂直布局，放置备忘录统计信息
         memoLayout = QVBoxLayout()
         memoLayout.setSpacing(10)
         memoLayout.setContentsMargins(10, 0, 10, 0)
-        
+
         # 添加备忘录标题，左对齐
         memoLayout.addStretch(1)
         memoLayout.addWidget(self.memoTitleLabel, 0, Qt.AlignLeft)  # 改为左对齐
-        
+
         # 创建水平布局放置数量和单位
         countLayout = QHBoxLayout()
         countLayout.setSpacing(2)  # 减少数字和单位之间的间距
         countLayout.addWidget(self.memoCountLabel, 0, Qt.AlignLeft)  # 数字左对齐
-        
+
         # 添加数量布局到备忘录布局
         memoLayout.addLayout(countLayout)
         memoLayout.addStretch(1)
         # 将备忘录布局添加到主布局
         mainLayout.addLayout(memoLayout)
-        
+
         # 设置主布局
         self.setLayout(mainLayout)
+
 
 class AvatarCard(CardWidget):
     def __init__(self, icon, title, content, parent=None):
@@ -232,26 +256,26 @@ class AvatarCard(CardWidget):
         import glob
         from pathlib import Path
         from qfluentwidgets import InfoBar, InfoBarPosition
-        
+
         # 打开文件选择对话框
         file_dialog = QFileDialog(self)
         file_dialog.setWindowTitle("选择头像图片")
         file_dialog.setFileMode(QFileDialog.ExistingFile)
         file_dialog.setNameFilter("图片文件 (*.jpg *.jpeg *.png *.bmp *.gif)")
-        
+
         if file_dialog.exec_():
             try:
                 # 获取选中的文件路径
                 selected_files = file_dialog.selectedFiles()
                 if not selected_files:
                     return
-                
+
                 source_path = selected_files[0]
-                
+
                 # 获取当前用户ID和文件扩展名
                 user_id = self.parent.user_data["id"]
                 file_ext = os.path.splitext(source_path)[1]
-                
+
                 # 确保resource目录存在
                 resource_dir = Path("resource")
                 resource_dir.mkdir(exist_ok=True)
@@ -264,28 +288,30 @@ class AvatarCard(CardWidget):
                         print(f"已删除旧头像文件: {old_file}")
                     except Exception as e:
                         print(f"删除旧头像文件失败: {old_file}, 错误: {str(e)}")
-                
+
                 # 构建目标文件路径
                 target_filename = f"{user_id}{file_ext}"
                 target_path = resource_dir / target_filename
-                
+
                 # 复制文件到resource目录
                 shutil.copy2(source_path, target_path)
-                
+
                 # 更新数据库中的头像路径
                 db = None
                 try:
                     db = DatabaseManager()
-                    avatar_path = str(target_path).replace("\\", "/")  # 确保路径格式一致
+                    avatar_path = str(target_path).replace(
+                        "\\", "/"
+                    )  # 确保路径格式一致
                     db.update_user(user_id, avatar=avatar_path)
-                    
+
                     # 更新本地用户数据
                     self.parent.user_data["avatar"] = avatar_path
-                    
+
                     # 更新界面显示
                     self.avatar.setImage(QPixmap(avatar_path))
                     self.avatar.setRadius(24)
-                    
+
                     # 更新信息卡中的头像
                     self.parent.infoCard.avatar.setImage(QPixmap(avatar_path))
                     self.parent.infoCard.avatar.setRadius(48)
@@ -297,10 +323,10 @@ class AvatarCard(CardWidget):
                         isClosable=True,
                         position=InfoBarPosition.BOTTOM_RIGHT,
                         duration=3000,
-                        parent=self.parent
+                        parent=self.parent,
                     )
                     w.show()
-                    
+
                 except Exception as e:
                     InfoBar.error(
                         title="头像更新失败",
@@ -309,15 +335,16 @@ class AvatarCard(CardWidget):
                         isClosable=True,
                         position=InfoBarPosition.BOTTOM_RIGHT,
                         duration=3000,
-                        parent=self.parent
+                        parent=self.parent,
                     )
                     print(f"头像更新错误: {str(e)}")
                 finally:
                     if db:
                         db.close()
-                    
+
             except Exception as e:
                 from qfluentwidgets import InfoBar, InfoBarPosition
+
                 InfoBar.error(
                     title="文件处理错误",
                     content=f"处理头像图片时发生错误: {str(e)}",
@@ -325,9 +352,10 @@ class AvatarCard(CardWidget):
                     isClosable=True,
                     position=InfoBarPosition.BOTTOM_RIGHT,
                     duration=3000,
-                    parent=self.parent
+                    parent=self.parent,
                 )
                 print(f"头像处理错误: {str(e)}")
+
 
 class PasswordCard(ExpandGroupSettingCard):
     def __init__(self, parent=None):
@@ -345,9 +373,11 @@ class PasswordCard(ExpandGroupSettingCard):
         self.generateButton = ToolButton(FluentIcon.SYNC)
         self.generateButton.setToolTip("随机生成密码，请妥善保存")
         self.generateButton.setToolTipDuration(1000)
-        self.generateButton.installEventFilter(ToolTipFilter(self.generateButton, 
-                                                            showDelay=300, 
-                                                            position=ToolTipPosition.TOP))
+        self.generateButton.installEventFilter(
+            ToolTipFilter(
+                self.generateButton, showDelay=300, position=ToolTipPosition.TOP
+            )
+        )
         self.newPassEdit = PasswordLineEdit()
         self.newPassEdit.setClearButtonEnabled(True)
         self.newPassEdit.setFixedWidth(200)
@@ -360,7 +390,7 @@ class PasswordCard(ExpandGroupSettingCard):
 
         # 第四组
         self.reviseLabel = BodyLabel("确认修改")
-        self.reviseButton = PrimaryPushButton(FluentIcon.EDIT,"修改密码")
+        self.reviseButton = PrimaryPushButton(FluentIcon.EDIT, "修改密码")
 
         # 调整内部布局
         self.viewLayout.setContentsMargins(0, 0, 0, 0)
@@ -370,66 +400,66 @@ class PasswordCard(ExpandGroupSettingCard):
         self.add(self.oldPassLabel, self.oldPassEdit)
         self.add(self.newPassLabel, self.newPassEdit, self.generateButton)
         self.add(self.confirmLabel, self.confirmEdit)
-        self.add(self.reviseLabel , self.reviseButton)
+        self.add(self.reviseLabel, self.reviseButton)
 
         # 信号绑定
         self.reviseButton.clicked.connect(self.revise_password)
         self.generateButton.clicked.connect(self.generate_password)
 
-    def add(self, label = None, widget = None, button = None):
+    def add(self, label=None, widget=None, button=None):
         w = QWidget()
         w.setFixedHeight(60)
 
         layout = QHBoxLayout(w)
         layout.setContentsMargins(48, 12, 48, 12)
-        
-        if (label):
+
+        if label:
             layout.addWidget(label)
         layout.addStretch(1)
-        if (button):
+        if button:
             layout.addWidget(button)
         layout.addWidget(widget)
 
         # 添加组件到设置卡
         self.addGroupWidget(w)
-    
+
     def generate_password(self):
         """生成一个包含大写字母、小写字母、数字和符号的复杂密码"""
-        
+
         # 定义字符集
         lowercase = string.ascii_lowercase  # 小写字母 a-z
         uppercase = string.ascii_uppercase  # 大写字母 A-Z
         digits = string.digits  # 数字 0-9
         # 安全的特殊字符，避免使用可能导致问题的符号
         symbols = "!@#$%^&*()-_=+[]{}|;:,.<>?"
-        
+
         # 设置密码长度 (12-16位)
         length = random.randint(12, 16)
-        
+
         # 确保每种字符至少出现一次
         password = [
             random.choice(lowercase),
             random.choice(uppercase),
             random.choice(digits),
-            random.choice(symbols)
+            random.choice(symbols),
         ]
-        
+
         # 填充剩余长度的随机字符
         remaining_length = length - len(password)
         all_chars = lowercase + uppercase + digits + symbols
         password.extend(random.choice(all_chars) for _ in range(remaining_length))
-        
+
         # 打乱密码字符顺序
         random.shuffle(password)
-        password = ''.join(password)
-        
+        password = "".join(password)
+
         # 设置密码到输入框
         self.newPassEdit.setText(password)
-        
+
         # 自动将密码复制到剪贴板
         clipboard = QApplication.clipboard()
         clipboard.setText(password)
-        
+
         # 显示成功提示
         InfoBar.success(
             title="密码已生成",
@@ -438,9 +468,9 @@ class PasswordCard(ExpandGroupSettingCard):
             isClosable=True,
             position=InfoBarPosition.BOTTOM_RIGHT,
             duration=3000,
-            parent=self.parent
+            parent=self.parent,
         )
-        
+
         # 自动填充确认密码框
         self.confirmEdit.setText(password)
 
@@ -458,7 +488,7 @@ class PasswordCard(ExpandGroupSettingCard):
                 isClosable=True,
                 position=InfoBarPosition.BOTTOM_RIGHT,
                 duration=3000,
-                parent=self.parent
+                parent=self.parent,
             )
             return
 
@@ -470,10 +500,10 @@ class PasswordCard(ExpandGroupSettingCard):
                 isClosable=True,
                 position=InfoBarPosition.BOTTOM_RIGHT,
                 duration=3000,
-                parent=self.parent
+                parent=self.parent,
             )
             return
-        
+
         if len(new_password) < 6:
             InfoBar.error(
                 title="密码修改失败",
@@ -482,10 +512,10 @@ class PasswordCard(ExpandGroupSettingCard):
                 isClosable=True,
                 position=InfoBarPosition.BOTTOM_RIGHT,
                 duration=3000,
-                parent=self.parent
+                parent=self.parent,
             )
             return
-        
+
         if new_password == old_password:
             InfoBar.error(
                 title="密码修改失败",
@@ -494,7 +524,7 @@ class PasswordCard(ExpandGroupSettingCard):
                 isClosable=True,
                 position=InfoBarPosition.BOTTOM_RIGHT,
                 duration=3000,
-                parent=self.parent
+                parent=self.parent,
             )
             return
 
@@ -513,7 +543,7 @@ class PasswordCard(ExpandGroupSettingCard):
                     isClosable=True,
                     position=InfoBarPosition.BOTTOM_RIGHT,
                     duration=3000,
-                    parent=self.parent
+                    parent=self.parent,
                 )
                 self.oldPassEdit.clear()
                 self.newPassEdit.clear()
@@ -526,7 +556,7 @@ class PasswordCard(ExpandGroupSettingCard):
                     isClosable=True,
                     position=InfoBarPosition.BOTTOM_RIGHT,
                     duration=3000,
-                    parent=self.parent
+                    parent=self.parent,
                 )
         except Exception as e:
             InfoBar.error(
@@ -536,29 +566,32 @@ class PasswordCard(ExpandGroupSettingCard):
                 isClosable=True,
                 position=InfoBarPosition.BOTTOM_RIGHT,
                 duration=3000,
-                parent=self.parent
+                parent=self.parent,
             )
             print(f"密码修改错误: {str(e)}")
         finally:
             if db:
                 db.close()
 
+
 class FaceCard(PrimaryPushSettingCard):
     def __init__(self, parent=None):
-        super().__init__(text="录入人脸", 
-                        icon=FluentIcon.CAMERA, 
-                        title="人脸信息", 
-                        content="录入或修改您的人脸信息",
-                        parent=parent)
+        super().__init__(
+            text="录入人脸",
+            icon=FluentIcon.CAMERA,
+            title="人脸信息",
+            content="录入或修改您的人脸信息",
+            parent=parent,
+        )
         self.parent = parent
 
         self.clicked.connect(self.faceRecognition)
 
     def faceRecognition(self):
         dialog = FaceRegistrationMessageBox(
-            user_id=self.parent.user_data["id"], 
+            user_id=self.parent.user_data["id"],
             username=self.parent.user_data["username"],
-            parent=self.parent.mainWindow
+            parent=self.parent.mainWindow,
         )
         dialog.registrationComplete.connect(self.on_face_registration_complete)
         dialog.exec()

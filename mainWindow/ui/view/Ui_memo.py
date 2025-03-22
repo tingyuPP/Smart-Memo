@@ -55,4 +55,13 @@ class Ui_memo(object):
         _translate = QtCore.QCoreApplication.translate
         memo.setWindowTitle(_translate("memo", "Form"))
         self.label.setText(_translate("memo", "共xx字"))
-from qfluentwidgets import CardWidget, CommandBar, EditableComboBox, LineEdit, StrongBodyLabel, TextEdit
+
+
+from qfluentwidgets import (
+    CardWidget,
+    CommandBar,
+    EditableComboBox,
+    LineEdit,
+    StrongBodyLabel,
+    TextEdit,
+)

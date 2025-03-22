@@ -1,6 +1,14 @@
 # coding:utf-8
 from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QWidget, QMenu, QAction, QMessageBox, QLabel, QDialog, QApplication
+from PyQt5.QtWidgets import (
+    QWidget,
+    QMenu,
+    QAction,
+    QMessageBox,
+    QLabel,
+    QDialog,
+    QApplication,
+)
 from qfluentwidgets import FluentIcon
 
 from mainWindow.ui.view.Ui_memo import Ui_memo
@@ -38,6 +46,7 @@ import threading
 from Database import DatabaseManager  # 导入数据库管理类
 from mainWindow.ui.view.ai_handler import AIHandler
 
+
 class memoInterface(Ui_memo, QWidget):
     def __init__(self, parent=None, user_id=None):
         super().__init__(parent=parent)
@@ -48,7 +57,11 @@ class memoInterface(Ui_memo, QWidget):
         self.ai_handler = AIHandler(self)  # 创建 AI 处理器实例
 
         self.frame_2.addAction(
-            Action(FluentIcon.ROBOT, "AI编辑", triggered=lambda: self.ai_handler.show_ai_menu(self.textEdit))
+            Action(
+                FluentIcon.ROBOT,
+                "AI编辑",
+                triggered=lambda: self.ai_handler.show_ai_menu(self.textEdit),
+            )
         )
 
         # 添加分隔符
@@ -79,13 +92,13 @@ class memoInterface(Ui_memo, QWidget):
 
         if not title or not content:
             InfoBar.warning(
-                title='警告',
+                title="警告",
                 content="标题和内容不能为空！",
                 orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
-                duration=2000,    # 永不消失
-                parent=self
+                duration=2000,  # 永不消失
+                parent=self,
             )
             return
 
@@ -94,13 +107,13 @@ class memoInterface(Ui_memo, QWidget):
 
         if memo_id:
             InfoBar.success(
-                title='成功',
+                title="成功",
                 content="备忘录保存成功！",
                 orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
                 duration=2000,
-                parent=self
+                parent=self,
             )
             self.clear_memo()
         else:

@@ -62,7 +62,6 @@ class AppCard(CardWidget):
         else:
             self.timeLabel = CaptionLabel("No time", self)
 
-
         # 布局系统
         self.mainLayout = QHBoxLayout(self)
         self.textLayout = QVBoxLayout()

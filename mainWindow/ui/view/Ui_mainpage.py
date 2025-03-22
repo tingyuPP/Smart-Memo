@@ -56,4 +56,12 @@ class Ui_mainwindow(object):
     def retranslateUi(self, mainwindow):
         _translate = QtCore.QCoreApplication.translate
         mainwindow.setWindowTitle(_translate("mainwindow", "Form"))
-from qfluentwidgets import CardWidget, ComboBox, SearchLineEdit, SmoothScrollArea, ToolButton
+
+
+from qfluentwidgets import (
+    CardWidget,
+    ComboBox,
+    SearchLineEdit,
+    SmoothScrollArea,
+    ToolButton,
+)
