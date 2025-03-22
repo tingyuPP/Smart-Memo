@@ -1,15 +1,41 @@
-from PyQt5.QtWidgets import (QFrame, QWidget, QApplication, QVBoxLayout, QSizePolicy, QFileDialog, 
-                            QHBoxLayout)
+from PyQt5.QtWidgets import (
+    QFrame,
+    QWidget,
+    QApplication,
+    QVBoxLayout,
+    QSizePolicy,
+    QFileDialog,
+    QHBoxLayout,
+)
 from PyQt5.QtGui import QColor, QDesktopServices
 from qfluentwidgets import FluentIcon as FIF
 from PyQt5.QtCore import Qt, QUrl
 from qfluentwidgets import (
-    SubtitleLabel, setFont, OptionsSettingCard, setTheme, Theme, PushSettingCard,
-    HyperlinkCard, FluentIcon, PrimaryPushSettingCard, ScrollArea, SettingCardGroup,
-    ExpandGroupSettingCard, BodyLabel, PushButton, setThemeColor, ColorDialog, SettingCard,
-    LineEdit, FolderValidator, TransparentToolButton, ToolTipFilter, ToolTipPosition
+    SubtitleLabel,
+    setFont,
+    OptionsSettingCard,
+    setTheme,
+    Theme,
+    PushSettingCard,
+    HyperlinkCard,
+    FluentIcon,
+    PrimaryPushSettingCard,
+    ScrollArea,
+    SettingCardGroup,
+    ExpandGroupSettingCard,
+    BodyLabel,
+    PushButton,
+    setThemeColor,
+    ColorDialog,
+    SettingCard,
+    LineEdit,
+    FolderValidator,
+    TransparentToolButton,
+    ToolTipFilter,
+    ToolTipPosition,
 )
 from config import cfg
+
 
 class SettingInterface(ScrollArea):
     def __init__(self, text: str, parent=None):
@@ -17,7 +43,7 @@ class SettingInterface(ScrollArea):
         self.mainWindow = parent
         self.__initWidget(text)
         self.__initLayout(text)
-        self.setObjectName(text.replace(' ', '-'))
+        self.setObjectName(text.replace(" ", "-"))
 
     def __initWidget(self, text):
         self.label = SubtitleLabel(text, self)
@@ -35,50 +61,60 @@ class SettingInterface(ScrollArea):
         self.enableTransparentBackground()
 
         # 视觉相关
-        self.visualGroup = SettingCardGroup(self.tr('视觉'), self.scrollWidget)
+        self.visualGroup = SettingCardGroup(self.tr("视觉"), self.scrollWidget)
         self.backgroundCard = OptionsSettingCard(
             cfg.themeMode,
             FIF.BRUSH,
-            self.tr('更改背景样式'),
+            self.tr("更改背景样式"),
             self.tr("改变应用程序的背景样式"),
-            texts=[self.tr('明亮'), self.tr('暗黑')]
+            texts=[self.tr("明亮"), self.tr("暗黑")],
         )
-        self.backgroundCard.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed))
+        self.backgroundCard.setSizePolicy(
+            QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        )
         self.backgroundCard.optionChanged.connect(self.theme_option_changed)
 
         self.colorCard = ColorCard(self.scrollWidget, self.mainWindow)
-        self.colorCard.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed))
+        self.colorCard.setSizePolicy(
+            QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        )
 
         # 个性化相关
-        self.customizationGroup = SettingCardGroup(self.tr('个性化'), self.scrollWidget)
+        self.customizationGroup = SettingCardGroup(self.tr("个性化"), self.scrollWidget)
         self.directoryCard = PushSettingCard(
             text="选择文件夹",
             icon=FIF.DOWNLOAD,
             title="默认导出目录",
-            content=cfg.get(cfg.exportDir)
+            content=cfg.get(cfg.exportDir),
         )
-        self.directoryCard.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed))
+        self.directoryCard.setSizePolicy(
+            QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        )
         self.directoryCard.clicked.connect(self.open_file_dialog)
         self.apiCard = ApiCard()
-        self.apiCard.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed))
+        self.apiCard.setSizePolicy(
+            QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        )
 
         # 关于相关
-        self.aboutGroup = SettingCardGroup(self.tr('关于'), self.scrollWidget)
+        self.aboutGroup = SettingCardGroup(self.tr("关于"), self.scrollWidget)
         self.helpCard = HyperlinkCard(
             url="https://github.com/tingyuPP/Smart-Memo-Manager/blob/main/README.md",
             text="打开帮助页面",
             icon=FluentIcon.HELP,
             title="帮助",
-            content="详细了解Smart-Memo-Manager的功能与使用方法"
+            content="详细了解Smart-Memo-Manager的功能与使用方法",
         )
         self.aboutCard = PrimaryPushSettingCard(
             text="仓库地址",
             icon=FluentIcon.INFO,
             title="关于",
-            content="© 版权所有 2025, 当前版本0.1.0"
+            content="© 版权所有 2025, 当前版本0.1.0",
         )
         self.aboutCard.button.clicked.connect(
-            lambda: QDesktopServices.openUrl(QUrl("https://github.com/tingyuPP/Smart-Memo-Manager"))
+            lambda: QDesktopServices.openUrl(
+                QUrl("https://github.com/tingyuPP/Smart-Memo-Manager")
+            )
         )
 
     def __initLayout(self, text):
@@ -102,7 +138,7 @@ class SettingInterface(ScrollArea):
         """
         selected_option = item.value
         cfg.set(cfg.themeMode, selected_option)
-        if selected_option == Theme.LIGHT:  
+        if selected_option == Theme.LIGHT:
             setTheme(Theme.LIGHT)
         else:
             setTheme(Theme.DARK)
@@ -112,13 +148,14 @@ class SettingInterface(ScrollArea):
         if path:
             self.directoryCard.setContent(path)
         cfg.set(cfg.exportDir, path)
-    
+
     def import_option_changed(self, item):
         """
         当选项改变时触发，根据用户选择的选项切换导入设置
         """
         selected_option = item.value
         cfg.set(cfg.importSetting, selected_option)
+
 
 class ColorCard(ExpandGroupSettingCard):
     def __init__(self, parent=None, mainWindow=None):
@@ -150,32 +187,42 @@ class ColorCard(ExpandGroupSettingCard):
         layout.addStretch(1)
         layout.addWidget(widget)
         self.addGroupWidget(w)
-    
+
     def set_default_color(self):
         setThemeColor("#ff10abf9", save=True)
 
     def set_custom_color(self):
-        w = ColorDialog(cfg.get(cfg.themeColor), "选择主题颜色", self.mainWindow, enableAlpha=False)
+        w = ColorDialog(
+            cfg.get(cfg.themeColor), "选择主题颜色", self.mainWindow, enableAlpha=False
+        )
         w.yesButton.setText("确认")
         w.cancelButton.setText("取消")
         w.editLabel.setText("编辑颜色")
         w.colorChanged.connect(lambda color: setThemeColor(color, save=True))
         w.exec()
 
+
 class ApiCard(SettingCard):
     def __init__(self, parent=None):
-        super().__init__(FluentIcon.ROBOT, "API配置", "在这里设置你自己的大模型API（目前仅支持Deepseek）", parent)
+        super().__init__(
+            FluentIcon.ROBOT,
+            "API配置",
+            "在这里设置你自己的大模型API（目前仅支持Deepseek）",
+            parent,
+        )
         self.api_key = cfg.get(cfg.apiKey)
         self.apiButton = TransparentToolButton(FIF.EDIT)
         self.apiButton.setToolTip("确认修改")
-        self.apiButton.installEventFilter(ToolTipFilter(self.apiButton, showDelay=300, position=ToolTipPosition.TOP))
+        self.apiButton.installEventFilter(
+            ToolTipFilter(self.apiButton, showDelay=300, position=ToolTipPosition.TOP)
+        )
         self.apiEdit = LineEdit()
         self.apiEdit.setPlaceholderText("请输入API密钥")
         self.apiEdit.setText(self.api_key)
         self.apiEdit.setClearButtonEnabled(True)
         self.apiEdit.setFixedWidth(200)
         self.hBoxLayout.addWidget(self.apiEdit)
-        self.hBoxLayout.addSpacing(10)  
+        self.hBoxLayout.addSpacing(10)
         self.hBoxLayout.addWidget(self.apiButton)
         self.hBoxLayout.setContentsMargins(16, 12, 16, 12)
         self.hBoxLayout.setSpacing(0)

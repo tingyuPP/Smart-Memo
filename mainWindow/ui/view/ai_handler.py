@@ -1,7 +1,11 @@
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer, pyqtSlot
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-    QApplication, QWidget
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QApplication,
+    QWidget,
 )
 from PyQt5.QtGui import QCursor
 from qfluentwidgets import (
@@ -11,20 +15,21 @@ from qfluentwidgets import (
     InfoBar,
     InfoBarPosition,
     RoundMenu,
-    Action
+    Action,
 )
 from services.ai_service import AIService
+
 
 class AIWorkerThread(QThread):
     finished = pyqtSignal(str)
     error = pyqtSignal(str)
-    
+
     def __init__(self, ai_service, mode, text):
         super().__init__()
         self.ai_service = ai_service
         self.mode = mode
         self.text = text
-    
+
     def run(self):
         try:
             result = self.ai_service.generate_content(self.text, self.mode)
@@ -32,8 +37,10 @@ class AIWorkerThread(QThread):
         except Exception as e:
             self.error.emit(str(e))
 
+
 class AIDialog(QDialog):
     """AI 处理对话框"""
+
     def __init__(self, mode, text="", parent=None):
         super().__init__(parent)
         self.mode = mode
@@ -42,24 +49,24 @@ class AIDialog(QDialog):
         self.state_tooltip = None
         self.worker_thread = None  # 添加工作线程属性
         self.setup_ui()
-        
+
         # 设置窗口标志
         self.setWindowFlags(Qt.Dialog | Qt.WindowStaysOnTopHint)
-    
+
     def setup_ui(self):
         # 设置对话框基本属性
         self.setWindowTitle(f"AI {self.get_mode_display_name()}")
         self.resize(600, 400)
-        
+
         # 创建布局
         layout = QVBoxLayout(self)
-        
+
         # 添加说明标签
         description = self.get_mode_description()
         desc_label = QLabel(description)
         desc_label.setWordWrap(True)
         layout.addWidget(desc_label)
-        
+
         # 如果是自定义模式，添加提示输入框
         if self.mode == "自定义":
             prompt_layout = QHBoxLayout()
@@ -70,36 +77,36 @@ class AIDialog(QDialog):
             prompt_layout.addWidget(prompt_label)
             prompt_layout.addWidget(self.prompt_edit)
             layout.addLayout(prompt_layout)
-        
+
         # 添加结果显示区域
         result_label = QLabel("生成结果:")
         layout.addWidget(result_label)
-        
+
         self.result_edit = TextEdit()
         self.result_edit.setReadOnly(True)
         self.result_edit.setPlaceholderText("AI 生成的内容将显示在这里...")
         layout.addWidget(self.result_edit)
-        
+
         # 添加按钮区域
         button_layout = QHBoxLayout()
-        
+
         self.generate_button = PrimaryPushButton("生成")
         self.generate_button.setEnabled(True)
         self.generate_button.clicked.connect(self.generate_content)
-        
+
         self.use_button = PrimaryPushButton("使用结果")
         self.use_button.setEnabled(False)
         self.use_button.clicked.connect(self.accept)
-        
+
         self.cancel_button = PrimaryPushButton("取消")
         self.cancel_button.clicked.connect(self.reject)
-        
+
         button_layout.addWidget(self.generate_button)
         button_layout.addWidget(self.use_button)
         button_layout.addWidget(self.cancel_button)
-        
+
         layout.addLayout(button_layout)
-        
+
         # 创建 AI 服务实例
         self.ai_service = AIService()
         self.ai_service.resultReady.connect(self.handle_ai_result)
@@ -112,10 +119,10 @@ class AIDialog(QDialog):
             "续写": "续写",
             "朋友圈文案": "朋友圈文案生成",
             "一句诗": "诗句生成",
-            "自定义": "自定义生成"
+            "自定义": "自定义生成",
         }
         return mode_names.get(self.mode, self.mode)
-    
+
     def get_mode_description(self):
         """获取模式的描述文本"""
         descriptions = {
@@ -123,36 +130,34 @@ class AIDialog(QDialog):
             "续写": "AI 将基于您的文本继续写作，保持风格一致。",
             "朋友圈文案": "AI 将为您生成一段适合发布在朋友圈的文案，内容积极向上，有文艺气息。",
             "一句诗": "AI 将为您创作一句富有诗意的句子。",
-            "自定义": "请输入您的提示词，AI 将根据您的要求生成内容。"
+            "自定义": "请输入您的提示词，AI 将根据您的要求生成内容。",
         }
         return descriptions.get(self.mode, "AI 将根据您的需求生成内容。")
 
     def show_loading_state(self):
         """显示加载状态"""
         try:
-            if hasattr(self, 'state_tooltip') and self.state_tooltip:
+            if hasattr(self, "state_tooltip") and self.state_tooltip:
                 try:
                     self.state_tooltip.close()
                 except:
                     pass
                 self.state_tooltip = None
-            
+
             self.state_tooltip = StateToolTip(
-                title="正在处理",
-                content="AI 正在生成内容...",
-                parent=self
+                title="正在处理", content="AI 正在生成内容...", parent=self
             )
-            
+
             dialog_rect = self.geometry()
             tooltip_size = self.state_tooltip.size()
-            
+
             x = (dialog_rect.width() - tooltip_size.width()) // 2
             y = (dialog_rect.height() - tooltip_size.height()) // 2
-            
+
             self.state_tooltip.move(x, y)
             self.state_tooltip.show()
             QApplication.processEvents()
-            
+
         except Exception as e:
             print(f"显示加载状态时出错: {str(e)}")
             self.state_tooltip = None
@@ -161,7 +166,7 @@ class AIDialog(QDialog):
         """生成内容"""
         self.disable_all_inputs()
         self.show_loading_state()
-        
+
         if self.mode == "自定义":
             text = self.prompt_edit.toPlainText()
             if not text:
@@ -174,24 +179,24 @@ class AIDialog(QDialog):
                 return
         else:
             text = ""
-            
+
         if self.worker_thread and self.worker_thread.isRunning():
             self.worker_thread.terminate()
             self.worker_thread.wait()
-            
+
         self.worker_thread = AIWorkerThread(self.ai_service, self.mode, text)
         self.worker_thread.finished.connect(self.handle_ai_result)
         self.worker_thread.error.connect(self.handle_ai_error)
         self.worker_thread.start()
-    
+
     def disable_all_inputs(self):
         """禁用所有输入控件"""
         self.generate_button.setEnabled(False)
         self.use_button.setEnabled(False)
         self.cancel_button.setEnabled(False)
-        if hasattr(self, 'prompt_edit'):
+        if hasattr(self, "prompt_edit"):
             self.prompt_edit.setReadOnly(True)
-    
+
     @pyqtSlot(str)
     def handle_ai_result(self, result):
         """处理 AI 生成结果"""
@@ -201,10 +206,10 @@ class AIDialog(QDialog):
             self.generate_button.setEnabled(True)
             self.use_button.setEnabled(True)
             self.cancel_button.setEnabled(True)
-            if hasattr(self, 'prompt_edit'):
+            if hasattr(self, "prompt_edit"):
                 self.prompt_edit.setReadOnly(False)
-            
-            if hasattr(self, 'state_tooltip') and self.state_tooltip:
+
+            if hasattr(self, "state_tooltip") and self.state_tooltip:
                 try:
                     self.state_tooltip.setContent("处理完成")
                     self.state_tooltip.setState(True)
@@ -214,13 +219,13 @@ class AIDialog(QDialog):
                 finally:
                     # 设置一个短暂的延迟后关闭提示
                     QTimer.singleShot(1000, lambda: self.safely_close_tooltip())
-                
+
         except Exception as e:
             print(f"处理AI结果时出错: {str(e)}")
 
     def safely_close_tooltip(self):
         """安全关闭提示框"""
-        if hasattr(self, 'state_tooltip') and self.state_tooltip:
+        if hasattr(self, "state_tooltip") and self.state_tooltip:
             try:
                 self.state_tooltip.close()
             except:
@@ -234,10 +239,10 @@ class AIDialog(QDialog):
             self.result_edit.setText(f"错误: {error_message}")
             self.generate_button.setEnabled(True)
             self.cancel_button.setEnabled(True)
-            if hasattr(self, 'prompt_edit'):
+            if hasattr(self, "prompt_edit"):
                 self.prompt_edit.setReadOnly(False)
-            
-            if hasattr(self, 'state_tooltip') and self.state_tooltip:
+
+            if hasattr(self, "state_tooltip") and self.state_tooltip:
                 try:
                     self.state_tooltip.setContent(f"处理失败: {error_message}")
                     self.state_tooltip.setState(True)
@@ -247,7 +252,7 @@ class AIDialog(QDialog):
                 finally:
                     # 设置一个短暂的延迟后关闭提示
                     QTimer.singleShot(1000, lambda: self.safely_close_tooltip())
-                
+
         except Exception as e:
             print(f"处理AI错误时出错: {str(e)}")
 
@@ -256,54 +261,75 @@ class AIDialog(QDialog):
         if self.worker_thread and self.worker_thread.isRunning():
             self.worker_thread.terminate()
             self.worker_thread.wait()
-        
+
         if self.state_tooltip:
             try:
                 self.state_tooltip.close()
             except:
                 pass
             self.state_tooltip = None
-        
+
         self.generate_button.setEnabled(True)
         self.use_button.setEnabled(False)
         self.cancel_button.setEnabled(True)
-        if hasattr(self, 'prompt_edit'):
+        if hasattr(self, "prompt_edit"):
             self.prompt_edit.setReadOnly(False)
-        
+
         event.accept()
+
 
 class AIHandler:
     """AI 功能处理类"""
+
     def __init__(self, parent: QWidget):
         self.parent = parent
-        
+
     def show_ai_menu(self, text_edit):
         """显示 AI 菜单"""
         aiMenu = RoundMenu("AI编辑", self.parent)
         if not text_edit.toPlainText().strip():
-            aiMenu.addActions([
-                Action("为我写一个朋友圈文案", triggered=lambda: self.handle_ai_func("朋友圈文案", text_edit)),
-                Action("为我写一句诗", triggered=lambda: self.handle_ai_func("一句诗", text_edit)),
-                Action("自定义", triggered=lambda: self.handle_ai_func("自定义", text_edit)),
-            ])
+            aiMenu.addActions(
+                [
+                    Action(
+                        "为我写一个朋友圈文案",
+                        triggered=lambda: self.handle_ai_func("朋友圈文案", text_edit),
+                    ),
+                    Action(
+                        "为我写一句诗",
+                        triggered=lambda: self.handle_ai_func("一句诗", text_edit),
+                    ),
+                    Action(
+                        "自定义",
+                        triggered=lambda: self.handle_ai_func("自定义", text_edit),
+                    ),
+                ]
+            )
         else:
-            aiMenu.addActions([
-                Action("润色", triggered=lambda: self.handle_ai_func("润色", text_edit)),
-                Action("续写", triggered=lambda: self.handle_ai_func("续写", text_edit)),
-            ])
+            aiMenu.addActions(
+                [
+                    Action(
+                        "润色", triggered=lambda: self.handle_ai_func("润色", text_edit)
+                    ),
+                    Action(
+                        "续写", triggered=lambda: self.handle_ai_func("续写", text_edit)
+                    ),
+                ]
+            )
         aiMenu.exec_(QCursor.pos())
 
     def handle_ai_func(self, mode, text_edit):
         """处理 AI 功能"""
         cursor = text_edit.textCursor()
-        text = cursor.selectedText() if cursor.hasSelection() else text_edit.toPlainText()
-        
+        text = (
+            cursor.selectedText() if cursor.hasSelection() else text_edit.toPlainText()
+        )
+
         dialog = AIDialog(mode, text, self.parent)
         result = dialog.exec_()
-        
+
         if result == QDialog.Accepted and dialog.result_text:
             self._apply_ai_result(mode, cursor, dialog.result_text, text_edit)
-    
+
     def _apply_ai_result(self, mode, cursor, result_text, text_edit):
         """应用 AI 处理结果"""
         if mode == "润色":
@@ -316,17 +342,17 @@ class AIHandler:
             text_edit.setText(current_text + "\n\n" + result_text)
         else:
             text_edit.setText(result_text)
-        
+
         self._show_success_message(mode)
-    
+
     def _show_success_message(self, mode):
         """显示成功消息"""
         InfoBar.success(
-            title='AI 处理完成',
+            title="AI 处理完成",
             content=f"{mode}内容已应用",
             orient=Qt.Horizontal,
             isClosable=True,
             position=InfoBarPosition.TOP,
             duration=2000,
-            parent=self.parent
-        ) 
+            parent=self.parent,
+        )
