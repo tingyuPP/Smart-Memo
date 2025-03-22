@@ -29,7 +29,7 @@ class LoginWindow(QWidget):
             onClick=lambda: self.stackedWidget.setCurrentWidget(self.accountInterface)
         )
         self.stackedWidget.addWidget(self.accountInterface)
-        
+
         self.faceInterface.setObjectName('faceInterface')
         self.segmentedWidget.addItem(
             routeKey='faceInterface',
@@ -63,15 +63,17 @@ class LoginWindow(QWidget):
     def onCurrentIndexChanged(self, index):
         widget = self.stackedWidget.widget(index)
         self.segmentedWidget.setCurrentItem(widget.objectName())
-    
-    def on_login_success(self, user_id, username):
+
+    def on_login_success(self, user_data):
+        user_id = user_data["id"]
+        username = user_data["username"]
         print(f"登录成功：{user_id}, {username}")
         self.hide()
         # from mainWindow.mainWindow import MainWindow
         self.mainWindow = MainWindow(user_id, username)
         self.mainWindow.show()
         # print("这里应该打开主窗口")
-    
+
     def back_to_account(self):
         self.stackedWidget.setCurrentWidget(self.accountInterface)
         self.segmentedWidget.setCurrentItem(self.accountInterface.objectName())

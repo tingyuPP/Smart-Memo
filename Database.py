@@ -512,7 +512,7 @@ if __name__ == "__main__":
     import os
 
     # 删除旧的测试数据库
-    db_name = "test_smart_memo.db"
+    db_name = "smart_memo.db"
     if os.path.exists(db_name):
         os.remove(db_name)
         print(f"已删除旧的测试数据库 {db_name}")
