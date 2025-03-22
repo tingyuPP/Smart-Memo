@@ -94,7 +94,7 @@ class SettingInterface(ScrollArea):
         self.vBoxLayout.addWidget(self.customizationGroup)
         self.vBoxLayout.addWidget(self.aboutGroup)
         self.vBoxLayout.addStretch(1)
-        self.vBoxLayout.setContentsMargins(20, 20, 20, 20)
+        self.vBoxLayout.setContentsMargins(36, 20, 36, 20)
 
     def theme_option_changed(self, item):
         """

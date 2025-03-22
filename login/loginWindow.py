@@ -3,6 +3,7 @@ from PyQt5.QtCore import Qt
 from qfluentwidgets import Pivot, SegmentedWidget
 from login.view.accountInterface import AccountInterface
 from mainWindow.mainWindow import MainWindow
+from login.view.faceInterface import FaceLoginInterface
 
 class LoginWindow(QWidget):
 
@@ -15,8 +16,9 @@ class LoginWindow(QWidget):
 
         self.accountInterface = AccountInterface(self)
         self.accountInterface.loginSuccess.connect(self.on_login_success)
-        self.albumInterface = QLabel('Album Interface', self)
-        self.artistInterface = QLabel('Artist Interface', self)
+        self.faceInterface = FaceLoginInterface(self)
+        self.faceInterface.loginSuccessful.connect(self.on_login_success)
+        self.faceInterface.backClicked.connect(self.back_to_account)
 
         # 添加标签页
         # self.addSubInterface(self.accountInterface, 'songInterface', 'Song')
@@ -27,8 +29,14 @@ class LoginWindow(QWidget):
             onClick=lambda: self.stackedWidget.setCurrentWidget(self.accountInterface)
         )
         self.stackedWidget.addWidget(self.accountInterface)
-        self.addSubInterface(self.albumInterface, 'albumInterface', '人脸识别')
-        self.addSubInterface(self.artistInterface, 'artistInterface', '指纹识别')
+        
+        self.faceInterface.setObjectName('faceInterface')
+        self.segmentedWidget.addItem(
+            routeKey='faceInterface',
+            text='人脸识别',
+            onClick=lambda: self.stackedWidget.setCurrentWidget(self.faceInterface)
+        )
+        self.stackedWidget.addWidget(self.faceInterface)
 
         # 连接信号并初始化当前标签页
         self.stackedWidget.currentChanged.connect(self.onCurrentIndexChanged)
@@ -56,13 +64,17 @@ class LoginWindow(QWidget):
         widget = self.stackedWidget.widget(index)
         self.segmentedWidget.setCurrentItem(widget.objectName())
     
-    def on_login_success(self, user):
-        print(f"登录成功：{user}")
+    def on_login_success(self, user_id, username):
+        print(f"登录成功：{user_id}, {username}")
         self.hide()
         # from mainWindow.mainWindow import MainWindow
-        self.mainWindow = MainWindow(user)
+        self.mainWindow = MainWindow(user_id, username)
         self.mainWindow.show()
         # print("这里应该打开主窗口")
+    
+    def back_to_account(self):
+        self.stackedWidget.setCurrentWidget(self.accountInterface)
+        self.segmentedWidget.setCurrentItem(self.accountInterface.objectName())
 
 if __name__ == '__main__':
     import sys

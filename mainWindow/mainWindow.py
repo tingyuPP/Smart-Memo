@@ -38,18 +38,17 @@ class Widget(QFrame):
 class MainWindow(FluentWindow):
     """主界面"""
 
-    def __init__(self, user=None):
+    def __init__(self, user_id=None, username=None):
         super().__init__()
 
         # 创建子界面，实际使用时将 Widget 换成自己的子界面
-        self.user_data = user
-        self.homeInterface = mainInterface(self, user["id"])
-        self.memoInterface = memoInterface(self, user["id"])
+        self.homeInterface = mainInterface(self, user_id)
+        self.memoInterface = memoInterface(self, user_id)
         self.videoInterface = Widget("Video Interface", self)
         self.settingInterface = SettingInterface("设置", self)
         self.albumInterface = Widget("Album Interface", self)
         self.albumInterface1 = Widget("Album Interface 1", self)
-        self.myInterface = MyInterface("My Interface", user["username"], self)
+        self.myInterface = MyInterface("My Interface", username, self)
         # print(self.myInterface.objectName())
 
         self.initNavigation()

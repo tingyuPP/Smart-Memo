@@ -143,6 +143,23 @@ class DatabaseManager:
         }
         return user_dict
     
+    def get_users_with_face_data(self):
+        """获取所有具有人脸识别数据的用户"""
+        self.cursor.execute("SELECT id, username, face_data FROM users WHERE face_data IS NOT NULL")
+        users = self.cursor.fetchall()
+        
+        # 将元组列表转换为字典列表
+        result = []
+        for user in users:
+            user_dict = {
+                "id": user[0],
+                "username": user[1],
+                "face_data": user[2]
+            }
+            result.append(user_dict)
+        
+        return result
+    
     def check_password(self, username, password):
         """检查密码是否正确"""
         self.cursor.execute("SELECT password FROM users WHERE username = ?", (username,))
@@ -231,6 +248,12 @@ class DatabaseManager:
         返回:
             bool: 更新成功返回True，失败返回False
         """
+            # 首先检查用户是否存在
+        self.cursor.execute("SELECT id FROM users WHERE id = ?", (user_id,))
+        if not self.cursor.fetchone():
+            print(f"用户ID {user_id} 不存在")
+            return False
+        
         if not kwargs:
             print("没有提供要更新的内容")
             return False
@@ -251,7 +274,13 @@ class DatabaseManager:
         
         # 特殊处理生物识别数据 - 如果提供，需要加密
         if 'face_data' in update_fields and update_fields['face_data'] is not None:
-            update_fields['face_data'] = self.encrypt(str(update_fields['face_data']))
+            # 如果是JSON格式的特征数据，可能很大，避免加密
+            if update_fields['face_data'].startswith('{') or update_fields['face_data'].startswith('['):
+                # 直接保存JSON数据，不加密
+                pass
+            else:
+                # 对路径等简单数据进行加密
+                update_fields['face_data'] = self.encrypt(str(update_fields['face_data']))
             
         if 'fingerprint_data' in update_fields and update_fields['fingerprint_data'] is not None:
             update_fields['fingerprint_data'] = self.encrypt(str(update_fields['fingerprint_data']))
@@ -265,15 +294,20 @@ class DatabaseManager:
         values.append(user_id)  # 添加WHERE子句的参数
         
         # 执行更新
-        self.cursor.execute(query, values)
-        self.conn.commit()
-        
-        # 检查是否有行被更新
-        if self.cursor.rowcount > 0:
-            print(f"用户ID {user_id} 更新成功")
-            return True
-        else:
-            print(f"用户ID {user_id} 不存在或未更改")
+        try:
+            self.cursor.execute(query, values)
+            self.conn.commit()
+            
+            # 重新检查用户而不依赖rowcount
+            self.cursor.execute("SELECT id FROM users WHERE id = ?", (user_id,))
+            if self.cursor.fetchone():
+                print(f"用户ID {user_id} 更新成功")
+                return True
+            else:
+                print(f"更新后无法找到用户ID {user_id}")
+                return False
+        except Exception as e:
+            print(f"更新用户时出错: {e}")
             return False
     
     def get_memos(self, user_id=None):

@@ -2,7 +2,8 @@ from qfluentwidgets import (ScrollArea, ElevatedCardWidget, AvatarWidget, TitleL
                             SettingCardGroup, CardWidget, IconWidget, CaptionLabel, PushButton,
                             TransparentToolButton, FluentIcon, InfoBar, InfoBarPosition,
                             ExpandGroupSettingCard,LineEdit, PasswordLineEdit, PrimaryPushButton,
-                            ToolTipFilter, ToolButton, ToolTipPosition)
+                            ToolTipFilter, ToolButton, ToolTipPosition, PrimaryPushSettingCard)
+from faceRecognition.faceMessageBox import FaceRegistrationMessageBox
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QApplication
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
@@ -34,7 +35,7 @@ class MyInterface(ScrollArea):
         self.avatarCard = AvatarCard(FluentIcon.PEOPLE, "修改头像", "更改您的头像", self)
         self.securityGroup = SettingCardGroup(self.tr('安全与密码'), self.scrollWidget)
         self.passwordCard = PasswordCard(self)
-
+        self.faceCard = FaceCard(self)
 
         self.__initWidget()
         self.__initLayout()
@@ -47,6 +48,7 @@ class MyInterface(ScrollArea):
         self.setViewportMargins(0, 60, 0, 20)
         self.personalGroup.addSettingCard(self.avatarCard)
         self.securityGroup.addSettingCard(self.passwordCard)
+        self.securityGroup.addSettingCard(self.faceCard)
 
     def __initLayout(self):
         # 创建主布局
@@ -540,3 +542,26 @@ class PasswordCard(ExpandGroupSettingCard):
         finally:
             if db:
                 db.close()
+
+class FaceCard(PrimaryPushSettingCard):
+    def __init__(self, parent=None):
+        super().__init__(text="录入人脸", 
+                        icon=FluentIcon.CAMERA, 
+                        title="人脸信息", 
+                        content="录入或修改您的人脸信息",
+                        parent=parent)
+        self.parent = parent
+
+        self.clicked.connect(self.faceRecognition)
+
+    def faceRecognition(self):
+        dialog = FaceRegistrationMessageBox(
+            user_id=self.parent.user_data["id"], 
+            username=self.parent.user_data["username"],
+            parent=self.parent.mainWindow
+        )
+        dialog.registrationComplete.connect(self.on_face_registration_complete)
+        dialog.exec()
+
+    def on_face_registration_complete(self, result):
+        pass
