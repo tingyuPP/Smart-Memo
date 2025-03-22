@@ -6,6 +6,7 @@ import os
 class MyConfig(QConfig):
     """应用程序的配置类"""
     exportDir = ConfigItem("MainWindow", "ExportDir", "",validator = FolderValidator(),restart = False)
+    apiKey = ConfigItem("MainWindow", "APIKey", "",restart = False)
 
 cfg = MyConfig()
 qconfig.load('config/config.json', cfg)

@@ -1,5 +1,6 @@
 {
     "MainWindow": {
+        "APIKey": "111",
         "ExportDir": "D:/study/NIS3366/Smart-Memo-Manager"
     },
     "QFluentWidgets": {

@@ -6,7 +6,8 @@ from PyQt5.QtCore import Qt, QUrl
 from qfluentwidgets import (
     SubtitleLabel, setFont, OptionsSettingCard, setTheme, Theme, PushSettingCard,
     HyperlinkCard, FluentIcon, PrimaryPushSettingCard, ScrollArea, SettingCardGroup,
-    ExpandGroupSettingCard, BodyLabel, PushButton, setThemeColor, ColorDialog,
+    ExpandGroupSettingCard, BodyLabel, PushButton, setThemeColor, ColorDialog, SettingCard,
+    LineEdit, FolderValidator, TransparentToolButton, ToolTipFilter, ToolTipPosition
 )
 from config import cfg
 
@@ -58,6 +59,8 @@ class SettingInterface(ScrollArea):
         )
         self.directoryCard.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed))
         self.directoryCard.clicked.connect(self.open_file_dialog)
+        self.apiCard = ApiCard()
+        self.apiCard.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed))
 
         # 关于相关
         self.aboutGroup = SettingCardGroup(self.tr('关于'), self.scrollWidget)
@@ -83,6 +86,7 @@ class SettingInterface(ScrollArea):
         self.visualGroup.addSettingCard(self.backgroundCard)
         self.visualGroup.addSettingCard(self.colorCard)
         self.customizationGroup.addSettingCard(self.directoryCard)
+        self.customizationGroup.addSettingCard(self.apiCard)
         self.aboutGroup.addSettingCard(self.helpCard)
         self.aboutGroup.addSettingCard(self.aboutCard)
         self.vBoxLayout.addWidget(self.label, 0, Qt.AlignLeft | Qt.AlignTop)
@@ -157,3 +161,26 @@ class ColorCard(ExpandGroupSettingCard):
         w.editLabel.setText("编辑颜色")
         w.colorChanged.connect(lambda color: setThemeColor(color, save=True))
         w.exec()
+
+class ApiCard(SettingCard):
+    def __init__(self, parent=None):
+        super().__init__(FluentIcon.ROBOT, "API配置", "在这里设置你自己的大模型API（目前仅支持Deepseek）", parent)
+        self.api_key = cfg.get(cfg.apiKey)
+        self.apiButton = TransparentToolButton(FIF.EDIT)
+        self.apiButton.setToolTip("确认修改")
+        self.apiButton.installEventFilter(ToolTipFilter(self.apiButton, showDelay=300, position=ToolTipPosition.TOP))
+        self.apiEdit = LineEdit()
+        self.apiEdit.setPlaceholderText("请输入API密钥")
+        self.apiEdit.setText(self.api_key)
+        self.apiEdit.setClearButtonEnabled(True)
+        self.apiEdit.setFixedWidth(200)
+        self.hBoxLayout.addWidget(self.apiEdit)
+        self.hBoxLayout.addSpacing(10)  
+        self.hBoxLayout.addWidget(self.apiButton)
+        self.hBoxLayout.setContentsMargins(16, 12, 16, 12)
+        self.hBoxLayout.setSpacing(0)
+        self.apiButton.clicked.connect(self.set_api_key)
+
+    def set_api_key(self):
+        api_key = self.apiEdit.text()
+        cfg.set(cfg.apiKey, api_key)
