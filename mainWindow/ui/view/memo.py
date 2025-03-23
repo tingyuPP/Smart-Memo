@@ -61,6 +61,8 @@ class memoInterface(Ui_memo, QWidget):
         self.user_id = user_id  # 获取用户ID
         self.ai_handler = AIHandler(self)  # 创建 AI 处理器实例
 
+        self.memo_id = None  # 添加memo_id属性，用于跟踪当前备忘录的ID
+
         self.frame_2.addAction(
             Action(
                 FluentIcon.ROBOT,
@@ -107,54 +109,98 @@ class memoInterface(Ui_memo, QWidget):
         self.textEdit.textChanged.connect(self.update_word_count)  # 文本改变时更新字数
         self.update_word_count()  # 初始化字数显示
 
-    def save_memo(self):
-        """保存备忘录到数据库"""
+    def save_memo(self, silent=False):
+        """保存备忘录到数据库
+
+        Args:
+            silent: 是否静默保存（不显示成功消息）
+
+        Returns:
+            bool: 保存是否成功
+        """
         title = self.lineEdit.text()
         content = self.textEdit.toPlainText()
         category = self.lineEdit_2.text()
 
         if not title or not content:
-            InfoBar.warning(
-                title="警告",
-                content="标题和内容不能为空！",
-                orient=Qt.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=2000,  # 永不消失
-                parent=self,
-            )
-            return
+            if not silent:  # 只有在非静默模式下才显示警告
+                InfoBar.warning(
+                    title="警告",
+                    content="标题和内容不能为空！",
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=2000,
+                    parent=self,
+                )
+            return False
 
-        # 调用数据库方法保存备忘录
-        memo_id = self.db.create_memo(self.user_id, title, content, category)
+        try:
+            # 根据是否有memo_id决定创建新备忘录还是更新现有备忘录
+            if self.memo_id is None:
+                # 创建新备忘录
+                memo_id = self.db.create_memo(self.user_id, title, content, category)
+                if memo_id:
+                    self.memo_id = memo_id  # 保存新创建的备忘录ID
+                    if not silent:  # 只有在非静默模式下才显示成功消息
+                        InfoBar.success(
+                            title="成功",
+                            content="备忘录保存成功！",
+                            orient=Qt.Horizontal,
+                            isClosable=True,
+                            position=InfoBarPosition.TOP,
+                            duration=2000,
+                            parent=self,
+                        )
+                    return True
+            else:
+                # 更新现有备忘录
+                success = self.db.update_memo(
+                    self.memo_id, title=title, content=content, category=category
+                )
+                if success:
+                    if not silent:  # 只有在非静默模式下才显示成功消息
+                        InfoBar.success(
+                            title="成功",
+                            content="备忘录更新成功！",
+                            orient=Qt.Horizontal,
+                            isClosable=True,
+                            position=InfoBarPosition.TOP,
+                            duration=2000,
+                            parent=self,
+                        )
+                    return True
 
-        if memo_id:
-            InfoBar.success(
-                title="成功",
-                content="备忘录保存成功！",
-                orient=Qt.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.TOP,
-                duration=2000,
-                parent=self,
-            )
-            self.clear_memo()
-        else:
+            # 如果执行到这里，说明保存/更新失败
             InfoBar.error(
                 title="错误",
                 content="备忘录保存失败！",
-                orient=Qt.Vertical,  # 内容太长时可使用垂直布局
+                orient=Qt.Vertical,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
                 duration=2000,
                 parent=self,
             )
+            return False
+
+        except Exception as e:
+            InfoBar.error(
+                title="错误",
+                content=f"备忘录保存失败：{str(e)}",
+                orient=Qt.Vertical,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=2000,
+                parent=self,
+            )
+            return False
 
     def clear_memo(self):
         """清空备忘录"""
         self.textEdit.clear()
         self.lineEdit.clear()
         self.lineEdit_2.clear()
+        self.memo_id = None  # 清空备忘录ID
         self.update_word_count()
 
     def update_word_count(self):
@@ -186,14 +232,16 @@ class memoInterface(Ui_memo, QWidget):
             )
             return
 
-        exportMenu = RoundMenu("导出为", self)
-        exportMenu.addActions(
-            [
-                Action("PDF", triggered=self.export_to_pdf),
-                Action("TXT", triggered=self.export_to_txt),
-            ]
-        )
-        exportMenu.exec_(QCursor.pos())
+        # 先保存备忘录，确保内容已经存储
+        if self.save_memo(silent=True):  # 静默保存，不显示成功消息
+            exportMenu = RoundMenu("导出为", self)
+            exportMenu.addActions(
+                [
+                    Action("PDF", triggered=self.export_to_pdf),
+                    Action("TXT", triggered=self.export_to_txt),
+                ]
+            )
+            exportMenu.exec_(QCursor.pos())
 
     def show_share_menu(self):
         """显示分享菜单"""
@@ -213,14 +261,16 @@ class memoInterface(Ui_memo, QWidget):
             )
             return
 
-        shareMenu = RoundMenu("分享到", self)
-        shareMenu.addActions(
-            [
-                Action("微信", triggered=lambda: self.share_to("微信")),
-                Action("QQ", triggered=lambda: self.share_to("QQ")),
-            ]
-        )
-        shareMenu.exec_(QCursor.pos())
+        # 先保存备忘录，确保内容已经存储
+        if self.save_memo(silent=True):  # 静默保存，不显示成功消息
+            shareMenu = RoundMenu("分享到", self)
+            shareMenu.addActions(
+                [
+                    Action("微信", triggered=lambda: self.share_to("微信")),
+                    Action("QQ", triggered=lambda: self.share_to("QQ")),
+                ]
+            )
+            shareMenu.exec_(QCursor.pos())
 
     def export_to_pdf(self):
         """导出备忘录为PDF文件"""
