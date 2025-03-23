@@ -1,6 +1,14 @@
 # coding:utf-8
 from PyQt5.QtGui import QTextDocument
-from PyQt5.QtWidgets import QWidget, QMenu, QAction, QDialog, QVBoxLayout, QLabel, QFrame
+from PyQt5.QtWidgets import (
+    QWidget,
+    QMenu,
+    QAction,
+    QDialog,
+    QVBoxLayout,
+    QLabel,
+    QFrame,
+)
 from qfluentwidgets import FluentIcon
 
 from mainWindow.ui.view.Ui_mainpage import Ui_mainwindow
@@ -47,10 +55,21 @@ import datetime
 
 
 class AppCard(CardWidget):
-    def __init__(self, title, content, modified_time=None, category=None, parent=None):
+    def __init__(
+        self,
+        title,
+        content,
+        memo_id=None,
+        modified_time=None,
+        category=None,
+        parent=None,
+    ):
         super().__init__(parent)
         self.modified_time = modified_time
         self.category = category
+        self.memo_id = memo_id
+        # 存储完整内容，不截断
+        self.full_content = content
         self.setup_ui(title, content)
         self.setup_context_menu()
         self.clicked.connect(self.on_double_clicked)  # 连接双击信号
@@ -61,7 +80,8 @@ class AppCard(CardWidget):
     def setup_ui(self, title, content):
         # 文本区域
         self.titleLabel = SubtitleLabel(title, self)
-        truncated_content = content[:50] + "..." if len(content) > 50 else content
+        # 只在UI中显示截断内容，完整内容已存储在self.full_content中
+        truncated_content = content[:20] + "..." if len(content) > 20 else content
         self.contentLabel = BodyLabel(truncated_content, self)
         self.contentLabel.setWordWrap(True)
 
@@ -168,6 +188,7 @@ class AppCard(CardWidget):
         """创建QQ分享图片"""
         self._generate_share_image("QQ")
 
+
     def _generate_share_image(self, platform):
         """创建分享图片并显示"""
         try:
@@ -176,11 +197,71 @@ class AppCard(CardWidget):
 
             # 准备要分享的内容
             title = self.titleLabel.text()
-            content = self.contentLabel.text()
+
+            # 优先使用存储的完整内容
+            content = self.full_content
+
+            # 如果完整内容为空或需要更新，尝试从数据库获取
+            if not content and hasattr(self, "memo_id") and self.memo_id:
+                main_window = self.window()
+                if hasattr(main_window, "db"):
+                    try:
+                        # 直接使用memo_id获取备忘录内容
+                        main_window.db.cursor.execute(
+                            "SELECT title, content FROM memos WHERE id = ?",
+                            (self.memo_id,),
+                        )
+                        result = main_window.db.cursor.fetchone()
+                        if result:
+                            # 找到记录，解密内容
+                            content = main_window.db.decrypt(result[1])
+                            # 更新存储的完整内容
+                            self.full_content = content
+                    except Exception as e:
+                        print(f"获取完整内容时出错: {str(e)}")
+                        traceback.print_exc()
+
+            # 记录时间
             time_text = self.timeLabel.text()
 
-            # 创建图片 (其余图片生成代码保持不变)
-            width, height = 600, 400
+            # 修改: 改进文本换行处理逻辑，修复重叠问题
+            content_lines = []
+            width = 800  # 固定宽度
+            char_width = 16
+            chars_per_line = (width - 40) // char_width
+
+            # 先按照换行符分割文本
+            paragraphs = content.split("\n")
+
+            # 处理每个段落，进行宽度限制换行
+            for paragraph in paragraphs:
+                # 如果是空段落（连续换行），添加一个空行
+                if not paragraph:
+                    content_lines.append("")
+                    continue
+
+                # 处理非空段落，按宽度限制换行
+                current_line = ""
+                for char in paragraph:
+                    current_line += char
+                    if len(current_line) >= chars_per_line:
+                        content_lines.append(current_line)
+                        current_line = ""
+
+                # 添加最后一行（如果有内容）
+                if current_line:
+                    content_lines.append(current_line)
+
+            # 计算所需高度 = 标题区域(60px) + 行数*行高(22px) + 底部间距(50px)
+            line_height = 22
+            total_lines = len(content_lines)
+            content_height = total_lines * line_height
+            height = 60 + content_height + 50
+
+            # 设置最小高度和最大高度
+            height = max(400, min(height, 2000))  # 最小400px，最大2000px
+
+            # 创建图片
             img = Image.new("RGB", (width, height), color=(255, 255, 255))
             draw = ImageDraw.Draw(img)
 
@@ -200,37 +281,28 @@ class AppCard(CardWidget):
             # 绘制标题
             draw.text((20, 15), f"【备忘录】{title}", fill=(255, 255, 255), font=title_font)
 
-            # 文本换行处理和绘制内容 (保持不变)
-            content_lines = []
-            current_line = ""
-            char_width = 16
-            chars_per_line = (width - 40) // char_width
-
-            for char in content:
-                if len(current_line) >= chars_per_line or char == "\n":
-                    content_lines.append(current_line)
-                    current_line = ""
-                current_line += char
-
-            if current_line:
-                content_lines.append(current_line)
-
-            # 绘制内容行
+            # 修改: 改进绘制内容行逻辑，正确处理空行
             y_pos = 80
-            for line in content_lines[:15]:
-                draw.text((20, y_pos), line, fill=(0, 0, 0), font=content_font)
-                y_pos += 22
+            for index, line in enumerate(content_lines):
+                # 安全检查：如果内容将超出图片高度，则停止绘制
+                if y_pos + line_height > height - 40:
+                    draw.text(
+                        (20, y_pos),
+                        "...(内容过长已截断)",
+                        fill=(100, 100, 100),
+                        font=content_font,
+                    )
+                    y_pos += line_height
+                    break
 
-            if len(content_lines) > 15:
-                draw.text(
-                    (20, y_pos),
-                    "...(内容已截断)",
-                    fill=(100, 100, 100),
-                    font=content_font,
-                )
-                y_pos += 22
+                # 只在非空行时绘制文本，空行只增加间距
+                if line:
+                    draw.text((20, y_pos), line, fill=(0, 0, 0), font=content_font)
 
-            # 绘制时间
+                # 无论行是否为空，都增加垂直位置
+                y_pos += line_height
+
+            # 绘制时间 - 始终在底部
             draw.text(
                 (20, height - 30),
                 f"修改时间: {time_text}",
@@ -275,13 +347,13 @@ class AppCard(CardWidget):
                     parent=parent_widget,
                 )
 
-                # 修改：创建一个非模态对话框，设置合适的标志以防止关闭时退出应用
+                # 创建一个非模态对话框，设置合适的标志以防止关闭时退出应用
                 dialog = QDialog(parent_widget)
                 dialog.setWindowTitle(f"分享到{platform}")
                 dialog.setWindowFlag(Qt.WindowCloseButtonHint, True)  # 确保有关闭按钮
                 dialog.setWindowFlag(Qt.WindowContextHelpButtonHint, False)  # 移除帮助按钮
                 dialog.setAttribute(Qt.WA_DeleteOnClose, True)  # 关闭时自动删除
-                dialog.setFixedSize(500, 620)  # 固定大小
+                dialog.setFixedSize(500, 650)  # 增加高度以适应更大的二维码
 
                 # 创建美化后的布局
                 main_layout = QVBoxLayout()
@@ -336,13 +408,15 @@ class AppCard(CardWidget):
                 qr_layout.setContentsMargins(10, 10, 10, 10)
                 qr_layout.setAlignment(Qt.AlignCenter)
 
-                # 二维码标签
+                # 二维码标签 - 修改以显示更好的二维码
                 qr_label = QLabel()
                 qr_label.setPixmap(qr_image)
-                qr_label.setScaledContents(True)
-                qr_label.setFixedSize(320, 320)
+                qr_label.setScaledContents(False)  # 避免二维码变形
+                qr_label.setFixedSize(350, 350)  # 增加尺寸
                 qr_label.setAlignment(Qt.AlignCenter)
-                qr_label.setStyleSheet("border: 1px solid #E0E0E0;")
+                qr_label.setStyleSheet(
+                    "background-color: white; border: 1px solid #E0E0E0;"
+                )
                 qr_layout.addWidget(qr_label)
 
                 # 二维码下方提示文本
@@ -447,7 +521,9 @@ class AppCard(CardWidget):
             bucket_name = "mypicturebed"
 
             # 创建OBS客户端
-            obs_client = ObsClient(access_key_id=ak, secret_access_key=sk, server=server)
+            obs_client = ObsClient(
+                access_key_id=ak, secret_access_key=sk, server=server
+            )
 
             try:
                 # 读取图片文件
@@ -479,18 +555,22 @@ class AppCard(CardWidget):
     def _generate_qrcode_for_url(self, url, platform):
         """为URL生成二维码并返回QPixmap"""
         try:
-            # 创建二维码
+            # 创建二维码 - 修改参数以提高可扫描性
             qr = qrcode.QRCode(
-                version=1,
-                error_correction=qrcode.constants.ERROR_CORRECT_L,
-                box_size=10,
-                border=4,
+                version=4,  # 提高版本以容纳更多数据
+                error_correction=qrcode.constants.ERROR_CORRECT_H,  # 提高错误校正级别
+                box_size=12,  # 增加方块大小
+                border=5,  # 增加边框宽度
             )
             qr.add_data(url)
             qr.make(fit=True)
 
-            # 生成二维码图像
+            # 生成更大更清晰的二维码图像
             img = qr.make_image(fill_color="black", back_color="white")
+
+            # 确保图像足够大
+            img_size = 324  # 设置一个较大的尺寸
+            img = img.resize((img_size, img_size))
 
             # 将PIL图像转换为QPixmap
             buffer = BytesIO()
@@ -510,6 +590,9 @@ class AppCard(CardWidget):
         """显示本地图片对话框"""
         dialog = QDialog(parent_widget)
         dialog.setWindowTitle(f"分享到{platform}")
+        dialog.setWindowFlag(Qt.WindowCloseButtonHint, True)  # 确保有关闭按钮
+        dialog.setWindowFlag(Qt.WindowContextHelpButtonHint, False)  # 移除帮助按钮
+        dialog.setAttribute(Qt.WA_DeleteOnClose, True)  # 关闭时自动删除
         dialog.resize(650, 500)
 
         layout = QVBoxLayout()
@@ -553,7 +636,7 @@ class AppCard(CardWidget):
         layout.addWidget(path_label)
 
         dialog.setLayout(layout)
-        dialog.exec_()
+        dialog.show()  # 使用非模态对话框
 
     def _copy_image_to_clipboard(self, pixmap):
         """复制图片到剪贴板"""
@@ -626,11 +709,11 @@ class AppCard(CardWidget):
             printer.setOutputFormat(QPrinter.PdfFormat)
             printer.setOutputFileName(file_path)
 
-            # 创建文档内容
+            # 创建文档内容 - 使用完整内容而非截断内容
             document = QTextDocument()
             html_content = f"""
             <h2>{self.titleLabel.text()}</h2>
-            <p>{self.contentLabel.text()}</p>
+            <p>{self.full_content}</p>
             <p><small>修改时间: {self.timeLabel.text()}</small></p>
             """
             document.setHtml(html_content)
@@ -689,10 +772,10 @@ class AppCard(CardWidget):
             if not file_path:  # 用户取消了保存
                 return
 
-            # 写入TXT文件
+            # 写入TXT文件 - 使用完整内容而非截断内容
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(f"标题: {self.titleLabel.text()}\n\n")
-                f.write(f"{self.contentLabel.text()}\n\n")
+                f.write(f"{self.full_content}\n\n")
                 f.write(f"修改时间: {self.timeLabel.text()}")
 
             # 使用InfoBar显示成功消息
@@ -781,7 +864,13 @@ class mainInterface(Ui_mainwindow, QWidget):
             category = memo[6]
 
             self.cardLayout.addWidget(
-                AppCard(title, content, modified_time=modified_time, category=category)
+                AppCard(
+                    title,
+                    content,
+                    memo_id=memo_id,
+                    modified_time=modified_time,
+                    category=category,
+                )
             )  # 修改参数
 
     def switch_to_music_interface(self):
