@@ -1,5 +1,5 @@
 # coding:utf-8
-from PyQt5.QtGui import QColor
+from PyQt5.QtGui import QTextDocument
 from PyQt5.QtWidgets import QWidget, QMenu, QAction
 from qfluentwidgets import FluentIcon
 
@@ -18,6 +18,8 @@ from qfluentwidgets import (
     Action,
     InfoBar,
     SubtitleLabel,
+    InfoBarPosition,
+
 )
 from PyQt5.QtWidgets import (
     QWidget,
@@ -25,13 +27,16 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QApplication,
     QScrollArea,
+    QFileDialog,
 )
 from PyQt5.QtCore import Qt, QPoint, QSize, QRect, QTimer
+from PyQt5.QtPrintSupport import QPrinter
 from PyQt5.QtGui import QFont, QColor
 
 import sys
 from Database import DatabaseManager  # 导入数据库管理类
-
+from config import cfg
+import os
 
 class AppCard(CardWidget):
     def __init__(self, title, content, modified_time=None, category=None, parent=None):
@@ -117,8 +122,8 @@ class AppCard(CardWidget):
         export_submenu.setIcon(FluentIcon.ZOOM_OUT)  # 设置图标
         export_submenu.addActions(
             [
-                Action("PDF", triggered=lambda: print("导出为PDF")),  # 导出为 PDF
-                Action("Word", triggered=lambda: print("导出为Word")),  # 导出为 Word
+                Action("PDF", triggered=self.export_to_pdf),  # 导出为 PDF
+                Action("TXT", triggered=self.export_to_txt),  # 导出为 TXT
             ]
         )
         self.menu.addMenu(export_submenu)
@@ -146,6 +151,133 @@ class AppCard(CardWidget):
         # 在这里编写双击 AppCard 后要执行的操作
         print(f"AppCard 双击! Title: {self.titleLabel.text()}")
         # 您可以在这里添加打开应用程序或执行其他操作的代码
+
+
+    def export_to_pdf(self):
+        """导出备忘录为PDF文件"""
+        try:
+            # 获取默认导出目录
+            default_dir = cfg.get(cfg.exportDir)
+            if not default_dir or not os.path.exists(default_dir):
+                # 如果配置的目录不存在，使用export文件夹
+                export_dir = os.path.join(
+                    os.path.dirname(
+                        os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+                    ),
+                    "export",
+                )
+                if not os.path.exists(export_dir):
+                    os.makedirs(export_dir)
+                default_dir = export_dir
+
+            default_filename = f"{self.titleLabel.text()}.pdf"
+            default_path = os.path.join(default_dir, default_filename)
+
+            # 获取保存路径
+            file_path, _ = QFileDialog.getSaveFileName(
+                self, "导出为PDF", default_path, "PDF Files (*.pdf)"
+            )
+
+            if not file_path:  # 用户取消了保存
+                return
+
+            # 创建打印机对象
+            printer = QPrinter(QPrinter.HighResolution)
+            printer.setOutputFormat(QPrinter.PdfFormat)
+            printer.setOutputFileName(file_path)
+
+            # 创建文档内容
+            document = QTextDocument()
+            html_content = f"""
+            <h2>{self.titleLabel.text()}</h2>
+            <p>{self.contentLabel.text()}</p>
+            <p><small>修改时间: {self.timeLabel.text()}</small></p>
+            """
+            document.setHtml(html_content)
+
+            # 将文档打印到PDF
+            document.print_(printer)
+
+            # 使用InfoBar显示成功消息
+            InfoBar.success(
+                title="导出成功",
+                content=f"备忘录已成功导出为PDF文件",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=2000,
+                parent=self.window(),
+            )
+
+        except Exception as e:
+            # 使用InfoBar显示错误消息
+            InfoBar.warning(
+                title="导出失败",
+                content=f"导出PDF时发生错误：{str(e)}",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self.window(),
+            )
+
+
+    def export_to_txt(self):
+        """导出备忘录为TXT文件"""
+        try:
+            # 获取默认导出目录
+            default_dir = cfg.get(cfg.exportDir)
+            if not default_dir or not os.path.exists(default_dir):
+                # 如果配置的目录不存在，使用export文件夹
+                export_dir = os.path.join(
+                    os.path.dirname(
+                        os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+                    ),
+                    "export",
+                )
+                if not os.path.exists(export_dir):
+                    os.makedirs(export_dir)
+                default_dir = export_dir
+
+            default_filename = f"{self.titleLabel.text()}.txt"
+            default_path = os.path.join(default_dir, default_filename)
+
+            # 获取保存路径
+            file_path, _ = QFileDialog.getSaveFileName(
+                self, "导出为TXT", default_path, "Text Files (*.txt)"
+            )
+
+            if not file_path:  # 用户取消了保存
+                return
+
+            # 写入TXT文件
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(f"标题: {self.titleLabel.text()}\n\n")
+                f.write(f"{self.contentLabel.text()}\n\n")
+                f.write(f"修改时间: {self.timeLabel.text()}")
+
+            # 使用InfoBar显示成功消息
+            InfoBar.success(
+                title="导出成功",
+                content=f"备忘录已成功导出为TXT文件",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=2000,
+                parent=self.window(),
+            )
+
+        except Exception as e:
+            # 使用InfoBar显示错误消息
+            InfoBar.warning(
+                title="导出失败",
+                content=f"导出TXT时发生错误：{str(e)}",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self.window(),
+            )
 
 
 class mainInterface(Ui_mainwindow, QWidget):
