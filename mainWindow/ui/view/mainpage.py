@@ -179,6 +179,44 @@ class AppCard(CardWidget):
         # 在这里编写双击 AppCard 后要执行的操作
         print(f"AppCard 双击! Title: {self.titleLabel.text()}")
         # 您可以在这里添加打开应用程序或执行其他操作的代码
+        main_window = self.window()
+    
+        # 判断主窗口是否有switch_to_newmemo_interface方法
+        if hasattr(main_window, "switch_to_newmemo_interface"):
+            # 首先跳转到memo界面
+            main_window.switch_to_newmemo_interface()
+            
+            # 将当前备忘录信息传递给memo界面
+            if hasattr(main_window, "memoInterface"):
+                # 设置memo_id，用于后续保存时更新而非创建新备忘录
+                main_window.memoInterface.memo_id = self.memo_id
+                
+                # 填充标题
+                main_window.memoInterface.lineEdit.setText(self.titleLabel.text())
+                
+                # 填充内容 - 使用完整内容而非截断版本
+                main_window.memoInterface.textEdit.setText(self.full_content)
+                
+                # 设置分类信息（如果有）
+                if hasattr(self, "category") and self.category:
+                    main_window.memoInterface.lineEdit_2.setText(self.category)
+                
+                # 更新字数统计
+                main_window.memoInterface.update_word_count()
+                
+                # 显示成功提示
+                from PyQt5.QtCore import Qt
+                from qfluentwidgets import InfoBar, InfoBarPosition
+                
+                InfoBar.success(
+                    title="备忘录已加载",
+                    content=f"正在编辑「{self.titleLabel.text()}」",
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=2000,
+                    parent=main_window.memoInterface,
+                )
 
     def share_to_wechat(self):
         """创建微信分享图片"""
@@ -811,8 +849,8 @@ class mainInterface(Ui_mainwindow, QWidget):
         self.toolButton_2.setIcon(FluentIcon.SYNC)
 
         # 连接 toolButton 的点击事件
-        self.toolButton.clicked.connect(self.switch_to_music_interface)
-
+        self.toolButton.clicked.connect(self.switch_to_memo_interface)
+        self.toolButton_2.clicked.connect(self.sync_memos)
         self.pushButton.addItem("按名称排序")
         self.pushButton.addItem("按时间排序")
         self.pushButton.addItem("按标签排序")
@@ -872,8 +910,45 @@ class mainInterface(Ui_mainwindow, QWidget):
                     category=category,
                 )
             )  # 修改参数
-
-    def switch_to_music_interface(self):
+    def sync_memos(self):
+        """手动同步备忘录数据"""
+        try:
+            # 显示同步中提示
+            InfoBar.info(
+                title="正在同步",
+                content="正在从数据库获取最新备忘录数据...",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=1000,
+                parent=self,
+            )
+            
+            # 调用更新方法
+            self.update_memo_list()
+            
+            # 显示同步成功提示
+            InfoBar.success(
+                title="同步成功",
+                content="备忘录数据已更新",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=2000,
+                parent=self,
+            )
+        except Exception as e:
+            # 显示同步失败提示
+            InfoBar.error(
+                title="同步失败",
+                content=f"无法获取最新数据: {str(e)}",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self,
+            )
+    def switch_to_memo_interface(self):
         # 调用父窗口 (MainWindow) 的方法来切换到 musicInterface
         main_window = self.window()
         if hasattr(main_window, "switch_to_newmemo_interface"):
