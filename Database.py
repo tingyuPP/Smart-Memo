@@ -422,7 +422,8 @@ class DatabaseManager:
         iv = os.urandom(16)
 
         # 加密密钥，使用固定密钥（生产环境应从安全存储中获取）
-        key = b"ThisIsA32ByteKeyForAES256Encryption"
+        key = b"ThisIsA32ByteKeyForAES256Encrypt"
+        # print("len:",len(key))
 
         # 创建加密对象
         cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
@@ -469,7 +470,7 @@ class DatabaseManager:
             ciphertext = base64.b64decode(ciphertext_b64)
 
             # 解密密钥，与加密使用相同的密钥
-            key = b"ThisIsA32ByteKeyForAES256Encryption"
+            key = b"ThisIsA32ByteKeyForAES256Encrypt"
 
             # 创建解密对象
             cipher = Cipher(
