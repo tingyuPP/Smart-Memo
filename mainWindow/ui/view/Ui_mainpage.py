@@ -30,7 +30,7 @@ class Ui_mainwindow(object):
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)
         self.frame_2 = CardWidget(mainwindow)
-        self.frame_2.setGeometry(QtCore.QRect(10, 10, 621, 51))
+        self.frame_2.setGeometry(QtCore.QRect(10, 10, 681, 51))
         self.frame_2.setFrameShape(QtWidgets.QFrame.StyledPanel)
         self.frame_2.setFrameShadow(QtWidgets.QFrame.Raised)
         self.frame_2.setObjectName("frame_2")
@@ -38,15 +38,15 @@ class Ui_mainwindow(object):
         self.lineEdit.setGeometry(QtCore.QRect(10, 10, 421, 31))
         self.lineEdit.setObjectName("lineEdit")
         self.pushButton = ComboBox(self.frame_2)
-        self.pushButton.setGeometry(QtCore.QRect(460, 10, 151, 31))
+        self.pushButton.setGeometry(QtCore.QRect(460, 10, 211, 31))
         self.pushButton.setText("")
         self.pushButton.setObjectName("pushButton")
         self.toolButton = ToolButton(mainwindow)
-        self.toolButton.setGeometry(QtCore.QRect(646, 10, 51, 51))
+        self.toolButton.setGeometry(QtCore.QRect(720, 10, 51, 51))
         self.toolButton.setText("")
         self.toolButton.setObjectName("toolButton")
         self.toolButton_2 = ToolButton(mainwindow)
-        self.toolButton_2.setGeometry(QtCore.QRect(710, 10, 51, 51))
+        self.toolButton_2.setGeometry(QtCore.QRect(790, 10, 51, 51))
         self.toolButton_2.setText("")
         self.toolButton_2.setObjectName("toolButton_2")
 
@@ -56,12 +56,4 @@ class Ui_mainwindow(object):
     def retranslateUi(self, mainwindow):
         _translate = QtCore.QCoreApplication.translate
         mainwindow.setWindowTitle(_translate("mainwindow", "Form"))
-
-
-from qfluentwidgets import (
-    CardWidget,
-    ComboBox,
-    SearchLineEdit,
-    SmoothScrollArea,
-    ToolButton,
-)
+from qfluentwidgets import CardWidget, ComboBox, SearchLineEdit, SmoothScrollArea, ToolButton

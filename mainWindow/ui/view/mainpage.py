@@ -851,9 +851,14 @@ class mainInterface(Ui_mainwindow, QWidget):
         # 连接 toolButton 的点击事件
         self.toolButton.clicked.connect(self.switch_to_memo_interface)
         self.toolButton_2.clicked.connect(self.sync_memos)
-        self.pushButton.addItem("按名称排序")
-        self.pushButton.addItem("按时间排序")
-        self.pushButton.addItem("按标签排序")
+
+        self.pushButton.addItem("按名称（a-z）排序")
+        self.pushButton.addItem("按创建时间从早到晚排序")
+        self.pushButton.addItem("按创建时间从晚到早排序")
+        self.pushButton.addItem("按修改时间从早到晚排序")
+        self.pushButton.addItem("按修改时间从晚到早排序")
+
+        self.pushButton.currentIndexChanged.connect(self.on_sort_option_changed)
 
         # 创建 QVBoxLayout
         self.cardLayout = QVBoxLayout()
@@ -889,7 +894,23 @@ class mainInterface(Ui_mainwindow, QWidget):
 
         # 从数据库获取备忘录
         memos = self.db.get_memos(user_id=self.user_id)
-
+        sort_option = self.pushButton.currentText()
+        
+        if sort_option == "按名称（a-z）排序":
+        # 按标题字母顺序排序
+            memos.sort(key=lambda x: self.db.decrypt(x[4]).lower())
+        elif sort_option == "按创建时间从早到晚排序":
+            # 按创建时间从早到晚排序（默认，数据库可能已经这样排序）
+            memos.sort(key=lambda x: x[2])
+        elif sort_option == "按创建时间从晚到早排序":
+            # 按创建时间从晚到早排序
+            memos.sort(key=lambda x: x[2], reverse=True)
+        elif sort_option == "按修改时间从早到晚排序":
+            # 按修改时间从早到晚排序
+            memos.sort(key=lambda x: x[3])
+        elif sort_option == "按修改时间从晚到早排序":
+            # 按修改时间从晚到早排序
+            memos.sort(key=lambda x: x[3], reverse=True)
         # 添加 AppCard 到 cardLayout
         for memo in memos:
             # 从数据库中获取的数据
@@ -923,10 +944,10 @@ class mainInterface(Ui_mainwindow, QWidget):
                 duration=1000,
                 parent=self,
             )
-            
+
             # 调用更新方法
             self.update_memo_list()
-            
+
             # 显示同步成功提示
             InfoBar.success(
                 title="同步成功",
@@ -954,6 +975,25 @@ class mainInterface(Ui_mainwindow, QWidget):
         if hasattr(main_window, "switch_to_newmemo_interface"):
             main_window.switch_to_newmemo_interface()
 
+    def on_sort_option_changed(self, index):
+        """处理排序选项变化事件"""
+        # 显示排序中提示
+        sort_option = self.pushButton.currentText()
+        
+        # 更新备忘录列表
+        self.update_memo_list()
+        
+        # 显示排序完成提示
+        InfoBar.success(
+            title="排序完成",
+            content=f"已按{sort_option}方式显示备忘录",
+            orient=Qt.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.TOP,
+            duration=2000,
+            parent=self,
+        )
+    
     def closeEvent(self, event):
         """关闭窗口时关闭数据库连接"""
         self.db.close()
