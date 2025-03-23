@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
     QApplication,
     QWidget,
 )
-from PyQt5.QtGui import QCursor
+from PyQt5.QtGui import QCursor, QTextCursor
 from qfluentwidgets import (
     TextEdit,
     PrimaryPushButton,
@@ -16,6 +16,7 @@ from qfluentwidgets import (
     InfoBarPosition,
     RoundMenu,
     Action,
+    CheckBox
 )
 from services.ai_service import AIService
 
@@ -37,6 +38,48 @@ class AIWorkerThread(QThread):
         except Exception as e:
             self.error.emit(str(e))
 
+class AIStreamWorkerThread(QThread):
+    """处理流式响应的工作线程"""
+    chunkReceived = pyqtSignal(str)  # 接收到新的文本块
+    finished = pyqtSignal()  # 流式响应完成
+    error = pyqtSignal(str)  # 发生错误
+    
+    def __init__(self, ai_service, mode, text):
+        super().__init__()
+        self.ai_service = ai_service
+        self.mode = mode
+        self.text = text
+        self._stop_requested = False
+    
+    def run(self):
+        try:
+            # 获取流式响应
+            stream = self.ai_service.generate_content_stream(self.text, self.mode)
+            
+            # 累积的完整响应
+            full_response = ""
+            
+            # 处理流式响应
+            for chunk in stream:
+                if self._stop_requested:
+                    break
+                
+                # 从响应块中提取文本
+                if hasattr(chunk.choices[0].delta, "content"):
+                    content = chunk.choices[0].delta.content
+                    if content:
+                        full_response += content
+                        self.chunkReceived.emit(content)
+            
+            if not self._stop_requested:
+                self.finished.emit()
+                
+        except Exception as e:
+            self.error.emit(str(e))
+    
+    def stop(self):
+        """请求停止流式响应处理"""
+        self._stop_requested = True
 
 class AIDialog(QDialog):
     """AI 处理对话框"""
@@ -49,6 +92,7 @@ class AIDialog(QDialog):
         self.state_tooltip = None
         self.worker_thread = None  # 添加工作线程属性
         self.setup_ui()
+
 
         # 设置窗口标志
         self.setWindowFlags(Qt.Dialog | Qt.WindowStaysOnTopHint)
@@ -100,17 +144,25 @@ class AIDialog(QDialog):
 
         self.cancel_button = PrimaryPushButton("取消")
         self.cancel_button.clicked.connect(self.reject)
-
+        
+        self.stop_button = PrimaryPushButton("停止生成")
+        self.stop_button.setEnabled(False)
+        self.stop_button.clicked.connect(self.stop_generation)
+        
         button_layout.addWidget(self.generate_button)
         button_layout.addWidget(self.use_button)
         button_layout.addWidget(self.cancel_button)
-
+        button_layout.addWidget(self.stop_button)
+        
         layout.addLayout(button_layout)
 
         # 创建 AI 服务实例
         self.ai_service = AIService()
         self.ai_service.resultReady.connect(self.handle_ai_result)
         self.ai_service.errorOccurred.connect(self.handle_ai_error)
+        
+        # 添加流式响应选项
+        self.use_streaming = True  # 默认启用流式响应
 
     def get_mode_display_name(self):
         """获取模式的显示名称"""
@@ -179,34 +231,87 @@ class AIDialog(QDialog):
                 return
         else:
             text = ""
-
+        
+        # 清空结果区域
+        self.result_edit.clear()
+        self.result_text = ""
+        
+        # 停止任何正在运行的线程
+        self.stop_any_running_threads()
+        
+        # 根据是否使用流式响应选择不同的处理方式
+        if self.use_streaming:
+            self.worker_thread = AIStreamWorkerThread(self.ai_service, self.mode, text)
+            self.worker_thread.chunkReceived.connect(self.handle_stream_chunk)
+            self.worker_thread.finished.connect(self.handle_stream_finished)
+            self.worker_thread.error.connect(self.handle_ai_error)
+            self.stop_button.setEnabled(True)
+        else:
+            self.worker_thread = AIWorkerThread(self.ai_service, self.mode, text)
+            self.worker_thread.finished.connect(self.handle_ai_result)
+            self.worker_thread.error.connect(self.handle_ai_error)
+        
+        self.worker_thread.start()
+    
+    def stop_generation(self):
+        """停止生成过程"""
+        if self.worker_thread and isinstance(self.worker_thread, AIStreamWorkerThread):
+            self.worker_thread.stop()
+            self.stop_button.setEnabled(False)
+            
+            # 重新启用生成按钮和其他控件
+            self.generate_button.setEnabled(True)
+            self.cancel_button.setEnabled(True)
+            if hasattr(self, 'prompt_edit'):
+                self.prompt_edit.setReadOnly(False)
+            
+            # 显示已停止消息
+            if hasattr(self, 'state_tooltip') and self.state_tooltip:
+                try:
+                    self.state_tooltip.setContent("生成已停止")
+                    self.state_tooltip.setState(True)
+                    QApplication.processEvents()
+                except:
+                    pass
+                finally:
+                    # 设置一个短暂的延迟后关闭提示
+                    QTimer.singleShot(1000, lambda: self.safely_close_tooltip())
+    
+    def stop_any_running_threads(self):
+        """停止任何正在运行的线程"""
         if self.worker_thread and self.worker_thread.isRunning():
+            if isinstance(self.worker_thread, AIStreamWorkerThread):
+                self.worker_thread.stop()
             self.worker_thread.terminate()
             self.worker_thread.wait()
-
-        self.worker_thread = AIWorkerThread(self.ai_service, self.mode, text)
-        self.worker_thread.finished.connect(self.handle_ai_result)
-        self.worker_thread.error.connect(self.handle_ai_error)
-        self.worker_thread.start()
-
-    def disable_all_inputs(self):
-        """禁用所有输入控件"""
-        self.generate_button.setEnabled(False)
-        self.use_button.setEnabled(False)
-        self.cancel_button.setEnabled(False)
-        if hasattr(self, "prompt_edit"):
-            self.prompt_edit.setReadOnly(True)
-
+    
     @pyqtSlot(str)
-    def handle_ai_result(self, result):
-        """处理 AI 生成结果"""
+    def handle_stream_chunk(self, chunk):
+        """处理流式响应的文本块"""
         try:
-            self.result_text = result
-            self.result_edit.setText(result)
+            # 追加新的文本块到结果
+            self.result_text += chunk
+            
+            # 更新 UI
+            self.result_edit.setText(self.result_text)
+            
+            # 滚动到底部
+            cursor = self.result_edit.textCursor()
+            cursor.movePosition(QTextCursor.End)
+            self.result_edit.setTextCursor(cursor)
+            
+        except Exception as e:
+            print(f"处理流式响应块时出错: {str(e)}")
+    
+    @pyqtSlot()
+    def handle_stream_finished(self):
+        """处理流式响应完成"""
+        try:
             self.generate_button.setEnabled(True)
             self.use_button.setEnabled(True)
             self.cancel_button.setEnabled(True)
-            if hasattr(self, "prompt_edit"):
+            self.stop_button.setEnabled(False)
+            if hasattr(self, 'prompt_edit'):
                 self.prompt_edit.setReadOnly(False)
 
             if hasattr(self, "state_tooltip") and self.state_tooltip:
@@ -217,12 +322,20 @@ class AIDialog(QDialog):
                 except:
                     pass
                 finally:
-                    # 设置一个短暂的延迟后关闭提示
                     QTimer.singleShot(1000, lambda: self.safely_close_tooltip())
 
         except Exception as e:
-            print(f"处理AI结果时出错: {str(e)}")
-
+            print(f"处理流式响应完成时出错: {str(e)}")
+    
+    def disable_all_inputs(self):
+        """禁用所有输入控件"""
+        self.generate_button.setEnabled(False)
+        self.use_button.setEnabled(False)
+        self.cancel_button.setEnabled(False)
+        self.stop_button.setEnabled(False)
+        if hasattr(self, 'prompt_edit'):
+            self.prompt_edit.setReadOnly(True)
+    
     def safely_close_tooltip(self):
         """安全关闭提示框"""
         if hasattr(self, "state_tooltip") and self.state_tooltip:
@@ -239,7 +352,8 @@ class AIDialog(QDialog):
             self.result_edit.setText(f"错误: {error_message}")
             self.generate_button.setEnabled(True)
             self.cancel_button.setEnabled(True)
-            if hasattr(self, "prompt_edit"):
+            self.stop_button.setEnabled(False)
+            if hasattr(self, 'prompt_edit'):
                 self.prompt_edit.setReadOnly(False)
 
             if hasattr(self, "state_tooltip") and self.state_tooltip:
@@ -256,12 +370,37 @@ class AIDialog(QDialog):
         except Exception as e:
             print(f"处理AI错误时出错: {str(e)}")
 
+    @pyqtSlot(str)
+    def handle_ai_result(self, result):
+        """处理 AI 生成结果"""
+        try:
+            self.result_text = result
+            self.result_edit.setText(result)
+            
+            self.generate_button.setEnabled(True)
+            self.use_button.setEnabled(True)
+            self.cancel_button.setEnabled(True)
+            self.stop_button.setEnabled(False)
+            if hasattr(self, 'prompt_edit'):
+                self.prompt_edit.setReadOnly(False)
+            
+            if hasattr(self, 'state_tooltip') and self.state_tooltip:
+                try:
+                    self.state_tooltip.setContent("处理完成")
+                    self.state_tooltip.setState(True)
+                    QApplication.processEvents()
+                except:
+                    pass
+                finally:
+                    QTimer.singleShot(1000, lambda: self.safely_close_tooltip())
+            
+        except Exception as e:
+            print(f"处理AI结果时出错: {str(e)}")
+
     def closeEvent(self, event):
         """关闭对话框时清理资源"""
-        if self.worker_thread and self.worker_thread.isRunning():
-            self.worker_thread.terminate()
-            self.worker_thread.wait()
-
+        self.stop_any_running_threads()
+        
         if self.state_tooltip:
             try:
                 self.state_tooltip.close()
@@ -272,7 +411,8 @@ class AIDialog(QDialog):
         self.generate_button.setEnabled(True)
         self.use_button.setEnabled(False)
         self.cancel_button.setEnabled(True)
-        if hasattr(self, "prompt_edit"):
+        self.stop_button.setEnabled(False)
+        if hasattr(self, 'prompt_edit'):
             self.prompt_edit.setReadOnly(False)
 
         event.accept()
@@ -338,8 +478,22 @@ class AIHandler:
             else:
                 text_edit.setText(result_text)
         elif mode == "续写":
+            # 获取当前光标位置
+            current_cursor = text_edit.textCursor()
+            current_position = current_cursor.position()
+            
+            # 将光标移动到文本末尾
+            current_cursor.movePosition(QTextCursor.End)
+            text_edit.setTextCursor(current_cursor)
+            
+            # 检查最后一个字符是否是标点或空格
             current_text = text_edit.toPlainText()
-            text_edit.setText(current_text + "\n\n" + result_text)
+            if current_text and not current_text[-1] in [' ', '\n', '。', '，', '；', '：', '！', '？', '.', ',', ';', ':', '!', '?']:
+                # 如果不是，添加一个空格作为分隔
+                current_cursor.insertText(" ")
+            
+            # 直接插入续写内容，不添加换行
+            current_cursor.insertText(result_text)
         else:
             text_edit.setText(result_text)
 

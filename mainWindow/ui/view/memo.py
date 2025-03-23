@@ -51,6 +51,9 @@ from mainWindow.ui.view.ai_handler import AIHandler
 
 from config import cfg
 
+from mainWindow.ui.view.smart_text_edit import SmartTextEdit
+from mainWindow.ui.view.smart_text_edit import enhance_text_edit_with_copilot
+
 
 class memoInterface(Ui_memo, QWidget):
     def __init__(self, parent=None, user_id=None):
@@ -105,6 +108,30 @@ class memoInterface(Ui_memo, QWidget):
 
         self.lineEdit.setPlaceholderText("请输入备忘录标题")
         self.lineEdit_2.setPlaceholderText("请选择标签")
+
+        # 为 frame 设置布局管理器
+        layout = QVBoxLayout(self.frame)
+        layout.setContentsMargins(30, 40, 30, 20)  # 设置边距，与原始的 geometry 相匹配
+        layout.addWidget(self.textEdit)  # 将原始的 textEdit 添加到布局中
+
+        # 尝试增强现有的textEdit
+        try:
+            print("正在启用智能文本编辑功能...")
+            old_text = self.textEdit.toPlainText()
+            new_text_edit = SmartTextEdit(self)
+            new_text_edit = enhance_text_edit_with_copilot(new_text_edit, self)  # 增强文本编辑器功能
+            new_text_edit.setText(old_text)
+            
+            # 替换控件
+            layout.replaceWidget(self.textEdit, new_text_edit)
+            self.textEdit.setParent(None)  # 移除旧的控件
+            self.textEdit = new_text_edit  # 更新引用
+            
+            print("已启用智能文本编辑功能")
+        except Exception as e:
+            import traceback
+            print(f"启用智能文本编辑功能失败: {str(e)}")
+            print(traceback.format_exc())
 
         self.textEdit.textChanged.connect(self.update_word_count)  # 文本改变时更新字数
         self.update_word_count()  # 初始化字数显示
