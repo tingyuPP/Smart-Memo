@@ -60,8 +60,11 @@ import traceback
 import uuid
 import datetime
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtCore import QByteArray
+from PyQt5.QtCore import QByteArray, Qt, QPoint, QSize, QRect, pyqtSlot, QTimer, QThread, pyqtSignal
 from PyQt5.QtWidgets import QFrame, QDialog
+
+from mainWindow.ui.view.smart_text_edit import SmartTextEdit
+from mainWindow.ui.view.smart_text_edit import enhance_text_edit_with_copilot
 
 
 class memoInterface(Ui_memo, QWidget):
