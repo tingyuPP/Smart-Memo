@@ -119,7 +119,7 @@ class AppCard(CardWidget):
 
         # 导出为子菜单
         export_submenu = RoundMenu("导出为", self)
-        export_submenu.setIcon(FluentIcon.ZOOM_OUT)  # 设置图标
+        export_submenu.setIcon(FluentIcon.PRINT)  # 设置图标
         export_submenu.addActions(
             [
                 Action("PDF", triggered=self.export_to_pdf),  # 导出为 PDF

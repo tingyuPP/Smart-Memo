@@ -38,12 +38,12 @@ class Ui_memo(object):
         self.lineEdit.setGeometry(QtCore.QRect(20, 10, 261, 31))
         self.lineEdit.setObjectName("lineEdit")
         self.frame_4 = CardWidget(memo)
-        self.frame_4.setGeometry(QtCore.QRect(549, 9, 281, 51))
+        self.frame_4.setGeometry(QtCore.QRect(509, 9, 321, 51))
         self.frame_4.setFrameShape(QtWidgets.QFrame.StyledPanel)
         self.frame_4.setFrameShadow(QtWidgets.QFrame.Raised)
         self.frame_4.setObjectName("frame_4")
         self.frame_2 = CommandBar(self.frame_4)
-        self.frame_2.setGeometry(QtCore.QRect(20, 10, 241, 31))
+        self.frame_2.setGeometry(QtCore.QRect(10, 10, 301, 31))
         self.frame_2.setFrameShape(QtWidgets.QFrame.StyledPanel)
         self.frame_2.setFrameShadow(QtWidgets.QFrame.Raised)
         self.frame_2.setObjectName("frame_2")
@@ -55,13 +55,4 @@ class Ui_memo(object):
         _translate = QtCore.QCoreApplication.translate
         memo.setWindowTitle(_translate("memo", "Form"))
         self.label.setText(_translate("memo", "共xx字"))
-
-
-from qfluentwidgets import (
-    CardWidget,
-    CommandBar,
-    EditableComboBox,
-    LineEdit,
-    StrongBodyLabel,
-    TextEdit,
-)
+from qfluentwidgets import CardWidget, CommandBar, EditableComboBox, LineEdit, StrongBodyLabel, TextEdit
