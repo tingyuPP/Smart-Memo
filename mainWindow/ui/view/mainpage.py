@@ -204,10 +204,6 @@ class AppCard(CardWidget):
                 # 更新字数统计
                 main_window.memoInterface.update_word_count()
                 
-                # 显示成功提示
-                from PyQt5.QtCore import Qt
-                from qfluentwidgets import InfoBar, InfoBarPosition
-                
                 InfoBar.success(
                     title="备忘录已加载",
                     content=f"正在编辑「{self.titleLabel.text()}」",
