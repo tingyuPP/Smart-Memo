@@ -388,10 +388,19 @@ class AppCard(CardWidget):
                 # 创建一个非模态对话框，设置合适的标志以防止关闭时退出应用
                 dialog = QDialog(parent_widget)
                 dialog.setWindowTitle(f"分享到{platform}")
-                dialog.setWindowFlag(Qt.WindowCloseButtonHint, True)  # 确保有关闭按钮
-                dialog.setWindowFlag(Qt.WindowContextHelpButtonHint, False)  # 移除帮助按钮
+                # 设置窗口标志以禁止拖动 - 使用固定位置的对话框
+                dialog.setWindowFlags(
+                    Qt.Dialog |  # 基本对话框
+                    Qt.WindowTitleHint |  # 有标题栏
+                    Qt.WindowCloseButtonHint |  # 有关闭按钮
+                    Qt.MSWindowsFixedSizeDialogHint |  # 禁止调整大小 (Windows)
+                    Qt.CustomizeWindowHint  # 自定义窗口 - 结合上面的标志限制功能
+                )
+                
                 dialog.setAttribute(Qt.WA_DeleteOnClose, True)  # 关闭时自动删除
                 dialog.setFixedSize(500, 650)  # 增加高度以适应更大的二维码
+
+
 
                 # 创建美化后的布局
                 main_layout = QVBoxLayout()
@@ -488,21 +497,21 @@ class AppCard(CardWidget):
 
                 # 复制图片按钮
                 copy_img_button = PrimaryPushButton("复制图片")
-                copy_img_button.setIcon(FluentIcon.COPY.icon())
+                copy_img_button.setIcon(FluentIcon.COPY)
                 copy_img_button.clicked.connect(
                     lambda: self._copy_image_to_clipboard(qr_image)
                 )
 
                 # 复制链接按钮
                 copy_link_button = PrimaryPushButton("复制链接")
-                copy_link_button.setIcon(FluentIcon.LINK.icon())
+                copy_link_button.setIcon(FluentIcon.LINK)
                 copy_link_button.clicked.connect(
                     lambda: self._copy_text_to_clipboard(image_url)
                 )
 
                 # 关闭按钮
                 close_button = PrimaryPushButton("关闭")
-                close_button.setIcon(FluentIcon.CLOSE.icon())
+                close_button.setIcon(FluentIcon.CLOSE)
                 close_button.clicked.connect(dialog.close)
 
                 button_layout.addWidget(copy_img_button)
@@ -628,11 +637,24 @@ class AppCard(CardWidget):
         """显示本地图片对话框"""
         dialog = QDialog(parent_widget)
         dialog.setWindowTitle(f"分享到{platform}")
-        dialog.setWindowFlag(Qt.WindowCloseButtonHint, True)  # 确保有关闭按钮
-        dialog.setWindowFlag(Qt.WindowContextHelpButtonHint, False)  # 移除帮助按钮
+        # 设置窗口标志以禁止拖动 - 使用固定位置的对话框
+        dialog.setWindowFlags(
+            Qt.Dialog |  # 基本对话框
+            Qt.WindowTitleHint |  # 有标题栏
+            Qt.WindowCloseButtonHint |  # 有关闭按钮
+            Qt.MSWindowsFixedSizeDialogHint |  # 禁止调整大小 (Windows)
+            Qt.CustomizeWindowHint  # 自定义窗口 - 结合上面的标志限制功能
+        )
         dialog.setAttribute(Qt.WA_DeleteOnClose, True)  # 关闭时自动删除
+        # dialog.setAttribute(Qt.WA_DoubleBuffering, True)  # 启用双缓冲
         dialog.resize(650, 500)
 
+        if parent_widget:
+            center_point = parent_widget.geometry().center()
+            dialog.move(
+                center_point.x() - dialog.width() / 2,
+                center_point.y() - dialog.height() / 2,
+            )
         layout = QVBoxLayout()
 
         # 说明标签
@@ -745,7 +767,7 @@ class AppCard(CardWidget):
 
             # 启动定时器
             if self.timer:
-                self.timer.start(6000)
+                self.timer.start(1000)
 
             if not file_path:  # 用户取消了保存
                 return
@@ -1102,7 +1124,7 @@ class mainInterface(Ui_mainwindow, QWidget):
         # 定时器，定期更新备忘录列表
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_memo_list)
-        self.timer.start(6000)  
+        self.timer.start(1000)  
 
         # 初始加载备忘录列表
         self.update_memo_list()
