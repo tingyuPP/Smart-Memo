@@ -1,10 +1,10 @@
 {
     "MainWindow": {
         "APIKey": "111",
-        "ExportDir": "C:/Users/HP/Desktop/Smart-Memo-Manager"
+        "ExportDir": ""
     },
     "QFluentWidgets": {
-        "ThemeColor": "#ff10abf9",
+        "ThemeColor": "#ff009faa",
         "ThemeMode": "Light"
     }
 }
