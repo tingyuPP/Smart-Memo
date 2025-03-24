@@ -18,6 +18,7 @@ from PyQt5.QtCore import Qt, QRect
 import sys
 from mainWindow.ui.view.mainpage import mainInterface
 from mainWindow.ui.view.memo import memoInterface
+from mainWindow.ui.view.todoInterface import TodoInterface
 
 
 class Widget(QFrame):
@@ -40,6 +41,7 @@ class MainWindow(FluentWindow):
 
     def __init__(self, user_id=None, username=None):
         super().__init__()
+        self.user_id = user_id
 
         # 创建子界面，实际使用时将 Widget 换成自己的子界面
         self.homeInterface = mainInterface(self, user_id)
@@ -49,6 +51,7 @@ class MainWindow(FluentWindow):
         self.albumInterface = Widget("Album Interface", self)
         self.albumInterface1 = Widget("Album Interface 1", self)
         self.myInterface = MyInterface("My Interface", username, self)
+        self.todoInterface = TodoInterface(self, user_id)
         # print(self.myInterface.objectName())
 
         self.initNavigation()
@@ -57,6 +60,7 @@ class MainWindow(FluentWindow):
     def initNavigation(self):
         self.addSubInterface(self.homeInterface, FIF.HOME, "主页")
         self.addSubInterface(self.memoInterface, FIF.ADD, "新建备忘录")
+        self.addSubInterface(self.todoInterface, FIF.PIN, "待办")
         self.addSubInterface(self.videoInterface, FIF.VIDEO, "Video library")
 
         self.navigationInterface.addSeparator()

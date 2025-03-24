@@ -56,6 +56,21 @@ class DatabaseManager:
             FOREIGN KEY (user_id) REFERENCES users(id)
         );
         """
+        
+        # 创建待办表
+        create_todo_table = """
+        CREATE TABLE IF NOT EXISTS todos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            task TEXT NOT NULL,
+            deadline DATETIME NOT NULL,
+            category TEXT DEFAULT '未分类',
+            is_done BOOLEAN DEFAULT FALSE,
+            created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        """
+
 
         # 创建修改时间触发器 - 使用localtime
         create_trigger = """
@@ -70,6 +85,7 @@ class DatabaseManager:
         self.cursor.execute(create_user_table)
         self.cursor.execute(create_memo_table)
         self.cursor.execute(create_trigger)
+        self.cursor.execute(create_todo_table)
 
         # 提交更改
         self.conn.commit()
@@ -151,6 +167,119 @@ class DatabaseManager:
         self.conn.commit()
         print("备忘录创建成功")
         return self.cursor.lastrowid
+        
+    def add_todo(self, user_id, task, deadline, category="未分类"):
+        """添加待办事项（带分类）
+        
+        Args:
+            user_id: 用户ID
+            task: 任务内容
+            deadline: 截止时间 (格式: 'YYYY-MM-DD HH:MM')
+            category: 任务分类 (默认'未分类')
+        
+        Returns:
+            int: 新创建的待办ID
+        """
+        try:
+            self.cursor.execute(
+                """INSERT INTO todos 
+                (user_id, task, deadline, category) 
+                VALUES (?, ?, ?, ?)""",
+                (user_id, task, deadline, category)
+            )
+            self.conn.commit()
+            print("待办创建成功")
+            return self.cursor.lastrowid
+        except sqlite3.Error as e:
+            print(f"添加待办失败: {e}")
+            return None
+
+    def get_todos(self, user_id, show_completed=False, category_filter=None):
+        """获取用户的待办事项
+        
+        Args:
+            user_id: 用户ID
+            show_completed: 是否显示已完成事项
+            category_filter: 按分类筛选 (None表示不过滤)
+        
+        Returns:
+            list: 待办事项列表，每个元素为元组:
+                (id, task, deadline, category, is_done, created_time)
+        """
+        try:
+            query = """SELECT id, task, deadline, category, is_done, created_time 
+                    FROM todos WHERE user_id = ?"""
+            params = [user_id]
+            
+            if not show_completed:
+                query += " AND is_done = 0"
+            
+            if category_filter:
+                query += " AND category = ?"
+                params.append(category_filter)
+            
+            query += " ORDER BY deadline, created_time"
+            
+            self.cursor.execute(query, tuple(params))
+            return self.cursor.fetchall()
+        except sqlite3.Error as e:
+            print(f"获取待办失败: {e}")
+            return []
+
+    def update_todo_status(self, todo_id, is_done):
+        """更新待办完成状态
+        
+        Args:
+            todo_id: 待办ID
+            is_done: 是否完成 (True/False)
+        
+        Returns:
+            bool: 是否更新成功
+        """
+        try:
+            self.cursor.execute(
+                "UPDATE todos SET is_done = ? WHERE id = ?",
+                (int(is_done), todo_id))
+            self.conn.commit()
+            return self.cursor.rowcount > 0
+        except sqlite3.Error as e:
+            print(f"更新待办状态失败: {e}")
+            return False
+
+    def delete_todo(self, todo_id):
+        """删除待办事项
+        
+        Args:
+            todo_id: 待办ID
+        
+        Returns:
+            bool: 是否删除成功
+        """
+        try:
+            self.cursor.execute("DELETE FROM todos WHERE id = ?", (todo_id,))
+            self.conn.commit()
+            return self.cursor.rowcount > 0
+        except sqlite3.Error as e:
+            print(f"删除待办失败: {e}")
+            return False
+
+    def get_todo_categories(self, user_id):
+        """获取用户的所有待办分类
+        
+        Args:
+            user_id: 用户ID
+        
+        Returns:
+            list: 分类名称列表
+        """
+        try:
+            self.cursor.execute(
+                "SELECT DISTINCT category FROM todos WHERE user_id = ?",
+                (user_id,))
+            return [row[0] for row in self.cursor.fetchall()]
+        except sqlite3.Error as e:
+            print(f"获取分类失败: {e}")
+            return []
 
     def get_certain_user(self, username):
         """获取特定用户信息"""
