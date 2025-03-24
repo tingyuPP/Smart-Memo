@@ -33,6 +33,7 @@ from qfluentwidgets import (
     TransparentToolButton,
     ToolTipFilter,
     ToolTipPosition,
+    SwitchSettingCard,
 )
 from config import cfg
 
@@ -95,6 +96,15 @@ class SettingInterface(ScrollArea):
         self.apiCard.setSizePolicy(
             QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         )
+        self.completionCard = SwitchSettingCard(
+            icon=FIF.PENCIL_INK,
+            title="启用自动补全",
+            content="开启后，输入时会自动提示相关内容",
+            configItem=cfg.enableAutoCompletion,
+        )
+        self.completionCard.setSizePolicy(
+            QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        )
 
         # 关于相关
         self.aboutGroup = SettingCardGroup(self.tr("关于"), self.scrollWidget)
@@ -123,6 +133,7 @@ class SettingInterface(ScrollArea):
         self.visualGroup.addSettingCard(self.colorCard)
         self.customizationGroup.addSettingCard(self.directoryCard)
         self.customizationGroup.addSettingCard(self.apiCard)
+        self.customizationGroup.addSettingCard(self.completionCard)
         self.aboutGroup.addSettingCard(self.helpCard)
         self.aboutGroup.addSettingCard(self.aboutCard)
         self.vBoxLayout.addWidget(self.label, 0, Qt.AlignLeft | Qt.AlignTop)

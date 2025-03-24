@@ -306,6 +306,11 @@ class DatabaseManager:
             result.append(user_dict)
 
         return result
+    
+    def get_memo_count(self, user_id):
+        """获取用户的备忘录数量"""
+        self.cursor.execute("SELECT COUNT(*) FROM memos WHERE user_id = ?", (user_id,))
+        return self.cursor.fetchone()[0]
 
     def check_password(self, username, password):
         """检查密码是否正确"""

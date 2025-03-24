@@ -37,6 +37,8 @@ class MyInterface(ScrollArea):
         try:
             self.db = DatabaseManager()
             self.user_data = self.db.get_certain_user(username)
+            self.user_id = self.user_data["id"]
+            self.memo_count = self.db.get_memo_count(self.user_id)
         finally:
             if self.db:
                 self.db.close
@@ -47,7 +49,7 @@ class MyInterface(ScrollArea):
         self.vBoxLayout = QVBoxLayout(self.scrollWidget)
         font = QFont("黑体", 20)
         font.setBold(True)
-        self.infoCard = InfoCard(self.user_data, self)
+        self.infoCard = InfoCard(self.user_data, self.memo_count,self)
         self.titleLabel = TitleLabel("个人中心", self)
         self.titleLabel.setFont(font)
         # self.descriptionLabel = BodyLabel("在这里查看和管理您的个人信息")
@@ -99,7 +101,7 @@ class MyInterface(ScrollArea):
 
 
 class InfoCard(ElevatedCardWidget):
-    def __init__(self, user_data: dict, parent=None):
+    def __init__(self, user_data: dict, memo_count: int, parent=None):
         super().__init__(parent=parent)
         self.user_data = user_data
         self.id = user_data["id"]
@@ -108,7 +110,7 @@ class InfoCard(ElevatedCardWidget):
         self.username = user_data["username"]
 
         # 获取或设置备忘录数量（默认为15篇，实际开发中应从数据库获取）
-        self.memo_count = user_data.get("memo_count", 15)
+        self.memo_count = memo_count
 
         self.__initWidget()
         self.__initLayout()

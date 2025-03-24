@@ -4,6 +4,7 @@ from qfluentwidgets import (
     QConfig,
     OptionsConfigItem,
     OptionsValidator,
+    BoolValidator,
     qconfig,
     ConfigItem,
     FolderValidator,
@@ -18,6 +19,9 @@ class MyConfig(QConfig):
         "MainWindow", "ExportDir", "", validator=FolderValidator(), restart=False
     )
     apiKey = ConfigItem("MainWindow", "APIKey", "", restart=False)
+    enableAutoCompletion = ConfigItem(
+        "MainWindow", "EnableAutoCompletion", True, validator=BoolValidator(),restart=False
+    )
 
 
 cfg = MyConfig()
