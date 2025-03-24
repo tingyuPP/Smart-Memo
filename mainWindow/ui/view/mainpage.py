@@ -36,7 +36,7 @@ from PyQt5.QtWidgets import (
     QScrollArea,
     QFileDialog,
 )
-from PyQt5.QtCore import Qt, QPoint, QSize, QRect, QTimer, QByteArray
+from PyQt5.QtCore import Qt, QPoint, QSize, QRect, QTimer, QByteArray, QThread, pyqtSignal
 from PyQt5.QtPrintSupport import QPrinter
 from PyQt5.QtGui import QFont, QColor, QPixmap
 
@@ -63,12 +63,13 @@ class AppCard(CardWidget):
         modified_time=None,
         category=None,
         parent=None,
+        timer=None,
     ):
         super().__init__(parent)
         self.modified_time = modified_time
         self.category = category
         self.memo_id = memo_id
-        # 存储完整内容，不截断
+        self.timer=timer    
         self.full_content = content
         self.setup_ui(title, content)
         self.setup_context_menu()
@@ -129,6 +130,8 @@ class AppCard(CardWidget):
         self.textLayout.setSpacing(4)
 
     def setup_context_menu(self):
+        if self.timer:
+            self.timer.stop()
         self.menu = RoundMenu(parent=self)
 
         # 逐个添加动作，Action 继承自 QAction，接受 FluentIconBase 类型的图标
@@ -168,6 +171,8 @@ class AppCard(CardWidget):
         self.menu.addMenu(share_submenu)
 
         self.setContextMenuPolicy(Qt.CustomContextMenu)
+        # if self.timer:
+        #     self.timer.start(6000)
         # self.customContextMenuRequested.connect(self.showContextMenu)  # 注释掉这行
 
     def showContextMenu(self, pos):
@@ -180,30 +185,30 @@ class AppCard(CardWidget):
         print(f"AppCard 双击! Title: {self.titleLabel.text()}")
         # 您可以在这里添加打开应用程序或执行其他操作的代码
         main_window = self.window()
-    
+
         # 判断主窗口是否有switch_to_newmemo_interface方法
         if hasattr(main_window, "switch_to_newmemo_interface"):
             # 首先跳转到memo界面
             main_window.switch_to_newmemo_interface()
-            
+
             # 将当前备忘录信息传递给memo界面
             if hasattr(main_window, "memoInterface"):
                 # 设置memo_id，用于后续保存时更新而非创建新备忘录
                 main_window.memoInterface.memo_id = self.memo_id
-                
+
                 # 填充标题
                 main_window.memoInterface.lineEdit.setText(self.titleLabel.text())
-                
+
                 # 填充内容 - 使用完整内容而非截断版本
                 main_window.memoInterface.textEdit.setText(self.full_content)
-                
+
                 # 设置分类信息（如果有）
                 if hasattr(self, "category") and self.category:
                     main_window.memoInterface.lineEdit_2.setText(self.category)
-                
+
                 # 更新字数统计
                 main_window.memoInterface.update_word_count()
-                
+
                 InfoBar.success(
                     title="备忘录已加载",
                     content=f"正在编辑「{self.titleLabel.text()}」",
@@ -221,7 +226,6 @@ class AppCard(CardWidget):
     def share_to_qq(self):
         """创建QQ分享图片"""
         self._generate_share_image("QQ")
-
 
     def _generate_share_image(self, platform):
         """创建分享图片并显示"""
@@ -730,47 +734,110 @@ class AppCard(CardWidget):
             default_filename = f"{self.titleLabel.text()}.pdf"
             default_path = os.path.join(default_dir, default_filename)
 
+            # 停止定时器
+            if self.timer:
+                self.timer.stop()
+
             # 获取保存路径
             file_path, _ = QFileDialog.getSaveFileName(
                 self, "导出为PDF", default_path, "PDF Files (*.pdf)"
             )
 
+            # 启动定时器
+            if self.timer:
+                self.timer.start(6000)
+
             if not file_path:  # 用户取消了保存
                 return
 
-            # 创建打印机对象
-            printer = QPrinter(QPrinter.HighResolution)
-            printer.setOutputFormat(QPrinter.PdfFormat)
-            printer.setOutputFileName(file_path)
-
-            # 创建文档内容 - 使用完整内容而非截断内容
-            document = QTextDocument()
-            html_content = f"""
-            <h2>{self.titleLabel.text()}</h2>
-            <p>{self.full_content}</p>
-            <p><small>修改时间: {self.timeLabel.text()}</small></p>
-            """
-            document.setHtml(html_content)
-
-            # 将文档打印到PDF
-            document.print_(printer)
-
-            # 使用InfoBar显示成功消息
-            InfoBar.success(
-                title="导出成功",
-                content=f"备忘录已成功导出为PDF文件",
+            # 显示进度提示
+            progress_info = InfoBar.info(
+                title="正在导出...",
+                content=f"正在生成PDF文件，请稍候...",
                 orient=Qt.Horizontal,
-                isClosable=True,
+                isClosable=False,
                 position=InfoBarPosition.TOP,
-                duration=2000,
+                duration=0,  # 不自动关闭
                 parent=self.window(),
             )
+
+            # 创建工作线程
+            class ExportThread(QThread):
+                exportFinished = pyqtSignal(bool, str)
+
+                def __init__(self, title, content, time_text, file_path):
+                    super().__init__()
+                    self.title = title
+                    self.content = content
+                    self.time_text = time_text
+                    self.file_path = file_path
+
+                def run(self):
+                    try:
+                        # 创建打印机对象
+                        printer = QPrinter(QPrinter.HighResolution)
+                        printer.setOutputFormat(QPrinter.PdfFormat)
+                        printer.setOutputFileName(self.file_path)
+
+                        # 创建文档内容
+                        document = QTextDocument()
+                        html_content = f"""
+                        <h2>{self.title}</h2>
+                        <p>{self.content}</p>
+                        <p><small>修改时间: {self.time_text}</small></p>
+                        """
+                        document.setHtml(html_content)
+
+                        # 将文档打印到PDF
+                        document.print_(printer)
+                        self.exportFinished.emit(True, "")
+                    except Exception as e:
+                        self.exportFinished.emit(False, str(e))
+
+            # 创建并启动线程
+            self.export_thread = ExportThread(
+                self.titleLabel.text(),
+                self.full_content,
+                self.timeLabel.text(),
+                file_path,
+            )
+
+            # 连接信号
+            def on_export_finished(success, error_msg):
+                # 关闭进度提示
+                progress_info.close()
+
+                if success:
+                    # 使用InfoBar显示成功消息
+                    InfoBar.success(
+                        title="导出成功",
+                        content=f"备忘录已成功导出为PDF文件",
+                        orient=Qt.Horizontal,
+                        isClosable=True,
+                        position=InfoBarPosition.TOP,
+                        duration=2000,
+                        parent=self.window(),
+                    )
+                else:
+                    # 使用InfoBar显示错误消息
+                    InfoBar.warning(
+                        title="导出失败",
+                        content=f"导出PDF时发生错误：{error_msg}",
+                        orient=Qt.Horizontal,
+                        isClosable=True,
+                        position=InfoBarPosition.TOP,
+                        duration=3000,
+                        parent=self.window(),
+                    )
+
+            self.export_thread.exportFinished.connect(on_export_finished)
+            self.export_thread.start()
 
         except Exception as e:
             # 使用InfoBar显示错误消息
             InfoBar.warning(
                 title="导出失败",
-                content=f"导出PDF时发生错误：{str(e)}",
+                content=f"准备导出PDF时发生错误：{str(e)}",
                 orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
@@ -784,7 +851,6 @@ class AppCard(CardWidget):
             # 获取默认导出目录
             default_dir = cfg.get(cfg.exportDir)
             if not default_dir or not os.path.exists(default_dir):
-                # 如果配置的目录不存在，使用export文件夹
                 export_dir = os.path.join(
                     os.path.dirname(
                         os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -806,28 +872,189 @@ class AppCard(CardWidget):
             if not file_path:  # 用户取消了保存
                 return
 
-            # 写入TXT文件 - 使用完整内容而非截断内容
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(f"标题: {self.titleLabel.text()}\n\n")
-                f.write(f"{self.full_content}\n\n")
-                f.write(f"修改时间: {self.timeLabel.text()}")
-
-            # 使用InfoBar显示成功消息
-            InfoBar.success(
-                title="导出成功",
-                content=f"备忘录已成功导出为TXT文件",
+            # 显示进度提示
+            progress_info = InfoBar.info(
+                title="正在导出...",
+                content=f"正在生成TXT文件，请稍候...",
                 orient=Qt.Horizontal,
-                isClosable=True,
+                isClosable=False,
                 position=InfoBarPosition.TOP,
-                duration=2000,
+                duration=0,  # 不自动关闭
                 parent=self.window(),
             )
+
+            # 创建工作线程
+            class ExportThread(QThread):
+                exportFinished = pyqtSignal(bool, str)
+
+                def __init__(self, title, content, time_text, file_path):
+                    super().__init__()
+                    self.title = title
+                    self.content = content
+                    self.time_text = time_text
+                    self.file_path = file_path
+
+                def run(self):
+                    try:
+                        # 写入TXT文件 - 使用完整内容而非截断内容
+                        with open(self.file_path, "w", encoding="utf-8") as f:
+                            f.write(f"标题: {self.title}\n\n")
+                            f.write(f"{self.content}\n\n")
+                            f.write(f"修改时间: {self.time_text}")
+                        self.exportFinished.emit(True, "")
+                    except Exception as e:
+                        self.exportFinished.emit(False, str(e))
+
+            # 创建并启动线程
+            self.export_thread = ExportThread(
+                self.titleLabel.text(),
+                self.full_content,
+                self.timeLabel.text(),
+                file_path,
+            )
+
+            # 连接信号
+            def on_export_finished(success, error_msg):
+                # 关闭进度提示
+                progress_info.close()
+
+                if success:
+                    # 使用InfoBar显示成功消息
+                    InfoBar.success(
+                        title="导出成功",
+                        content=f"备忘录已成功导出为TXT文件",
+                        orient=Qt.Horizontal,
+                        isClosable=True,
+                        position=InfoBarPosition.TOP,
+                        duration=2000,
+                        parent=self.window(),
+                    )
+                else:
+                    # 使用InfoBar显示错误消息
+                    InfoBar.warning(
+                        title="导出失败",
+                        content=f"导出TXT时发生错误：{error_msg}",
+                        orient=Qt.Horizontal,
+                        isClosable=True,
+                        position=InfoBarPosition.TOP,
+                        duration=3000,
+                        parent=self.window(),
+                    )
+
+            self.export_thread.exportFinished.connect(on_export_finished)
+            self.export_thread.start()
 
         except Exception as e:
             # 使用InfoBar显示错误消息
             InfoBar.warning(
                 title="导出失败",
-                content=f"导出TXT时发生错误：{str(e)}",
+                content=f"准备导出TXT时发生错误：{str(e)}",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self.window(),
+            )
+        """导出备忘录为TXT文件"""
+        try:
+            # 获取默认导出目录
+            default_dir = cfg.get(cfg.exportDir)
+            if not default_dir or not os.path.exists(default_dir):
+                export_dir = os.path.join(
+                    os.path.dirname(
+                        os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+                    ),
+                    "export",
+                )
+                if not os.path.exists(export_dir):
+                    os.makedirs(export_dir)
+                default_dir = export_dir
+
+            default_filename = f"{self.titleLabel.text()}.txt"
+            default_path = os.path.join(default_dir, default_filename)
+
+            # 获取保存路径
+            file_path, _ = QFileDialog.getSaveFileName(
+                self, "导出为TXT", default_path, "Text Files (*.txt)"
+            )
+
+            if not file_path:  # 用户取消了保存
+                return
+
+            # 显示进度提示
+            progress_info = InfoBar.info(
+                title="正在导出...",
+                content=f"正在生成TXT文件，请稍候...",
+                orient=Qt.Horizontal,
+                isClosable=False,
+                position=InfoBarPosition.TOP,
+                duration=0,  # 不自动关闭
+                parent=self.window(),
+            )
+
+            # 创建工作线程
+            class ExportThread(QThread):
+                exportFinished = pyqtSignal(bool, str)
+
+                def __init__(self, title, content, time_text, file_path):
+                    super().__init__()
+                    self.title = title
+                    self.content = content
+                    self.time_text = time_text
+                    self.file_path = file_path
+
+                def run(self):
+                    try:
+                        # 写入TXT文件 - 使用完整内容而非截断内容
+                        with open(self.file_path, "w", encoding="utf-8") as f:
+                            f.write(f"标题: {self.title}\n\n")
+                            f.write(f"{self.content}\n\n")
+                            f.write(f"修改时间: {self.time_text}")
+                        self.exportFinished.emit(True, "")
+                    except Exception as e:
+                        self.exportFinished.emit(False, str(e))
+
+            # 创建并启动线程
+            self.export_thread = ExportThread(
+                self.titleLabel.text(), self.full_content, self.timeLabel.text(), file_path
+            )
+
+            # 连接信号
+            def on_export_finished(success, error_msg):
+                # 关闭进度提示
+                progress_info.close()
+
+                if success:
+                    # 使用InfoBar显示成功消息
+                    InfoBar.success(
+                        title="导出成功",
+                        content=f"备忘录已成功导出为TXT文件",
+                        orient=Qt.Horizontal,
+                        isClosable=True,
+                        position=InfoBarPosition.TOP,
+                        duration=2000,
+                        parent=self.window(),
+                    )
+                else:
+                    # 使用InfoBar显示错误消息
+                    InfoBar.warning(
+                        title="导出失败",
+                        content=f"导出TXT时发生错误：{error_msg}",
+                        orient=Qt.Horizontal,
+                        isClosable=True,
+                        position=InfoBarPosition.TOP,
+                        duration=3000,
+                        parent=self.window(),
+                    )
+
+            self.export_thread.exportFinished.connect(on_export_finished)
+            self.export_thread.start()
+
+        except Exception as e:
+            # 使用InfoBar显示错误消息
+            InfoBar.warning(
+                title="导出失败",
+                content=f"准备导出TXT时发生错误：{str(e)}",
                 orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
@@ -875,7 +1102,7 @@ class mainInterface(Ui_mainwindow, QWidget):
         # 定时器，定期更新备忘录列表
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_memo_list)
-        self.timer.start(6000)  # 每6秒更新一次
+        self.timer.start(6000)  
 
         # 初始加载备忘录列表
         self.update_memo_list()
@@ -891,9 +1118,9 @@ class mainInterface(Ui_mainwindow, QWidget):
         # 从数据库获取备忘录
         memos = self.db.get_memos(user_id=self.user_id)
         sort_option = self.pushButton.currentText()
-        
+
         if sort_option == "按名称（a-z）排序":
-        # 按标题字母顺序排序
+            # 按标题字母顺序排序
             memos.sort(key=lambda x: self.db.decrypt(x[4]).lower())
         elif sort_option == "按创建时间从早到晚排序":
             # 按创建时间从早到晚排序（默认，数据库可能已经这样排序）
@@ -925,8 +1152,10 @@ class mainInterface(Ui_mainwindow, QWidget):
                     memo_id=memo_id,
                     modified_time=modified_time,
                     category=category,
+                    timer=self.timer,  # 传递 timer
                 )
             )  # 修改参数
+
     def sync_memos(self):
         """手动同步备忘录数据"""
         try:
@@ -971,14 +1200,22 @@ class mainInterface(Ui_mainwindow, QWidget):
         if hasattr(main_window, "switch_to_newmemo_interface"):
             main_window.switch_to_newmemo_interface()
 
+            # 清空 memoInterface 的内容
+            if hasattr(main_window, "memoInterface"):
+                main_window.memoInterface.memo_id = None  # 重置 memo_id
+                main_window.memoInterface.lineEdit.clear()  # 清空标题
+                main_window.memoInterface.textEdit.clear()  # 清空内容
+                main_window.memoInterface.lineEdit_2.clear()  # 清空分类
+                main_window.memoInterface.update_word_count()  # 更新字数统计
+
     def on_sort_option_changed(self, index):
         """处理排序选项变化事件"""
         # 显示排序中提示
         sort_option = self.pushButton.currentText()
-        
+
         # 更新备忘录列表
         self.update_memo_list()
-        
+
         # 显示排序完成提示
         InfoBar.success(
             title="排序完成",
@@ -989,7 +1226,7 @@ class mainInterface(Ui_mainwindow, QWidget):
             duration=2000,
             parent=self,
         )
-    
+
     def closeEvent(self, event):
         """关闭窗口时关闭数据库连接"""
         self.db.close()
