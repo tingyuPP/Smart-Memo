@@ -550,7 +550,7 @@ class FeatureExtractionThread(QThread):
         """线程主函数"""
         try:
             # 准备人脸识别模型
-            model_file = "models/openface_nn4.small2.v1.t7"
+            model_file = "faceRecognition/models/openface_nn4.small2.v1.t7"
             
             # 如果模型文件不存在，下载
             if not os.path.exists(model_file):

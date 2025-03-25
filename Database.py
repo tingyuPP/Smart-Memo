@@ -167,6 +167,16 @@ class DatabaseManager:
         self.conn.commit()
         print("备忘录创建成功")
         return self.cursor.lastrowid
+    
+    def delete_memos_by_user(self, user_id):
+        """删除用户的所有备忘录"""
+        try:
+            self.cursor.execute("DELETE FROM memos WHERE user_id = ?", (user_id,))
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"删除备忘录失败: {e}")
+            return False
         
     def add_todo(self, user_id, task, deadline, category="未分类"):
         """添加待办事项（带分类）
