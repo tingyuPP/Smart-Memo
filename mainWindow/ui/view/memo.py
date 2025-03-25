@@ -66,6 +66,8 @@ from PyQt5.QtWidgets import QFrame, QDialog
 from mainWindow.ui.view.smart_text_edit import SmartTextEdit
 from mainWindow.ui.view.smart_text_edit import enhance_text_edit_with_copilot
 
+from mainWindow.ui.view.util.MarkdownTextEdit import MarkdownTextEdit
+
 
 class memoInterface(Ui_memo, QWidget):
     def __init__(self, parent=None, user_id=None):
@@ -124,26 +126,43 @@ class memoInterface(Ui_memo, QWidget):
         # 为 frame 设置布局管理器
         layout = QVBoxLayout(self.frame)
         layout.setContentsMargins(30, 40, 30, 20)  # 设置边距，与原始的 geometry 相匹配
-        layout.addWidget(self.textEdit)  # 将原始的 textEdit 添加到布局中
-
-        # 尝试增强现有的textEdit
+        
         try:
-            print("正在启用智能文本编辑功能...")
+            print("正在启用Markdown编辑功能...")
             old_text = self.textEdit.toPlainText()
-            new_text_edit = SmartTextEdit(self)
-            new_text_edit = enhance_text_edit_with_copilot(new_text_edit, self)  # 增强文本编辑器功能
-            new_text_edit.setText(old_text)
+
+            # 创建新的Markdown编辑器
+            self.markdown_edit = MarkdownTextEdit(self)
+            self.markdown_edit.setText(old_text)
 
             # 替换控件
-            layout.replaceWidget(self.textEdit, new_text_edit)
+            layout.replaceWidget(self.textEdit, self.markdown_edit)
             self.textEdit.setParent(None)  # 移除旧的控件
-            self.textEdit = new_text_edit  # 更新引用
+            self.textEdit = self.markdown_edit  # 更新引用
 
-            print("已启用智能文本编辑功能")
+            print("已启用Markdown编辑功能")
         except Exception as e:
             import traceback
-            print(f"启用智能文本编辑功能失败: {str(e)}")
+
+            print(f"启用Markdown编辑功能失败: {str(e)}")
             print(traceback.format_exc())
+
+            # 如果失败，尝试原来的智能文本编辑功能
+            try:
+                print("回退到智能文本编辑功能...")
+                old_text = self.textEdit.toPlainText()
+                new_text_edit = SmartTextEdit(self)
+                new_text_edit = enhance_text_edit_with_copilot(new_text_edit, self)
+                new_text_edit.setText(old_text)
+
+                layout.replaceWidget(self.textEdit, new_text_edit)
+                self.textEdit.setParent(None)
+                self.textEdit = new_text_edit
+
+                print("已启用智能文本编辑功能")
+            except Exception as e2:
+                print(f"启用智能文本编辑功能也失败: {str(e2)}")
+                print(traceback.format_exc())
 
         self.textEdit.textChanged.connect(self.update_word_count)  # 文本改变时更新字数
         self.update_word_count()  # 初始化字数显示
@@ -442,7 +461,6 @@ class memoInterface(Ui_memo, QWidget):
                 duration=3000,
                 parent=self,
             )
-
 
     def share_to(self, platform):
         """分享备忘录到指定平台"""
@@ -745,7 +763,6 @@ class memoInterface(Ui_memo, QWidget):
                 )
             except Exception as inner_error:
                 print(f"无法显示错误InfoBar: {str(inner_error)}")
-
 
     def _generate_qrcode_for_url(self, url, platform):
         """为URL生成二维码并返回QPixmap"""
