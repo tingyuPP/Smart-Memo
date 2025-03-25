@@ -16,12 +16,12 @@ class AIService(QObject):
         "续写": {
             "display_name": "扩展笔记",
             "description": "AI 将基于您的备忘录内容进行扩展，补充相关细节和想法。",
-            "system_prompt": "你是一位专业的内容创作者，擅长扩展和丰富笔记内容。请基于以下备忘录内容进行扩展，补充相关的细节、例子或思路，保持风格一致。扩展内容应当与原文自然衔接，有逻辑性，并且能够丰富原始笔记的价值。请不要偏离原始主题，确保扩展内容与原始备忘录的目的一致。直接输出扩展后的完整文本，不要添加任何解释、前言或结语。"
+            "system_prompt": "你是一位专业的内容创作者，擅长扩展和丰富笔记内容。请基于以下已有内容续写后续内容，保持风格一致。扩展内容应当与原文自然衔接，有逻辑性。请不要偏离原始主题，确保扩展内容与原始备忘录的目的一致。直接输出续写的内容，不要添加任何解释、前言或结语。严格避免重复用户已有的文本，只输出新增的内容。"
         },
         "朋友圈文案": {
             "display_name": "社交分享版本",
             "description": "AI 将基于您的备忘录内容，创作一段适合分享到社交媒体的精简版本。",
-            "system_prompt": "你是一位社交媒体内容专家。请将以下备忘录内容转化为一段简洁、吸引人且适合在社交媒体上分享的文案。文案应当保留原始内容的核心信息，但更加生动有趣，字数控制在100字以内。如果没有提供备忘录内容，请创作一段积极向上、富有启发性的短文案，适合日常分享。只输出最终文案内容，不要添加任何解释、前言或结语。"
+            "system_prompt": "你是一位社交媒体内容专家。文案应当保留原始内容的核心信息，但更加生动有趣，字数控制在100字以内。如果没有提供备忘录内容，请创作一段积极向上、富有启发性的短文案，适合日常分享。只输出最终文案内容，不要添加任何解释、前言或结语。"
         },
         "一句诗": {
             "display_name": "诗意总结",
@@ -36,7 +36,7 @@ class AIService(QObject):
         "tab续写": {
             "display_name": "智能续写",
             "description": "根据当前输入智能续写内容",
-            "system_prompt": "你是一位专业的文字助手。请根据用户提供的文本片段，续写后续内容。续写应当简短，自然衔接，保持风格一致。只输出续写的内容，不要重复用户已有的文本，不要添加任何解释。"
+            "system_prompt": "你是一位专业的文字助手。请根据用户提供的文本片段，续写后续内容。续写应当简短（不超过30个字），自然衔接，保持风格一致。严格避免重复用户已有的文本，只输出全新的内容。不要添加任何解释。"
         }
     }
     
@@ -79,16 +79,17 @@ class AIService(QObject):
                 # 获取最后两个完整句子作为上下文
                 context = '。'.join(sentences[-3:-1]) + '。' if len(sentences) > 2 else prompt
                 # 添加防重复提示
-                system_prompt = "你是一位专业的文字助手。请根据以下文本上下文续写内容。要求：1. 续写内容必须与上文自然衔接；2. 严格避免重复已有的句子和表达；3. 保持相同的写作风格；4. 生成内容简短（不超过50字）。只输出续写的内容，不要重复已有文本，不要添加任何解释。"
+                system_prompt = "你是一位专业的文字助手。请根据以下文本上下文续写内容。要求：1. 续写内容必须与上文自然衔接；2. 严格避免重复已有的句子和表达；3. 保持相同的写作风格；4. 生成内容简短（不超过30字）。只输出续写的内容，不要重复已有文本，不要添加任何解释。"
                 full_prompt = f"上文内容：{context}\n请续写："
-            else:
-                # 其他模式的处理保持不变
-                if mode in ["润色", "续写"]:
-                    full_prompt = f"{system_prompt}\n\n{prompt}"
-                elif mode in ["朋友圈文案", "一句诗"]:
-                    full_prompt = system_prompt
-                else:
-                    full_prompt = prompt
+            elif mode == "续写":
+                # 修改续写模式的提示词格式，明确标识已有内容
+                full_prompt = f"{system_prompt}\n\n已有内容：\n{prompt}"
+            elif mode == "润色":
+                full_prompt = f"{system_prompt}\n\n{prompt}"
+            elif mode in ["朋友圈文案", "一句诗"]:
+                full_prompt = f"{system_prompt}\n\n备忘录内容：{prompt}"
+            else:  # 自定义模式
+                full_prompt = prompt
             
             if not self.client:
                 raise Exception("API 客户端未初始化，请检查API密钥配置")
@@ -164,10 +165,13 @@ class AIService(QObject):
             system_prompt = mode_config["system_prompt"]
             
             # 构建完整提示词
-            if mode in ["润色", "续写"]:
+            if mode == "续写":
+                # 修改续写模式的提示词格式，明确标识已有内容
+                full_prompt = f"{system_prompt}\n\n已有内容：\n{prompt}\n\n请续写（不要重复上面的内容）："
+            elif mode == "润色":
                 full_prompt = f"{system_prompt}\n\n{prompt}"
             elif mode in ["朋友圈文案", "一句诗"]:
-                full_prompt = system_prompt
+                full_prompt = f"{system_prompt}\n\n备忘录内容：{prompt}"
             else:  # 自定义模式
                 full_prompt = prompt
             

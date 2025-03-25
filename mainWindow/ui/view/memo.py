@@ -64,8 +64,6 @@ from PyQt5.QtCore import QByteArray, Qt, QPoint, QSize, QRect, pyqtSlot, QTimer,
 from PyQt5.QtWidgets import QFrame, QDialog
 
 from mainWindow.ui.view.smart_text_edit import SmartTextEdit
-from mainWindow.ui.view.smart_text_edit import enhance_text_edit_with_copilot
-
 
 class memoInterface(Ui_memo, QWidget):
     def __init__(self, parent=None, user_id=None):
@@ -131,14 +129,13 @@ class memoInterface(Ui_memo, QWidget):
             print("正在启用智能文本编辑功能...")
             old_text = self.textEdit.toPlainText()
             new_text_edit = SmartTextEdit(self)
-            new_text_edit = enhance_text_edit_with_copilot(new_text_edit, self)  # 增强文本编辑器功能
             new_text_edit.setText(old_text)
-
+            
             # 替换控件
             layout.replaceWidget(self.textEdit, new_text_edit)
             self.textEdit.setParent(None)  # 移除旧的控件
             self.textEdit = new_text_edit  # 更新引用
-
+            
             print("已启用智能文本编辑功能")
         except Exception as e:
             import traceback
@@ -452,49 +449,11 @@ class memoInterface(Ui_memo, QWidget):
 
             # 准备要分享的内容
             title = self.lineEdit.text()
-            content = self.textEdit.toPlainText()  # 直接使用完整内容
+            content = self.textEdit.toPlainText()
             category = self.lineEdit_2.text()
 
-            # 创建图片 - 根据内容长度动态调整高度
-            width = 800
-
-            # 改进的文本换行处理逻辑
-            content_lines = []
-            char_width = 16
-            chars_per_line = (width - 40) // char_width
-
-            # 先按照换行符分割文本
-            paragraphs = content.split("\n")
-
-            # 处理每个段落，进行宽度限制换行
-            for paragraph in paragraphs:
-                # 如果是空段落（连续换行），添加一个空行
-                if not paragraph:
-                    content_lines.append("")
-                    continue
-
-                # 处理非空段落，按宽度限制换行
-                current_line = ""
-                for char in paragraph:
-                    current_line += char
-                    if len(current_line) >= chars_per_line:
-                        content_lines.append(current_line)
-                        current_line = ""
-
-                # 添加最后一行（如果有内容）
-                if current_line:
-                    content_lines.append(current_line)
-
-            # 计算所需高度 = 标题区域(60px) + 行数*行高(22px) + 底部间距(50px)
-            line_height = 22
-            total_lines = len(content_lines)
-            content_height = total_lines * line_height
-            height = 60 + content_height + 50
-
-            # 设置最小高度和最大高度
-            height = max(400, min(height, 2000))  # 最小400px，最大2000px
-
             # 创建图片
+            width, height = 600, 400
             img = Image.new("RGB", (width, height), color=(255, 255, 255))
             draw = ImageDraw.Draw(img)
 
@@ -514,26 +473,36 @@ class memoInterface(Ui_memo, QWidget):
             # 绘制标题
             draw.text((20, 15), f"【备忘录】{title}", fill=(255, 255, 255), font=title_font)
 
-            # 绘制内容行 - 不再限制显示行数
+            # 文本换行处理和绘制内容
+            content_lines = []
+            current_line = ""
+            char_width = 16
+            chars_per_line = (width - 40) // char_width
+
+            for char in content:
+                if len(current_line) >= chars_per_line or char == "\n":
+                    content_lines.append(current_line)
+                    current_line = ""
+                current_line += char
+
+            if current_line:
+                content_lines.append(current_line)
+
+            # 绘制内容行
             y_pos = 80
-            for line in content_lines:
-                # 安全检查：如果内容将超出图片高度，则停止绘制
-                if y_pos + line_height > height - 40:
-                    draw.text(
-                        (20, y_pos),
-                        "...(内容过长已截断)",
-                        fill=(100, 100, 100),
-                        font=content_font,
-                    )
-                    y_pos += line_height
-                    break
+            for line in content_lines[:15]:
+                draw.text((20, y_pos), line, fill=(0, 0, 0), font=content_font)
+                y_pos += 22
 
-                # 只在非空行时绘制文本，空行只增加间距
-                if line:
-                    draw.text((20, y_pos), line, fill=(0, 0, 0), font=content_font)
-
-                # 无论行是否为空，都增加垂直位置
-                y_pos += line_height
+            # 如果内容被截断，添加提示
+            if len(content_lines) > 15:
+                draw.text(
+                    (20, y_pos),
+                    "...(内容已截断)",
+                    fill=(100, 100, 100),
+                    font=content_font,
+                )
+                y_pos += 22
 
             # 绘制分类和时间
             time_text = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -589,7 +558,7 @@ class memoInterface(Ui_memo, QWidget):
                 dialog.setWindowFlag(Qt.WindowCloseButtonHint, True)  # 确保有关闭按钮
                 dialog.setWindowFlag(Qt.WindowContextHelpButtonHint, False)  # 移除帮助按钮
                 dialog.setAttribute(Qt.WA_DeleteOnClose, True)  # 关闭时自动删除
-                dialog.setFixedSize(500, 650)  # 增加高度以适应更大的二维码
+                dialog.setFixedSize(500, 620)  # 固定大小
 
                 # 创建美化后的布局
                 main_layout = QVBoxLayout()
@@ -644,15 +613,13 @@ class memoInterface(Ui_memo, QWidget):
                 qr_layout.setContentsMargins(10, 10, 10, 10)
                 qr_layout.setAlignment(Qt.AlignCenter)
 
-                # 二维码标签 - 修改为避免变形
+                # 二维码标签
                 qr_label = QLabel()
                 qr_label.setPixmap(qr_image)
-                qr_label.setScaledContents(False)  # 避免二维码变形
-                qr_label.setFixedSize(350, 350)  # 增加尺寸
+                qr_label.setScaledContents(True)
+                qr_label.setFixedSize(320, 320)
                 qr_label.setAlignment(Qt.AlignCenter)
-                qr_label.setStyleSheet(
-                    "background-color: white; border: 1px solid #E0E0E0;"
-                )
+                qr_label.setStyleSheet("border: 1px solid #E0E0E0;")
                 qr_layout.addWidget(qr_label)
 
                 # 二维码下方提示文本
@@ -747,40 +714,6 @@ class memoInterface(Ui_memo, QWidget):
                 print(f"无法显示错误InfoBar: {str(inner_error)}")
 
 
-    def _generate_qrcode_for_url(self, url, platform):
-        """为URL生成二维码并返回QPixmap"""
-        try:
-            # 创建二维码 - 修改参数以提高可扫描性
-            qr = qrcode.QRCode(
-                version=4,  # 提高版本以容纳更多数据
-                error_correction=qrcode.constants.ERROR_CORRECT_H,  # 提高错误校正级别
-                box_size=12,  # 增加方块大小
-                border=5,  # 增加边框宽度
-            )
-            qr.add_data(url)
-            qr.make(fit=True)
-
-            # 生成更大更清晰的二维码图像
-            img = qr.make_image(fill_color="black", back_color="white")
-
-            # 确保图像足够大
-            img_size = 324  # 设置一个较大的尺寸
-            img = img.resize((img_size, img_size))
-
-            # 将PIL图像转换为QPixmap
-            buffer = BytesIO()
-            img.save(buffer, format="PNG")
-            buffer.seek(0)
-
-            qimage = QPixmap()
-            qimage.loadFromData(QByteArray(buffer.getvalue()))
-
-            return qimage
-
-        except Exception as e:
-            print(f"生成二维码时发生错误: {str(e)}")
-            return QPixmap()
-
     def _upload_image_to_obs(self, file_path, file_name):
         """上传图片到华为云OBS并返回URL"""
         try:
@@ -819,6 +752,38 @@ class memoInterface(Ui_memo, QWidget):
             print(f"上传到OBS时发生错误: {str(e)}")
             print(traceback.format_exc())
             return None
+
+
+    def _generate_qrcode_for_url(self, url, platform):
+        """为URL生成二维码并返回QPixmap"""
+        try:
+            # 创建二维码
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(url)
+            qr.make(fit=True)
+
+            # 生成二维码图像
+            img = qr.make_image(fill_color="black", back_color="white")
+
+            # 将PIL图像转换为QPixmap
+            buffer = BytesIO()
+            img.save(buffer, format="PNG")
+            buffer.seek(0)
+
+            qimage = QPixmap()
+            qimage.loadFromData(QByteArray(buffer.getvalue()))
+
+            return qimage
+
+        except Exception as e:
+            print(f"生成二维码时发生错误: {str(e)}")
+            return QPixmap()
+
 
     def _show_local_image_dialog(self, file_path, platform, parent_widget):
         """显示本地图片对话框"""
@@ -870,6 +835,7 @@ class memoInterface(Ui_memo, QWidget):
         dialog.setLayout(layout)
         dialog.show()  # 使用非模态对话框
 
+
     def _copy_image_to_clipboard(self, pixmap):
         """复制图片到剪贴板"""
         try:
@@ -888,6 +854,7 @@ class memoInterface(Ui_memo, QWidget):
             )
         except Exception as e:
             print(f"复制到剪贴板失败: {str(e)}")
+
 
     def _copy_text_to_clipboard(self, text):
         """复制文本到剪贴板"""

@@ -486,16 +486,24 @@ class AIHandler:
             current_cursor.movePosition(QTextCursor.End)
             text_edit.setTextCursor(current_cursor)
             
-            # 检查最后一个字符是否是标点或空格
+            # 获取当前文本框的所有内容
             current_text = text_edit.toPlainText()
-            if current_text and not current_text[-1] in [' ', '\n', '。', '，', '；', '：', '！', '？', '.', ',', ';', ':', '!', '?']:
-                # 如果不是，添加一个空格作为分隔
-                current_cursor.insertText(" ")
-            
-            # 直接插入续写内容，不添加换行
-            current_cursor.insertText(result_text)
+
+            # 直接插入续写内容，不添加换行和空格
+            current_cursor.insertText(result_text) if current_text else text_edit.setText(result_text)
         else:
-            text_edit.setText(result_text)
+            # 处理其他模式（朋友圈文案、一句诗、自定义等）
+            # 如果文本框为空，直接设置文本
+            if not text_edit.toPlainText().strip():
+                text_edit.setText(result_text)
+            else:
+                # 如果文本框不为空，将光标移动到末尾并插入内容
+                current_cursor = text_edit.textCursor()
+                current_cursor.movePosition(QTextCursor.End)
+                text_edit.setTextCursor(current_cursor)
+                
+                # 在新行插入内容
+                current_cursor.insertText("\n\n" + result_text)
 
         self._show_success_message(mode)
 
