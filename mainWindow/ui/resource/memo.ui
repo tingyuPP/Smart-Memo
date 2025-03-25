@@ -31,9 +31,9 @@
    <widget class="TextEdit" name="textEdit">
     <property name="geometry">
      <rect>
-      <x>30</x>
+      <x>10</x>
       <y>40</y>
-      <width>751</width>
+      <width>391</width>
       <height>491</height>
      </rect>
     </property>
@@ -49,6 +49,16 @@
     </property>
     <property name="text">
      <string>共xx字</string>
+    </property>
+   </widget>
+   <widget class="TextBrowser" name="textBrowser">
+    <property name="geometry">
+     <rect>
+      <x>410</x>
+      <y>40</y>
+      <width>391</width>
+      <height>491</height>
+     </rect>
     </property>
    </widget>
   </widget>
@@ -152,6 +162,11 @@
   <customwidget>
    <class>StrongBodyLabel</class>
    <extends>QLabel</extends>
+   <header>qfluentwidgets</header>
+  </customwidget>
+  <customwidget>
+   <class>TextBrowser</class>
+   <extends>QTextBrowser</extends>
    <header>qfluentwidgets</header>
   </customwidget>
  </customwidgets>

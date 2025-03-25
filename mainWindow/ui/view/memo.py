@@ -67,8 +67,6 @@ from mainWindow.ui.view.smart_text_edit import SmartTextEdit
 from mainWindow.ui.view.smart_text_edit import enhance_text_edit_with_copilot
 
 
-
-
 class memoInterface(Ui_memo, QWidget):
     def __init__(self, parent=None, user_id=None):
         super().__init__(parent=parent)
@@ -123,33 +121,47 @@ class memoInterface(Ui_memo, QWidget):
         self.lineEdit.setPlaceholderText("请输入备忘录标题")
         self.lineEdit_2.setPlaceholderText("请选择标签")
 
-        # 为 frame 设置布局管理器
-        layout = QVBoxLayout(self.frame)
-        layout.setContentsMargins(30, 40, 30, 20)  # 设置边距，与原始的 geometry 相匹配
+        layout = self.frame.layout()
+        if layout is None:
+            layout = QVBoxLayout(self.frame)  # 如果没有布局，创建一个
+            layout.setContentsMargins(
+                30, 40, 30, 20
+            )  # 设置边距，与原始的 geometry 相匹配
+            self.frame.setLayout(layout)
 
         try:
             print("正在启用Markdown实时编辑功能...")
             # 创建Markdown实时编辑器
-            self.textEdit = TextEdit(self)
-            
-            # 添加到布局
-            layout.addWidget(self.textEdit)
+            # self.textEdit = TextEdit(self)
+
+            # # 添加到布局
+            # layout.addWidget(self.textEdit)
 
             # 增强文本编辑器，添加智能补全功能
             self.textEdit = enhance_text_edit_with_copilot(self.textEdit, self)
-            
+
             print("已启用Markdown实时编辑功能")
         except Exception as e:
             import traceback
-            
+
             print(f"启用Markdown编辑功能失败: {str(e)}")
             print(traceback.format_exc())
-            
+
             # 如果Markdown编辑器初始化失败，回退到普通编辑器
             print("回退到标准编辑器...")
             self.textEdit = TextEdit(self)
             layout.addWidget(self.textEdit)
             self.textEdit = enhance_text_edit_with_copilot(self.textEdit, self)
+
+        for i in range(layout.count()):
+            if layout.itemAt(i).widget() == self.textEdit:
+                layout.removeWidget(self.textEdit)
+                self.textEdit.setParent(None)  # 解除父子关系
+                break
+
+        layout.addWidget(
+            self.textEdit, 1, 0
+        )  # 将 textEdit 添加到网格布局的第一行第一列
 
         self.textEdit.textChanged.connect(self.update_word_count)  # 文本改变时更新字数
         self.update_word_count()  # 初始化字数显示

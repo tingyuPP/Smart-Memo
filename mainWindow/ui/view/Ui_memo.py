@@ -14,39 +14,92 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_memo(object):
     def setupUi(self, memo):
         memo.setObjectName("memo")
-        memo.resize(900, 700)
-        self.frame = CardWidget(memo)
-        self.frame.setGeometry(QtCore.QRect(20, 80, 811, 551))
-        self.frame.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        self.frame.setFrameShadow(QtWidgets.QFrame.Raised)
-        self.frame.setObjectName("frame")
-        self.textEdit = TextEdit(self.frame)
-        self.textEdit.setGeometry(QtCore.QRect(30, 40, 751, 491))
-        self.textEdit.setObjectName("textEdit")
-        self.label = StrongBodyLabel(self.frame)
-        self.label.setGeometry(QtCore.QRect(740, 10, 72, 15))
-        self.label.setObjectName("label")
+
+        # 清除已有布局
+        if memo.layout() is not None:
+            QtWidgets.QWidget().setLayout(memo.layout())
+
+        # Main layout
+        main_layout = QtWidgets.QVBoxLayout(memo)
+
+        # Top layout (frame_3 and frame_4)
+        top_layout = QtWidgets.QHBoxLayout()
+
+        # frame_3 (LineEdit and EditableComboBox)
         self.frame_3 = CardWidget(memo)
-        self.frame_3.setGeometry(QtCore.QRect(20, 10, 471, 51))
-        self.frame_3.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        self.frame_3.setFrameShadow(QtWidgets.QFrame.Raised)
+        self.frame_3.setFrameShape(QtWidgets.QFrame.NoFrame)  # No border
+        self.frame_3.setFrameShadow(QtWidgets.QFrame.Plain)  # No shadow
         self.frame_3.setObjectName("frame_3")
+
+        # 避免直接设置布局，先创建布局对象
+        frame_3_layout = QtWidgets.QHBoxLayout()
         self.lineEdit_2 = EditableComboBox(self.frame_3)
-        self.lineEdit_2.setGeometry(QtCore.QRect(310, 10, 141, 31))
         self.lineEdit_2.setObjectName("lineEdit_2")
         self.lineEdit = LineEdit(self.frame_3)
-        self.lineEdit.setGeometry(QtCore.QRect(20, 10, 261, 31))
         self.lineEdit.setObjectName("lineEdit")
+        frame_3_layout.addWidget(self.lineEdit)
+        frame_3_layout.addWidget(self.lineEdit_2)
+        # 最后设置布局
+        self.frame_3.setLayout(frame_3_layout)
+
+        top_layout.addWidget(self.frame_3)
+
+        # frame_4 (CommandBar)
         self.frame_4 = CardWidget(memo)
-        self.frame_4.setGeometry(QtCore.QRect(509, 9, 321, 51))
-        self.frame_4.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        self.frame_4.setFrameShadow(QtWidgets.QFrame.Raised)
+        self.frame_4.setFrameShape(QtWidgets.QFrame.NoFrame)  # No border
+        self.frame_4.setFrameShadow(QtWidgets.QFrame.Plain)  # No shadow
         self.frame_4.setObjectName("frame_4")
+
+        # 避免直接设置布局，先创建布局对象
+        frame_4_layout = QtWidgets.QHBoxLayout()
         self.frame_2 = CommandBar(self.frame_4)
-        self.frame_2.setGeometry(QtCore.QRect(10, 10, 301, 31))
         self.frame_2.setFrameShape(QtWidgets.QFrame.StyledPanel)
         self.frame_2.setFrameShadow(QtWidgets.QFrame.Raised)
         self.frame_2.setObjectName("frame_2")
+        frame_4_layout.addWidget(self.frame_2)
+        # 最后设置布局
+        self.frame_4.setLayout(frame_4_layout)
+
+        top_layout.addWidget(self.frame_4)
+        top_layout.setStretchFactor(self.frame_3, 1)  # 给frame_3一个伸展因子
+        top_layout.setStretchFactor(self.frame_4, 1)  # 给frame_4一个伸展因子
+
+        main_layout.addLayout(top_layout)
+
+        # Main content frame (textEdit and textBrowser)
+        self.frame = CardWidget(memo)
+        self.frame.setFrameShape(QtWidgets.QFrame.NoFrame)  # No border
+        self.frame.setFrameShadow(QtWidgets.QFrame.Plain)  # No shadow
+        self.frame.setObjectName("frame")
+
+        # 避免直接设置布局，先创建布局对象
+        frame_layout = QtWidgets.QGridLayout()
+
+        self.textEdit = TextEdit(self.frame)
+        self.textEdit.setObjectName("textEdit")
+        self.label = StrongBodyLabel(self.frame)
+        self.label.setObjectName("label")
+        self.textBrowser = TextBrowser(self.frame)
+        self.textBrowser.setObjectName("textBrowser")
+
+        # Add widgets to the grid layout
+        frame_layout.addWidget(self.textEdit, 1, 0)  # textEdit at row 1, col 0
+        frame_layout.addWidget(self.textBrowser, 1, 1)  # textBrowser at row 1, col 1
+        frame_layout.addWidget(
+            self.label, 0, 1, QtCore.Qt.AlignTop | QtCore.Qt.AlignRight
+        )  # label at row 0, col 1, aligned top right
+
+        # 设置伸展因子，让textEdit和textBrowser尽可能占据更多空间
+        frame_layout.setColumnStretch(0, 1)  # textEdit占据更多空间
+        frame_layout.setColumnStretch(1, 1)  # textBrowser占据更多空间
+
+        # 最后设置布局
+        self.frame.setLayout(frame_layout)
+
+        main_layout.addWidget(self.frame)
+
+        # 设置伸展因子，让textEdit和textBrowser尽可能占据更多空间
+        main_layout.setStretch(1, 1)  # frame占据更多垂直空间
 
         self.retranslateUi(memo)
         QtCore.QMetaObject.connectSlotsByName(memo)
@@ -55,4 +108,14 @@ class Ui_memo(object):
         _translate = QtCore.QCoreApplication.translate
         memo.setWindowTitle(_translate("memo", "Form"))
         self.label.setText(_translate("memo", "共xx字"))
-from qfluentwidgets import CardWidget, CommandBar, EditableComboBox, LineEdit, StrongBodyLabel, TextEdit
+
+
+from qfluentwidgets import (
+    CardWidget,
+    CommandBar,
+    EditableComboBox,
+    LineEdit,
+    StrongBodyLabel,
+    TextBrowser,
+    TextEdit,
+)
