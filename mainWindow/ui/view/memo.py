@@ -60,7 +60,17 @@ import traceback
 import uuid
 import datetime
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtCore import QByteArray, Qt, QPoint, QSize, QRect, pyqtSlot, QTimer, QThread, pyqtSignal
+from PyQt5.QtCore import (
+    QByteArray,
+    Qt,
+    QPoint,
+    QSize,
+    QRect,
+    pyqtSlot,
+    QTimer,
+    QThread,
+    pyqtSignal,
+)
 from PyQt5.QtWidgets import QFrame, QDialog
 
 from mainWindow.ui.view.smart_text_edit import SmartTextEdit
@@ -163,6 +173,12 @@ class memoInterface(Ui_memo, QWidget):
             self.textEdit, 1, 0
         )  # 将 textEdit 添加到网格布局的第一行第一列
 
+        self.textBrowser.setStyleSheet(
+            "background-color: #F7F7F7; border: 1px solid #E0E0E0; border-radius: 5px;"
+        )
+        self.textEdit.textChanged.connect(self.update_markdown_preview)
+        self.update_markdown_preview()
+
         self.textEdit.textChanged.connect(self.update_word_count)  # 文本改变时更新字数
         self.update_word_count()  # 初始化字数显示
 
@@ -219,6 +235,11 @@ class memoInterface(Ui_memo, QWidget):
                 duration=3000,
                 parent=self,
             )
+
+    def update_markdown_preview(self):
+        """实时更新Markdown预览内容"""
+        content = self.textEdit.toPlainText()
+        self.textBrowser.setMarkdown(content)
 
     def save_memo(self, silent=False):
         """保存备忘录到数据库
@@ -545,7 +566,9 @@ class memoInterface(Ui_memo, QWidget):
             draw.rectangle([(0, 0), (width, 60)], fill=(0, 120, 212))
 
             # 绘制标题
-            draw.text((20, 15), f"【备忘录】{title}", fill=(255, 255, 255), font=title_font)
+            draw.text(
+                (20, 15), f"【备忘录】{title}", fill=(255, 255, 255), font=title_font
+            )
 
             # 文本换行处理和绘制内容
             content_lines = []
@@ -630,7 +653,9 @@ class memoInterface(Ui_memo, QWidget):
                 dialog = QDialog(parent_widget)
                 dialog.setWindowTitle(f"分享到{platform}")
                 dialog.setWindowFlag(Qt.WindowCloseButtonHint, True)  # 确保有关闭按钮
-                dialog.setWindowFlag(Qt.WindowContextHelpButtonHint, False)  # 移除帮助按钮
+                dialog.setWindowFlag(
+                    Qt.WindowContextHelpButtonHint, False
+                )  # 移除帮助按钮
                 dialog.setAttribute(Qt.WA_DeleteOnClose, True)  # 关闭时自动删除
                 dialog.setFixedSize(500, 620)  # 固定大小
 
@@ -669,7 +694,9 @@ class memoInterface(Ui_memo, QWidget):
                 instruction_layout = QVBoxLayout(instruction_card)
                 instruction_icon = QLabel()
                 instruction_icon.setPixmap(FluentIcon.INFO.icon().pixmap(24, 24))
-                instruction_text = QLabel(f"请使用{platform}扫描下方二维码查看图片并分享")
+                instruction_text = QLabel(
+                    f"请使用{platform}扫描下方二维码查看图片并分享"
+                )
                 instruction_text.setWordWrap(True)
                 instruction_text.setStyleSheet("color: #505050; margin: 5px;")
 
@@ -832,7 +859,9 @@ class memoInterface(Ui_memo, QWidget):
             bucket_name = "mypicturebed"
 
             # 创建OBS客户端
-            obs_client = ObsClient(access_key_id=ak, secret_access_key=sk, server=server)
+            obs_client = ObsClient(
+                access_key_id=ak, secret_access_key=sk, server=server
+            )
 
             try:
                 # 读取图片文件
@@ -924,7 +953,9 @@ class memoInterface(Ui_memo, QWidget):
 
         # 打开文件夹按钮
         open_folder_button = PrimaryPushButton("打开文件夹")
-        open_folder_button.clicked.connect(lambda: os.startfile(os.path.dirname(file_path)))
+        open_folder_button.clicked.connect(
+            lambda: os.startfile(os.path.dirname(file_path))
+        )
         button_layout.addWidget(open_folder_button)
 
         # 复制到剪贴板按钮

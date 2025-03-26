@@ -38,8 +38,8 @@ class DatabaseManager:
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,  -- 存储加密后的密码
             face_data TEXT,          -- 可选字段
-            fingerprint_data TEXT,   -- 可选字段
-            avatar TEXT              -- 存储头像路径
+            avatar TEXT,              -- 存储头像路径
+            register_time DATETIME DEFAULT (datetime('now', 'localtime'))  -- 用户注册时间
         );
         """
 
@@ -95,7 +95,6 @@ class DatabaseManager:
         username,
         password,
         face_data=None,
-        fingerprint_data=None,
         avatar="resource/default_avatar.jpg",
     ):
         """创建用户（密码需要加密）
@@ -119,24 +118,21 @@ class DatabaseManager:
             # 这里可以添加对人脸数据的处理/加密
             encoded_face_data = self.encrypt(str(face_data))
 
-        encoded_fingerprint_data = None
-        if fingerprint_data is not None:
-            # 这里可以添加对指纹数据的处理/加密
-            encoded_fingerprint_data = self.encrypt(str(fingerprint_data))
-
         try:
+
+            register_time = datetime.now(self.local_tz).strftime("%Y-%m-%d %H:%M:%S")
             self.cursor.execute(
                 """
                 INSERT INTO users 
-                (username, password, face_data, fingerprint_data, avatar)
+                (username, password, face_data, avatar, register_time)
                 VALUES (?, ?, ?, ?, ?)
             """,
                 (
                     username,
                     hashed_pwd,
                     encoded_face_data,
-                    encoded_fingerprint_data,
                     avatar,
+                    register_time,
                 ),
             )
 
@@ -298,21 +294,22 @@ class DatabaseManager:
         user_dict = {
             "id": user_data[0],
             "username": user_data[1],
-            "avatar": user_data[5],
+            "avatar": user_data[4],
+            "register_time": user_data[5],
         }
         return user_dict
 
     def get_users_with_face_data(self):
         """获取所有具有人脸识别数据的用户"""
         self.cursor.execute(
-            "SELECT id, username, face_data FROM users WHERE face_data IS NOT NULL"
+            "SELECT id, username, face_data, register_time FROM users WHERE face_data IS NOT NULL"
         )
         users = self.cursor.fetchall()
 
         # 将元组列表转换为字典列表
         result = []
         for user in users:
-            user_dict = {"id": user[0], "username": user[1], "face_data": user[2]}
+            user_dict = {"id": user[0], "username": user[1], "face_data": user[2], "register_time": user[3]}
             result.append(user_dict)
 
         return result
@@ -500,7 +497,7 @@ class DatabaseManager:
         """用户登录，返回用户信息字典或None"""
         # 首先根据用户名查找用户
         self.cursor.execute(
-            "SELECT id, username, password, avatar FROM users WHERE username = ?",
+            "SELECT id, username, password, avatar, register_time FROM users WHERE username = ?",
             (username,),
         )
         user_data = self.cursor.fetchone()
@@ -518,6 +515,7 @@ class DatabaseManager:
                 "id": user_data[0],
                 "username": user_data[1],
                 "avatar": user_data[3],
+                "register_time": user_data[4],
             }
             return user_dict
         else:
