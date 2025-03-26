@@ -8,13 +8,14 @@ from qfluentwidgets import (
     AvatarWidget,
     isDarkTheme,
     NavigationWidget,
+    SplashScreen,
 )
 from qfluentwidgets import FluentIcon as FIF
 from mainWindow.ui.view.settingInterface import SettingInterface
 from mainWindow.ui.view.myInterface import MyInterface
 from PyQt5.QtWidgets import QApplication, QFrame, QHBoxLayout
 from PyQt5.QtGui import QIcon, QImage, QPainter, QColor, QBrush, QFont
-from PyQt5.QtCore import Qt, QRect
+from PyQt5.QtCore import Qt, QRect, QSize, QTimer
 import sys
 from mainWindow.ui.view.mainpage import mainInterface
 from mainWindow.ui.view.memo import memoInterface
@@ -41,6 +42,11 @@ class MainWindow(FluentWindow):
 
     def __init__(self, user_id=None, username=None):
         super().__init__()
+        self.splashScreen = SplashScreen(QIcon(":/qfluentwidgets/images/logo.png"), self)
+        self.splashScreen.setIconSize(QSize(100, 100))
+        self.splashScreen.show()
+
+        QApplication.processEvents()
         self.user_id = user_id
 
         # 创建子界面，实际使用时将 Widget 换成自己的子界面
@@ -55,6 +61,8 @@ class MainWindow(FluentWindow):
         # print(self.myInterface.objectName())
 
         self.initNavigation()
+
+        QTimer.singleShot(1600, self.splashScreen.close)
         self.initWindow()
 
     def initNavigation(self):
