@@ -345,6 +345,7 @@ class FaceLoginInterface(QWidget):
         camera_layout.setContentsMargins(0, 0, 0, 0)
 
         self.image_label = QLabel()
+        self.image_label.setObjectName("faceImageLabel")
         self.image_label.setAlignment(Qt.AlignCenter)
         self.image_label.setText("准备启动摄像头")
         self.image_label.setStyleSheet("font-size: 16px; color: #666;")
