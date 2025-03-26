@@ -57,13 +57,14 @@ class AIService(QObject):
             except ImportError:
                 print("请先安装 OpenAI SDK: pip install openai")
 
-    def generate_content(self, prompt, mode="generate"):
+    def generate_content(self, prompt, mode="generate", aux_prompt=""):
         """
         根据提示生成内容
 
         参数:
         - prompt: 用户输入的提示或要处理的文本
         - mode: 处理模式，可以是 "generate"(生成), "polish"(润色), "continue"(续写)
+        - aux_prompt: 用户输入的辅助提示词（可选）
 
         返回:
         - 生成的文本内容
@@ -74,22 +75,32 @@ class AIService(QObject):
             system_prompt = mode_config["system_prompt"]
             
             if mode == "tab续写":
-                # 检测重复内容
+                # tab续写模式保持不变
                 sentences = prompt.split('。')
-                # 获取最后两个完整句子作为上下文
                 context = '。'.join(sentences[-3:-1]) + '。' if len(sentences) > 2 else prompt
-                # 添加防重复提示
                 system_prompt = "你是一位专业的文字助手。请根据以下文本上下文续写内容。要求：1. 续写内容必须与上文自然衔接；2. 严格避免重复已有的句子和表达；3. 保持相同的写作风格；4. 生成内容简短（不超过30字）。只输出续写的内容，不要重复已有文本，不要添加任何解释。"
                 full_prompt = f"上文内容：{context}\n请续写："
-            elif mode == "续写":
-                # 修改续写模式的提示词格式，明确标识已有内容
-                full_prompt = f"{system_prompt}\n\n已有内容：\n{prompt}"
-            elif mode == "润色":
-                full_prompt = f"{system_prompt}\n\n{prompt}"
-            elif mode in ["朋友圈文案", "一句诗"]:
-                full_prompt = f"{system_prompt}\n\n备忘录内容：{prompt}"
-            else:  # 自定义模式
-                full_prompt = prompt
+            else:
+                # 处理其他模式，加入辅助提示词
+                if aux_prompt:
+                    if mode == "续写":
+                        full_prompt = f"{system_prompt}\n\n已有内容：\n{prompt}\n\n额外要求：{aux_prompt}"
+                    elif mode == "润色":
+                        full_prompt = f"{system_prompt}\n\n需要润色的内容：\n{prompt}\n\n额外要求：{aux_prompt}"
+                    elif mode in ["朋友圈文案", "一句诗"]:
+                        full_prompt = f"{system_prompt}\n\n备忘录内容：{prompt}\n\n额外要求：{aux_prompt}"
+                    else:  # 自定义模式
+                        full_prompt = f"{prompt}\n\n额外要求：{aux_prompt}"
+                else:
+                    # 没有辅助提示词时保持原有逻辑
+                    if mode == "续写":
+                        full_prompt = f"{system_prompt}\n\n已有内容：\n{prompt}"
+                    elif mode == "润色":
+                        full_prompt = f"{system_prompt}\n\n{prompt}"
+                    elif mode in ["朋友圈文案", "一句诗"]:
+                        full_prompt = f"{system_prompt}\n\n备忘录内容：{prompt}"
+                    else:  # 自定义模式
+                        full_prompt = prompt
             
             if not self.client:
                 raise Exception("API 客户端未初始化，请检查API密钥配置")
@@ -148,13 +159,14 @@ class AIService(QObject):
         except Exception as e:
             raise Exception(f"API 流式调用出错: {str(e)}")
 
-    def generate_content_stream(self, prompt, mode="generate"):
+    def generate_content_stream(self, prompt, mode="generate", aux_prompt=""):
         """
         使用流式响应生成内容
         
         参数:
         - prompt: 用户输入的提示或要处理的文本
         - mode: 处理模式
+        - aux_prompt: 用户输入的辅助提示词（可选）
         
         返回:
         - 流式响应对象
@@ -166,12 +178,18 @@ class AIService(QObject):
             
             # 构建完整提示词
             if mode == "续写":
-                # 修改续写模式的提示词格式，明确标识已有内容
-                full_prompt = f"{system_prompt}\n\n已有内容：\n{prompt}\n\n请续写（不要重复上面的内容）："
+                full_prompt = f"{system_prompt}\n\n已有内容：\n{prompt}"
+                if aux_prompt:
+                    full_prompt += f"\n\n额外要求：{aux_prompt}"
+                full_prompt += "\n\n请续写（不要重复上面的内容）："
             elif mode == "润色":
                 full_prompt = f"{system_prompt}\n\n{prompt}"
+                if aux_prompt:
+                    full_prompt += f"\n\n额外要求：{aux_prompt}"
             elif mode in ["朋友圈文案", "一句诗"]:
                 full_prompt = f"{system_prompt}\n\n备忘录内容：{prompt}"
+                if aux_prompt:
+                    full_prompt += f"\n\n额外要求：{aux_prompt}"
             else:  # 自定义模式
                 full_prompt = prompt
             

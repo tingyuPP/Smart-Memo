@@ -25,15 +25,16 @@ class AIWorkerThread(QThread):
     finished = pyqtSignal(str)
     error = pyqtSignal(str)
 
-    def __init__(self, ai_service, mode, text):
+    def __init__(self, ai_service, mode, text, aux_prompt=""):
         super().__init__()
         self.ai_service = ai_service
         self.mode = mode
         self.text = text
+        self.aux_prompt = aux_prompt
 
     def run(self):
         try:
-            result = self.ai_service.generate_content(self.text, self.mode)
+            result = self.ai_service.generate_content(self.text, self.mode, self.aux_prompt)
             self.finished.emit(result)
         except Exception as e:
             self.error.emit(str(e))
@@ -44,17 +45,18 @@ class AIStreamWorkerThread(QThread):
     finished = pyqtSignal()  # 流式响应完成
     error = pyqtSignal(str)  # 发生错误
     
-    def __init__(self, ai_service, mode, text):
+    def __init__(self, ai_service, mode, text, aux_prompt=""):
         super().__init__()
         self.ai_service = ai_service
         self.mode = mode
         self.text = text
+        self.aux_prompt = aux_prompt
         self._stop_requested = False
     
     def run(self):
         try:
             # 获取流式响应
-            stream = self.ai_service.generate_content_stream(self.text, self.mode)
+            stream = self.ai_service.generate_content_stream(self.text, self.mode, self.aux_prompt)
             
             # 累积的完整响应
             full_response = ""
@@ -110,6 +112,17 @@ class AIDialog(QDialog):
         desc_label = QLabel(description)
         desc_label.setWordWrap(True)
         layout.addWidget(desc_label)
+
+        # 添加辅助输入区域（除了tab续写和自定义模式外都显示）
+        if self.mode not in ["tab续写", "自定义"]:
+            aux_layout = QHBoxLayout()
+            aux_label = QLabel("辅助提示词(可选):")
+            self.aux_edit = TextEdit()
+            self.aux_edit.setPlaceholderText("在这里输入额外的提示或要求...")
+            self.aux_edit.setMaximumHeight(60)
+            aux_layout.addWidget(aux_label)
+            aux_layout.addWidget(self.aux_edit)
+            layout.addLayout(aux_layout)
 
         # 如果是自定义模式，添加提示输入框
         if self.mode == "自定义":
@@ -219,6 +232,9 @@ class AIDialog(QDialog):
         self.disable_all_inputs()
         self.show_loading_state()
 
+        # 获取辅助提示词（如果有）
+        aux_prompt = self.aux_edit.toPlainText() if hasattr(self, 'aux_edit') else ""
+
         if self.mode == "自定义":
             text = self.prompt_edit.toPlainText()
             if not text:
@@ -241,13 +257,23 @@ class AIDialog(QDialog):
         
         # 根据是否使用流式响应选择不同的处理方式
         if self.use_streaming:
-            self.worker_thread = AIStreamWorkerThread(self.ai_service, self.mode, text)
+            self.worker_thread = AIStreamWorkerThread(
+                self.ai_service, 
+                self.mode, 
+                text,
+                aux_prompt=aux_prompt  # 添加辅助提示词参数
+            )
             self.worker_thread.chunkReceived.connect(self.handle_stream_chunk)
             self.worker_thread.finished.connect(self.handle_stream_finished)
             self.worker_thread.error.connect(self.handle_ai_error)
             self.stop_button.setEnabled(True)
         else:
-            self.worker_thread = AIWorkerThread(self.ai_service, self.mode, text)
+            self.worker_thread = AIWorkerThread(
+                self.ai_service, 
+                self.mode, 
+                text,
+                aux_prompt=aux_prompt  # 添加辅助提示词参数
+            )
             self.worker_thread.finished.connect(self.handle_ai_result)
             self.worker_thread.error.connect(self.handle_ai_error)
         
