@@ -1,17 +1,32 @@
-from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QStackedWidget
+from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QStackedWidget, QFrame
 from PyQt5.QtCore import Qt
-from qfluentwidgets import Pivot, SegmentedWidget
+from qfluentwidgets import Pivot, SegmentedWidget, setTheme, Theme
 from login.view.accountInterface import AccountInterface
 from mainWindow.mainWindow import MainWindow
 from login.view.faceInterface import FaceLoginInterface
+from config import cfg
+from qframelesswindow import FramelessWindow, StandardTitleBar
 
-class LoginWindow(QWidget):
+class LoginWindow(FramelessWindow):
 
     def __init__(self):
         super().__init__()
+
+        # if cfg.get(cfg.themeMode) == Theme.DARK:
+        #     setTheme(Theme.DARK)
+        #     print("Dark")
+        # elif cfg.get(cfg.themeMode) == Theme.LIGHT:
+        #     setTheme(Theme.LIGHT)
+        #     print("Light")
+        if cfg.get(cfg.themeMode) == Theme.DARK:
+            with open(f'resource/dark.qss', encoding='utf-8') as f:
+                self.setStyleSheet(f.read())
+
         self.segmentedWidget = SegmentedWidget(self)
         self.stackedWidget = QStackedWidget(self)
         self.vBoxLayout = QVBoxLayout(self)
+        self.setTitleBar(StandardTitleBar(self))
+        self.titleBar.setStyleSheet("background-color: #f0f0f0;")
         self.setWindowTitle("SmartMemo")
 
         self.accountInterface = AccountInterface(self)
@@ -48,6 +63,12 @@ class LoginWindow(QWidget):
         self.vBoxLayout.addWidget(self.stackedWidget)
         self.resize(350, 600)
 
+        # if cfg.get(cfg.themeMode) == "Dark":
+        #     with open(f'resource/dark.qss', encoding='utf-8') as f:
+        #         self.setStyleSheet(f.read())
+        #         self.faceInterface.setStyleSheet(f.read())
+        #         self.accountInterface.setStyleSheet(f.read())
+
     def addSubInterface(self, widget: QLabel, objectName: str, text: str):
         widget.setObjectName(objectName)
         widget.setAlignment(Qt.AlignCenter)
@@ -78,11 +99,3 @@ class LoginWindow(QWidget):
         self.stackedWidget.setCurrentWidget(self.accountInterface)
         self.segmentedWidget.setCurrentItem(self.accountInterface.objectName())
 
-if __name__ == '__main__':
-    import sys
-    from PyQt5.QtWidgets import QApplication
-
-    app = QApplication(sys.argv)
-    demo = LoginWindow()
-    demo.show()
-    sys.exit(app.exec_())

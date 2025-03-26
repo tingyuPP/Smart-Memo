@@ -5,13 +5,15 @@ import sys
 import time
 import json
 import urllib.request
+from config import cfg
 from pathlib import Path
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtCore import QTimer, Qt, pyqtSignal, QThread, QMutex, QWaitCondition
 
 from qfluentwidgets import (MessageBoxBase, SubtitleLabel, BodyLabel, PrimaryPushButton, 
-                           PushButton, ProgressBar, InfoBar, InfoBarPosition, FluentIcon)
+                           PushButton, ProgressBar, InfoBar, InfoBarPosition, FluentIcon,
+                           Theme)
 
 from Database import DatabaseManager
 
@@ -272,16 +274,26 @@ class FaceRegistrationMessageBox(MessageBoxBase):
         
         # 创建视频显示容器和标签
         self.imageContainer = QWidget()
-        self.imageContainer.setStyleSheet("background-color: #F5F5F5; border-radius: 8px;")
+        self.imageContainer.setObjectName("faceImageContainer")  # 设置唯一的objectName
         self.imageContainer.setMinimumSize(640, 400)
+        
         imageLayout = QVBoxLayout(self.imageContainer)
+        imageLayout.setContentsMargins(0, 0, 0, 0)
+        imageLayout.setSpacing(0)
         
         self.image_label = QLabel()
         self.image_label.setAlignment(Qt.AlignCenter)
         self.image_label.setMinimumSize(640, 400)
         self.image_label.setText("准备开始捕获人脸")
-        self.image_label.setStyleSheet("font-size: 16px; color: #666;")
         imageLayout.addWidget(self.image_label)
+        if cfg.get(cfg.themeMode) == Theme.DARK:
+            self.image_label.setStyleSheet("""
+                background-color: #2b2b2b; 
+                color: #ffffff;
+                font-size: 16px;
+                border-radius: 6px;
+            """
+            )
         
         self.viewLayout.addWidget(self.imageContainer)
         self.viewLayout.addSpacing(10)
@@ -385,7 +397,17 @@ class FaceRegistrationMessageBox(MessageBoxBase):
         # 清除图像
         self.image_label.clear()
         self.image_label.setText("准备开始捕获人脸")
-        self.image_label.setStyleSheet("font-size: 16px; color: #666;")
+            # 根据当前主题设置样式
+
+        if cfg.get(cfg.themeMode) == Theme.DARK:
+            self.image_label.setStyleSheet("""
+                background-color: #2b2b2b; 
+                color: #ffffff;
+                font-size: 16px;
+                border-radius: 6px;
+            """)
+        else:
+            self.image_label.setStyleSheet("font-size: 16px; color: #666;")
         
     def update_frame(self, frame):
         """接收摄像头帧并更新显示缓存"""
@@ -449,12 +471,21 @@ class FaceRegistrationMessageBox(MessageBoxBase):
             
             # 调整图像大小以适应标签
             pixmap = pixmap.scaled(self.image_label.width(), self.image_label.height(), 
-                                  Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                                  
+                                Qt.KeepAspectRatio, Qt.SmoothTransformation)
             self.image_label.setPixmap(pixmap)
-            self.image_label.setStyleSheet("")
         except Exception as e:
             print(f"显示图像时出错: {str(e)}")
+
+            # 根据主题设置适当的样式
+            if cfg.get(cfg.themeMode) == Theme.DARK:
+                self.image_label.setStyleSheet("""
+                    background-color: #2b2b2b; 
+                    color: #ffffff;
+                    font-size: 16px;
+                    border-radius: 6px;
+                """)
+            else:
+                self.image_label.setStyleSheet("font-size: 16px; color: #666;")
     
     def finish_registration(self):
         """完成人脸注册流程，使用OpenCV DNN提取特征"""

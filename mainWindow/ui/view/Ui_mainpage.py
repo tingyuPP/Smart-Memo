@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 
 # Form implementation generated from reading ui file 'c:\Users\HP\Desktop\Smart-Memo-Manager\mainWindow\ui\resource\mainpage.ui'
@@ -15,40 +16,51 @@ class Ui_mainwindow(object):
     def setupUi(self, mainwindow):
         mainwindow.setObjectName("mainwindow")
         mainwindow.resize(900, 700)
+
+        # 创建主布局（垂直布局）
+        main_layout = QtWidgets.QVBoxLayout(mainwindow)
+
+        # 顶部搜索和按钮区域
+        top_layout = QtWidgets.QHBoxLayout()
+        self.frame_2 = CardWidget(mainwindow)
+        self.frame_2.setFrameShape(QtWidgets.QFrame.StyledPanel)
+        self.frame_2.setFrameShadow(QtWidgets.QFrame.Raised)
+        self.frame_2.setObjectName("frame_2")
+        frame2_layout = QtWidgets.QHBoxLayout(self.frame_2)  # frame_2 内部的布局
+        self.lineEdit = SearchLineEdit(self.frame_2)
+        self.lineEdit.setObjectName("lineEdit")
+        self.pushButton = ComboBox(self.frame_2)
+        self.pushButton.setText("")
+        self.pushButton.setObjectName("pushButton")
+        frame2_layout.addWidget(self.lineEdit)
+        frame2_layout.addWidget(self.pushButton)
+        self.toolButton = ToolButton(mainwindow)
+        self.toolButton.setText("")
+        self.toolButton.setObjectName("toolButton")
+        self.toolButton_2 = ToolButton(mainwindow)
+        self.toolButton_2.setText("")
+        self.toolButton_2.setObjectName("toolButton_2")
+
+        top_layout.addWidget(self.frame_2)
+        top_layout.addWidget(self.toolButton)
+        top_layout.addWidget(self.toolButton_2)
+        main_layout.addLayout(top_layout)
+
+        # 中间滚动区域
         self.frame = CardWidget(mainwindow)
-        self.frame.setGeometry(QtCore.QRect(10, 70, 831, 571))
         self.frame.setFrameShape(QtWidgets.QFrame.StyledPanel)
         self.frame.setFrameShadow(QtWidgets.QFrame.Raised)
         self.frame.setObjectName("frame")
+        frame_layout = QtWidgets.QVBoxLayout(self.frame)  # frame 内部的布局
         self.scrollArea = SmoothScrollArea(self.frame)
-        self.scrollArea.setGeometry(QtCore.QRect(9, 6, 811, 551))
         self.scrollArea.setLineWidth(0)
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 809, 549))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)
-        self.frame_2 = CardWidget(mainwindow)
-        self.frame_2.setGeometry(QtCore.QRect(10, 10, 681, 51))
-        self.frame_2.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        self.frame_2.setFrameShadow(QtWidgets.QFrame.Raised)
-        self.frame_2.setObjectName("frame_2")
-        self.lineEdit = SearchLineEdit(self.frame_2)
-        self.lineEdit.setGeometry(QtCore.QRect(10, 10, 421, 31))
-        self.lineEdit.setObjectName("lineEdit")
-        self.pushButton = ComboBox(self.frame_2)
-        self.pushButton.setGeometry(QtCore.QRect(460, 10, 211, 31))
-        self.pushButton.setText("")
-        self.pushButton.setObjectName("pushButton")
-        self.toolButton = ToolButton(mainwindow)
-        self.toolButton.setGeometry(QtCore.QRect(720, 10, 51, 51))
-        self.toolButton.setText("")
-        self.toolButton.setObjectName("toolButton")
-        self.toolButton_2 = ToolButton(mainwindow)
-        self.toolButton_2.setGeometry(QtCore.QRect(790, 10, 51, 51))
-        self.toolButton_2.setText("")
-        self.toolButton_2.setObjectName("toolButton_2")
+        frame_layout.addWidget(self.scrollArea)
+        main_layout.addWidget(self.frame)  # 将 frame 添加到主布局
 
         self.retranslateUi(mainwindow)
         QtCore.QMetaObject.connectSlotsByName(mainwindow)
@@ -56,4 +68,12 @@ class Ui_mainwindow(object):
     def retranslateUi(self, mainwindow):
         _translate = QtCore.QCoreApplication.translate
         mainwindow.setWindowTitle(_translate("mainwindow", "Form"))
-from qfluentwidgets import CardWidget, ComboBox, SearchLineEdit, SmoothScrollArea, ToolButton
+
+
+from qfluentwidgets import (
+    CardWidget,
+    ComboBox,
+    SearchLineEdit,
+    SmoothScrollArea,
+    ToolButton,
+)

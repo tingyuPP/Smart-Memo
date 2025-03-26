@@ -66,8 +66,6 @@ from PyQt5.QtWidgets import QFrame, QDialog
 from mainWindow.ui.view.smart_text_edit import SmartTextEdit
 from mainWindow.ui.view.smart_text_edit import enhance_text_edit_with_copilot
 
-from mainWindow.ui.view.util.MarkdownTextEdit import MarkdownTextEdit
-
 
 class memoInterface(Ui_memo, QWidget):
     def __init__(self, parent=None, user_id=None):
@@ -123,49 +121,104 @@ class memoInterface(Ui_memo, QWidget):
         self.lineEdit.setPlaceholderText("请输入备忘录标题")
         self.lineEdit_2.setPlaceholderText("请选择标签")
 
-        # 为 frame 设置布局管理器
-        layout = QVBoxLayout(self.frame)
-        layout.setContentsMargins(30, 40, 30, 20)  # 设置边距，与原始的 geometry 相匹配
-        
+        layout = self.frame.layout()
+        if layout is None:
+            layout = QVBoxLayout(self.frame)  # 如果没有布局，创建一个
+            layout.setContentsMargins(
+                30, 40, 30, 20
+            )  # 设置边距，与原始的 geometry 相匹配
+            self.frame.setLayout(layout)
+
         try:
-            print("正在启用Markdown编辑功能...")
-            old_text = self.textEdit.toPlainText()
+            print("正在启用Markdown实时编辑功能...")
+            # 创建Markdown实时编辑器
+            # self.textEdit = TextEdit(self)
 
-            # 创建新的Markdown编辑器
-            self.markdown_edit = MarkdownTextEdit(self)
-            self.markdown_edit.setText(old_text)
+            # # 添加到布局
+            # layout.addWidget(self.textEdit)
 
-            # 替换控件
-            layout.replaceWidget(self.textEdit, self.markdown_edit)
-            self.textEdit.setParent(None)  # 移除旧的控件
-            self.textEdit = self.markdown_edit  # 更新引用
+            # 增强文本编辑器，添加智能补全功能
+            self.textEdit = enhance_text_edit_with_copilot(self.textEdit, self)
 
-            print("已启用Markdown编辑功能")
+            print("已启用Markdown实时编辑功能")
         except Exception as e:
             import traceback
 
             print(f"启用Markdown编辑功能失败: {str(e)}")
             print(traceback.format_exc())
 
-            # 如果失败，尝试原来的智能文本编辑功能
-            try:
-                print("回退到智能文本编辑功能...")
-                old_text = self.textEdit.toPlainText()
-                new_text_edit = SmartTextEdit(self)
-                new_text_edit = enhance_text_edit_with_copilot(new_text_edit, self)
-                new_text_edit.setText(old_text)
+            # 如果Markdown编辑器初始化失败，回退到普通编辑器
+            print("回退到标准编辑器...")
+            self.textEdit = TextEdit(self)
+            layout.addWidget(self.textEdit)
+            self.textEdit = enhance_text_edit_with_copilot(self.textEdit, self)
 
-                layout.replaceWidget(self.textEdit, new_text_edit)
-                self.textEdit.setParent(None)
-                self.textEdit = new_text_edit
+        for i in range(layout.count()):
+            if layout.itemAt(i).widget() == self.textEdit:
+                layout.removeWidget(self.textEdit)
+                self.textEdit.setParent(None)  # 解除父子关系
+                break
 
-                print("已启用智能文本编辑功能")
-            except Exception as e2:
-                print(f"启用智能文本编辑功能也失败: {str(e2)}")
-                print(traceback.format_exc())
+        layout.addWidget(
+            self.textEdit, 1, 0
+        )  # 将 textEdit 添加到网格布局的第一行第一列
 
         self.textEdit.textChanged.connect(self.update_word_count)  # 文本改变时更新字数
         self.update_word_count()  # 初始化字数显示
+
+    def toggle_markdown_preview(self):
+        """切换Markdown预览模式"""
+        try:
+            # 获取当前内容
+            content = self.textEdit.toPlainText()
+            self._current_content = content
+
+            if not self._markdown_preview_enabled:
+                # 启用Markdown预览
+                self.textEdit.setMarkdown(content)
+                self._markdown_preview_enabled = True
+
+                # 更新按钮文本
+                self.frame_2.actions()[-1].setText("编辑模式")
+
+                # 添加预览状态提示
+                InfoBar.success(
+                    title="Markdown预览",
+                    content="已切换到预览模式，点击按钮返回编辑模式",
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=2000,
+                    parent=self,
+                )
+            else:
+                # 返回编辑模式
+                self.textEdit.setText(self._current_content)
+                self._markdown_preview_enabled = False
+
+                # 更新按钮文本
+                self.frame_2.actions()[-1].setText("Markdown预览")
+
+                # 添加编辑状态提示
+                InfoBar.info(
+                    title="编辑模式",
+                    content="已返回编辑模式",
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=2000,
+                    parent=self,
+                )
+        except Exception as e:
+            InfoBar.error(
+                title="切换失败",
+                content=f"切换Markdown预览模式失败: {str(e)}",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self,
+            )
 
     def save_memo(self, silent=False):
         """保存备忘录到数据库

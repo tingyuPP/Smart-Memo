@@ -15,6 +15,7 @@ if __name__ == "__main__":
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
     app = QApplication(sys.argv)
+    app.setAttribute(Qt.ApplicationAttribute.AA_DontCreateNativeWidgetSiblings)
     w = LoginWindow()
     w.show()
     app.exec()
