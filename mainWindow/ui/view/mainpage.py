@@ -27,6 +27,7 @@ from qfluentwidgets import (
     InfoBar,
     SubtitleLabel,
     InfoBarPosition,
+    Dialog,
 )
 from PyQt5.QtWidgets import (
     QWidget,
@@ -36,7 +37,16 @@ from PyQt5.QtWidgets import (
     QScrollArea,
     QFileDialog,
 )
-from PyQt5.QtCore import Qt, QPoint, QSize, QRect, QTimer, QByteArray, QThread, pyqtSignal
+from PyQt5.QtCore import (
+    Qt,
+    QPoint,
+    QSize,
+    QRect,
+    QTimer,
+    QByteArray,
+    QThread,
+    pyqtSignal,
+)
 from PyQt5.QtPrintSupport import QPrinter
 from PyQt5.QtGui import QFont, QColor, QPixmap
 
@@ -69,7 +79,7 @@ class AppCard(CardWidget):
         self.modified_time = modified_time
         self.category = category
         self.memo_id = memo_id
-        self.timer=timer    
+        self.timer = timer
         self.full_content = content
         self.setup_ui(title, content)
         self.setup_context_menu()
@@ -141,9 +151,6 @@ class AppCard(CardWidget):
                 "删除",
                 triggered=lambda: print("删除成功"),
             )
-        )
-        self.menu.addAction(
-            Action(FluentIcon.ACCEPT, "收藏", triggered=lambda: print("收藏成功"))
         )
         # 添加分割线
         self.menu.addSeparator()
@@ -226,6 +233,7 @@ class AppCard(CardWidget):
     def share_to_qq(self):
         """创建QQ分享图片"""
         self._generate_share_image("QQ")
+
 
     def _generate_share_image(self, platform):
         """创建分享图片并显示"""
@@ -385,111 +393,87 @@ class AppCard(CardWidget):
                     parent=parent_widget,
                 )
 
-                # 创建一个非模态对话框，设置合适的标志以防止关闭时退出应用
-                dialog = QDialog(parent_widget)
-                dialog.setWindowTitle(f"分享到{platform}")
-                # 设置窗口标志以禁止拖动 - 使用固定位置的对话框
-                dialog.setWindowFlags(
-                    Qt.Dialog |  # 基本对话框
-                    Qt.WindowTitleHint |  # 有标题栏
-                    Qt.WindowCloseButtonHint |  # 有关闭按钮
-                    Qt.MSWindowsFixedSizeDialogHint |  # 禁止调整大小 (Windows)
-                    Qt.CustomizeWindowHint  # 自定义窗口 - 结合上面的标志限制功能
+                # 直接使用标题和指导文本作为Dialog的参数
+                dialog = Dialog(
+                    f"分享到{platform}",
+                    f"请使用{platform}扫描下方二维码查看图片并分享",
+                    parent_widget,
                 )
-                
+
+                # 隐藏默认按钮
+                dialog.yesButton.hide()
+                dialog.cancelButton.hide()
+                dialog.buttonLayout.insertStretch(0, 1)
+                dialog.buttonLayout.insertStretch(1)
+
+                # 设置窗口标志以禁止拖动
+                dialog.setWindowFlags(
+                    Qt.Dialog  # 基本对话框
+                    | Qt.WindowTitleHint  # 有标题栏
+                    | Qt.WindowCloseButtonHint  # 有关闭按钮
+                    
+                )
+
                 dialog.setAttribute(Qt.WA_DeleteOnClose, True)  # 关闭时自动删除
-                dialog.setFixedSize(500, 650)  # 增加高度以适应更大的二维码
 
-
-
-                # 创建美化后的布局
-                main_layout = QVBoxLayout()
-                main_layout.setContentsMargins(20, 20, 20, 20)
+                # 创建主容器和布局
+                container = QWidget()
+                main_layout = QVBoxLayout(container)
+                main_layout.setContentsMargins(20, 0, 20, 20)  # 减小顶部边距
                 main_layout.setSpacing(15)
 
-                # 顶部标题部分
-                title_widget = QWidget()
-                title_layout = QHBoxLayout(title_widget)
-                title_layout.setContentsMargins(0, 0, 0, 0)
-
-                # 添加图标
-                icon_label = QLabel()
-                icon_label.setPixmap(FluentIcon.SHARE.icon().pixmap(32, 32))
-                title_layout.addWidget(icon_label)
-
-                # 添加标题文本
-                title_label = SubtitleLabel(f"分享到{platform}")
-                title_label.setStyleSheet("font-size: 18px; font-weight: bold;")
-                title_layout.addWidget(title_label)
-                title_layout.addStretch()
-
-                main_layout.addWidget(title_widget)
-
-                # 分隔线
-                line = QFrame()
-                line.setFrameShape(QFrame.HLine)
-                line.setFrameShadow(QFrame.Sunken)
-                line.setStyleSheet("background-color: #E0E0E0;")
-                main_layout.addWidget(line)
-
-                # 说明文本框
-                instruction_card = CardWidget()
-                instruction_layout = QVBoxLayout(instruction_card)
-                instruction_icon = QLabel()
-                instruction_icon.setPixmap(FluentIcon.INFO.icon().pixmap(24, 24))
-                instruction_text = QLabel(f"请使用{platform}扫描下方二维码查看图片并分享")
-                instruction_text.setWordWrap(True)
-                instruction_text.setStyleSheet("color: #505050; margin: 5px;")
-
-                info_layout = QHBoxLayout()
-                info_layout.addWidget(instruction_icon)
-                info_layout.addWidget(instruction_text, 1)
-                instruction_layout.addLayout(info_layout)
-
-                main_layout.addWidget(instruction_card)
-
-                # 二维码卡片
+                # 二维码卡片 - 使用特殊样式确保二维码可见
                 qr_card = CardWidget()
-                qr_card.setStyleSheet("background-color: white; border-radius: 8px;")
                 qr_layout = QVBoxLayout(qr_card)
-                qr_layout.setContentsMargins(10, 10, 10, 10)
+                qr_layout.setContentsMargins(15, 15, 15, 15)
                 qr_layout.setAlignment(Qt.AlignCenter)
 
-                # 二维码标签 - 修改以显示更好的二维码
+                # 创建一个白色背景容器专门放二维码
+                qr_bg = QWidget()
+                qr_bg.setObjectName("qrBackground")
+                qr_bg.setStyleSheet(
+                    "#qrBackground{background-color:white; border-radius:8px;}"
+                )
+                qr_bg_layout = QVBoxLayout(qr_bg)
+                qr_bg_layout.setContentsMargins(10, 10, 10, 10)
+                qr_bg_layout.setAlignment(Qt.AlignCenter)
+
+                # 二维码标签
                 qr_label = QLabel()
                 qr_label.setPixmap(qr_image)
-                qr_label.setScaledContents(False)  # 避免二维码变形
-                qr_label.setFixedSize(350, 350)  # 增加尺寸
+                qr_label.setFixedSize(350, 350)
                 qr_label.setAlignment(Qt.AlignCenter)
-                qr_label.setStyleSheet(
-                    "background-color: white; border: 1px solid #E0E0E0;"
-                )
-                qr_layout.addWidget(qr_label)
+                qr_bg_layout.addWidget(qr_label)
 
                 # 二维码下方提示文本
                 scan_label = CaptionLabel(f"扫描查看「{title}」")
                 scan_label.setAlignment(Qt.AlignCenter)
-                qr_layout.addWidget(scan_label)
+                scan_label.setStyleSheet("color: #505050;")
+                qr_bg_layout.addWidget(scan_label)
 
+                qr_layout.addWidget(qr_bg)
                 main_layout.addWidget(qr_card)
 
-                # URL信息卡片
+                # URL信息卡片 - 使用FluentUI样式
                 url_card = CardWidget()
                 url_layout = QVBoxLayout(url_card)
-                url_label = QLabel("图片链接:")
-                url_text = QLabel(image_url)
-                url_text.setTextInteractionFlags(Qt.TextSelectableByMouse)
-                url_text.setWordWrap(True)
-                url_text.setStyleSheet(
-                    "background-color: #F5F5F5; padding: 8px; border-radius: 4px;"
-                )
 
+                # 使用BodyLabel替代QLabel
+                url_label = BodyLabel("图片链接:")
                 url_layout.addWidget(url_label)
+
+                # 使用TextEdit来显示可选择的文本，自适应主题
+                from qfluentwidgets import TextEdit
+
+                url_text = TextEdit()
+                url_text.setPlainText(image_url)
+                url_text.setReadOnly(True)
+                url_text.setFixedHeight(60)
                 url_layout.addWidget(url_text)
 
                 main_layout.addWidget(url_card)
 
-                # 按钮区域
+                # 按钮区域 - 使用FluentUI按钮
                 button_widget = QWidget()
                 button_layout = QHBoxLayout(button_widget)
                 button_layout.setContentsMargins(0, 0, 0, 0)
@@ -521,8 +505,13 @@ class AppCard(CardWidget):
 
                 main_layout.addWidget(button_widget)
 
-                dialog.setLayout(main_layout)
-                dialog.show()  # 使用show()而不是exec_()，这样对话框是非模态的
+                # 将容器添加到对话框
+                if dialog.layout():
+                    dialog.layout().addWidget(container)
+
+                # 设置对话框大小
+                dialog.setFixedSize(500, 650)
+                dialog.show()  # 非模态显示
 
             else:
                 # 上传失败，显示本地图片
@@ -536,7 +525,7 @@ class AppCard(CardWidget):
                     parent=parent_widget,
                 )
 
-                # 显示本地图片对话框 (使用美化后的本地图片对话框)
+                # 显示本地图片对话框
                 self._show_local_image_dialog(file_path, platform, parent_widget)
 
         except Exception as e:
@@ -639,11 +628,11 @@ class AppCard(CardWidget):
         dialog.setWindowTitle(f"分享到{platform}")
         # 设置窗口标志以禁止拖动 - 使用固定位置的对话框
         dialog.setWindowFlags(
-            Qt.Dialog |  # 基本对话框
-            Qt.WindowTitleHint |  # 有标题栏
-            Qt.WindowCloseButtonHint |  # 有关闭按钮
-            Qt.MSWindowsFixedSizeDialogHint |  # 禁止调整大小 (Windows)
-            Qt.CustomizeWindowHint  # 自定义窗口 - 结合上面的标志限制功能
+            Qt.Dialog  # 基本对话框
+            | Qt.WindowTitleHint  # 有标题栏
+            | Qt.WindowCloseButtonHint  # 有关闭按钮
+            | Qt.MSWindowsFixedSizeDialogHint  # 禁止调整大小 (Windows)
+            | Qt.CustomizeWindowHint  # 自定义窗口 - 结合上面的标志限制功能
         )
         dialog.setAttribute(Qt.WA_DeleteOnClose, True)  # 关闭时自动删除
         # dialog.setAttribute(Qt.WA_DoubleBuffering, True)  # 启用双缓冲
@@ -1038,7 +1027,10 @@ class AppCard(CardWidget):
 
             # 创建并启动线程
             self.export_thread = ExportThread(
-                self.titleLabel.text(), self.full_content, self.timeLabel.text(), file_path
+                self.titleLabel.text(),
+                self.full_content,
+                self.timeLabel.text(),
+                file_path,
             )
 
             # 连接信号
@@ -1124,7 +1116,7 @@ class mainInterface(Ui_mainwindow, QWidget):
         # 定时器，定期更新备忘录列表
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_memo_list)
-        self.timer.start(1000)  
+        self.timer.start(1000)
 
         # 初始加载备忘录列表
         self.update_memo_list()
@@ -1216,6 +1208,7 @@ class mainInterface(Ui_mainwindow, QWidget):
                 duration=3000,
                 parent=self,
             )
+
     def switch_to_memo_interface(self):
         # 调用父窗口 (MainWindow) 的方法来切换到 musicInterface
         main_window = self.window()
