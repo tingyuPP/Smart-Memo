@@ -74,8 +74,6 @@ from PyQt5.QtCore import (
 from PyQt5.QtWidgets import QFrame, QDialog
 
 from mainWindow.ui.view.smart_text_edit import SmartTextEdit
-from mainWindow.ui.view.smart_text_edit import enhance_text_edit_with_copilot
-
 
 class memoInterface(Ui_memo, QWidget):
     def __init__(self, parent=None, user_id=None):
@@ -133,10 +131,8 @@ class memoInterface(Ui_memo, QWidget):
 
         layout = self.frame.layout()
         if layout is None:
-            layout = QVBoxLayout(self.frame)  # 如果没有布局，创建一个
-            layout.setContentsMargins(
-                30, 40, 30, 20
-            )  # 设置边距，与原始的 geometry 相匹配
+            layout = QVBoxLayout(self.frame)
+            layout.setContentsMargins(30, 40, 30, 20)
             self.frame.setLayout(layout)
 
         try:
@@ -147,9 +143,6 @@ class memoInterface(Ui_memo, QWidget):
             # # 添加到布局
             # layout.addWidget(self.textEdit)
 
-            # 增强文本编辑器，添加智能补全功能
-            self.textEdit = enhance_text_edit_with_copilot(self.textEdit, self)
-
             print("已启用Markdown实时编辑功能")
         except Exception as e:
             import traceback
@@ -159,9 +152,8 @@ class memoInterface(Ui_memo, QWidget):
 
             # 如果Markdown编辑器初始化失败，回退到普通编辑器
             print("回退到标准编辑器...")
-            self.textEdit = TextEdit(self)
+            self.textEdit = SmartTextEdit(self)
             layout.addWidget(self.textEdit)
-            self.textEdit = enhance_text_edit_with_copilot(self.textEdit, self)
 
         for i in range(layout.count()):
             if layout.itemAt(i).widget() == self.textEdit:
