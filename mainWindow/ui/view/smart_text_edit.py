@@ -78,12 +78,16 @@ class SmartTextEdit(TextEdit):
         self.normal_color = self.palette().text().color()
         self.suggestion_color = QColor(169, 169, 169)  # 浅灰色
         
-        # 用于延迟触发建议的计时器
+        # 使用 QTimer 并从配置中获取延迟时间（将秒转换为毫秒）
         self.suggestion_timer = QTimer(self)
         self.suggestion_timer.setSingleShot(True)
         self.suggestion_timer.timeout.connect(self._request_suggestion)
+        self._update_timer_interval(cfg.get(cfg.completionTime))  # 初始化时设置延迟时间
         
-        # 设置建议文本的颜色和格式
+        # 监听配置变化
+        cfg.completionTime.valueChanged.connect(self._update_timer_interval)
+        
+        # 设置建议文本的格式
         self.suggestion_format = QTextCharFormat()
         self.suggestion_format.setForeground(self.suggestion_color)
         
@@ -94,8 +98,14 @@ class SmartTextEdit(TextEdit):
         # 连接光标位置变化信号
         self.cursorPositionChanged.connect(self._on_cursor_position_changed)
         
-        # 从配置中读取是否启用自动补全
-        self.auto_completion_enabled = cfg.get(cfg.enableAutoCompletion)
+        # 确保线程安全退出
+        self.destroyed.connect(self._cleanup_threads)
+
+    def _cleanup_threads(self):
+        """清理线程资源"""
+        if self.suggestion_thread and self.suggestion_thread.isRunning():
+            self.suggestion_thread.terminate()
+            self.suggestion_thread.wait()
 
     def inputMethodEvent(self, event):
         """处理输入法事件"""
@@ -133,50 +143,36 @@ class SmartTextEdit(TextEdit):
             
         # 取消当前的建议
         self._clear_suggestion()
-        # 重置计时器
-        self.suggestion_timer.start(300)  # 0.3秒后触发建议
-    
+        # 启动计时器（使用已设置的延迟时间）
+        self.suggestion_timer.start()
+
     def _request_suggestion(self):
         """请求AI补全建议"""
-        # 检查是否启用了自动补全
-        self.auto_completion_enabled = cfg.get(cfg.enableAutoCompletion)
-        
-        if not self.auto_completion_enabled:
+        if not cfg.get(cfg.enableAutoCompletion) or self.is_composing:
             return
-        
-        # 如果正在输入中文，不触发建议
-        if self.is_composing:
-            return
-        
+            
         current_text = self.toPlainText()
-        if not current_text:  # 如果文本为空，不触发建议
+        if not current_text:
             return
-        
+            
         cursor = self.textCursor()
         position = cursor.position()
-        
-        # 获取光标前的文本作为上下文
         context = current_text[:position]
         
-        if len(context.strip()) < 5:  # 内容太短不触发
+        if len(context.strip()) < 5:
             return
-        
-        # 检查是否与最近的补全历史重复
-        if self.completion_history and any(
-            self._is_similar_context(context, hist['context'])
-            for hist in self.completion_history
-        ):
-            context += "\n[请生成不同于之前的新内容]"
-        
-        # 清理旧线程
-        if hasattr(self, 'suggestion_thread') and self.suggestion_thread and self.suggestion_thread.isRunning():
+            
+        # 使用新线程前终止旧线程
+        if self.suggestion_thread and self.suggestion_thread.isRunning():
             self.suggestion_thread.terminate()
             self.suggestion_thread.wait()
-        
-        # 创建新线程
-        self.suggestion_thread = SuggestionThread(self.ai_service, context)
-        self.suggestion_thread.suggestionReady.connect(self._handle_suggestion)
-        self.suggestion_thread.start()
+            
+        try:
+            self.suggestion_thread = SuggestionThread(self.ai_service, context)
+            self.suggestion_thread.suggestionReady.connect(self._handle_suggestion)
+            self.suggestion_thread.start()
+        except Exception as e:
+            print(f"创建建议线程失败: {str(e)}")
 
     def _get_context(self, cursor):
         """获取当前上下文"""
@@ -325,7 +321,7 @@ class SmartTextEdit(TextEdit):
         
         # 如果不是特殊键，重置建议计时器
         if event.key() not in (Qt.Key_Shift, Qt.Key_Control, Qt.Key_Alt, Qt.Key_Meta):
-            self.suggestion_timer.start(300)  # 0.3秒后触发建议
+            self.suggestion_timer.start()  # 使用已设置的延迟时间
         format = cursor.charFormat()
         format.setForeground(self.normal_color)
         cursor.mergeCharFormat(format)
@@ -408,4 +404,12 @@ class SmartTextEdit(TextEdit):
         similarity = 1 - (distance / max_length)
         
         return similarity > 0.8
+
+    def _update_timer_interval(self, seconds):
+        """
+        更新计时器延迟时间
+        @param seconds: 延迟秒数
+        """
+        milliseconds = int(seconds * 1000)  # 将秒转换为毫秒
+        self.suggestion_timer.setInterval(milliseconds)
 

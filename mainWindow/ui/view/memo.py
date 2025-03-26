@@ -135,25 +135,10 @@ class memoInterface(Ui_memo, QWidget):
             layout.setContentsMargins(30, 40, 30, 20)
             self.frame.setLayout(layout)
 
-        try:
-            print("正在启用Markdown实时编辑功能...")
-            # 创建Markdown实时编辑器
-            # self.textEdit = TextEdit(self)
-
-            # # 添加到布局
-            # layout.addWidget(self.textEdit)
-
-            print("已启用Markdown实时编辑功能")
-        except Exception as e:
-            import traceback
-
-            print(f"启用Markdown编辑功能失败: {str(e)}")
-            print(traceback.format_exc())
-
-            # 如果Markdown编辑器初始化失败，回退到普通编辑器
-            print("回退到标准编辑器...")
-            self.textEdit = SmartTextEdit(self)
-            layout.addWidget(self.textEdit)
+        # 创建智能文本编辑器并设置配置
+        self.textEdit = SmartTextEdit(self)
+        
+        layout.addWidget(self.textEdit)
 
         for i in range(layout.count()):
             if layout.itemAt(i).widget() == self.textEdit:
@@ -168,11 +153,14 @@ class memoInterface(Ui_memo, QWidget):
         self.textBrowser.setStyleSheet(
             "background-color: #F7F7F7; border: 1px solid #E0E0E0; border-radius: 5px;"
         )
-        self.textEdit.textChanged.connect(self.update_markdown_preview)
-        self.update_markdown_preview()
 
-        self.textEdit.textChanged.connect(self.update_word_count)  # 文本改变时更新字数
-        self.update_word_count()  # 初始化字数显示
+        # 连接信号
+        self.textEdit.textChanged.connect(self.update_markdown_preview)
+        self.textEdit.textChanged.connect(self.update_word_count)
+        
+        # 初始化显示
+        self.update_markdown_preview()
+        self.update_word_count()
 
     def toggle_markdown_preview(self):
         """切换Markdown预览模式"""
