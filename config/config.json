@@ -1,11 +1,12 @@
 {
     "MainWindow": {
         "APIKey": "111",
+        "CompletionTime": 4,
         "EnableAutoCompletion": true,
         "ExportDir": "D:/study/NIS3366/Smart-Memo-Manager"
     },
     "QFluentWidgets": {
         "ThemeColor": "#ff10abf9",
-        "ThemeMode": "Dark"
+        "ThemeMode": "Light"
     }
 }
