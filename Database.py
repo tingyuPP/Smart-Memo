@@ -164,6 +164,47 @@ class DatabaseManager:
         print("备忘录创建成功")
         return self.cursor.lastrowid
     
+    def get_memo_by_id(self, memo_id):
+        """
+        根据备忘录ID获取完整的备忘录信息
+        
+        参数:
+            memo_id: 备忘录ID
+            
+        返回:
+            dict: 包含备忘录完整信息的字典，解密后的数据
+            {
+                'id': 备忘录ID,
+                'user_id': 用户ID,
+                'created_time': 创建时间,
+                'modified_time': 修改时间,
+                'title': 解密后的标题,
+                'content': 解密后的内容,
+                'category': 类别
+            }
+            如果不存在返回None
+        """
+        try:
+            self.cursor.execute("SELECT * FROM memos WHERE id = ?", (memo_id,))
+            memo = self.cursor.fetchone()
+            
+            if not memo:
+                return None
+                
+            # 返回解密后的数据
+            return {
+                'id': memo[0],
+                'user_id': memo[1],
+                'created_time': memo[2],
+                'modified_time': memo[3],
+                'title': self.decrypt(memo[4]),
+                'content': self.decrypt(memo[5]),
+                'category': memo[6]
+            }
+        except Exception as e:
+            print(f"获取备忘录数据时出错: {str(e)}")
+            return None
+    
     def delete_memos_by_user(self, user_id):
         """删除用户的所有备忘录"""
         try:

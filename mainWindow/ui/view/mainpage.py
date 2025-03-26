@@ -92,7 +92,10 @@ class AppCard(CardWidget):
         # 文本区域
         self.titleLabel = SubtitleLabel(title, self)
         # 只在UI中显示截断内容，完整内容已存储在self.full_content中
-        truncated_content = content[:20] + "..." if len(content) > 20 else content
+        first_line = content.split("\n")[0] if content else ""  # 获取第一行
+        truncated_content = (
+            first_line[:20] + "..." if len(first_line) > 20 else first_line
+        )
         self.contentLabel = BodyLabel(truncated_content, self)
         self.contentLabel.setWordWrap(True)
 
@@ -189,8 +192,9 @@ class AppCard(CardWidget):
 
     def on_double_clicked(self):
         # 在这里编写双击 AppCard 后要执行的操作
-        print(f"AppCard 双击! Title: {self.titleLabel.text()}")
-        # 您可以在这里添加打开应用程序或执行其他操作的代码
+        print(f"AppCard 双击! ID: {self.memo_id}")
+
+        # 获取主窗口引用
         main_window = self.window()
 
         # 判断主窗口是否有switch_to_newmemo_interface方法
@@ -203,22 +207,75 @@ class AppCard(CardWidget):
                 # 设置memo_id，用于后续保存时更新而非创建新备忘录
                 main_window.memoInterface.memo_id = self.memo_id
 
-                # 填充标题
-                main_window.memoInterface.lineEdit.setText(self.titleLabel.text())
+                # 直接创建数据库连接
+                try:
+                    db = DatabaseManager()
 
-                # 填充内容 - 使用完整内容而非截断版本
-                main_window.memoInterface.textEdit.setText(self.full_content)
+                    if self.memo_id:
+                        # 查询备忘录的所有相关信息
+                        db.cursor.execute(
+                            "SELECT title, content, category FROM memos WHERE id = ?",
+                            (self.memo_id,),
+                        )
+                        result = db.cursor.fetchone()
 
-                # 设置分类信息（如果有）
-                if hasattr(self, "category") and self.category:
-                    main_window.memoInterface.lineEdit_2.setText(self.category)
+                        if result:
+                            # 找到记录，解密内容
+                            title = db.decrypt(result[0])
+                            content = db.decrypt(result[1])
+                            category = result[2]
+                            # print(
+                            #     f"获取备忘录数据: {title}, {content[:30]}..., {category}"
+                            # )
+
+                            # 填充标题
+                            main_window.memoInterface.lineEdit.setText(title)
+
+                            # 填充内容
+                            main_window.memoInterface.textEdit.setText(content)
+
+                            # 设置分类信息
+                            if category:
+                                main_window.memoInterface.lineEdit_2.setText(category)
+                        else:
+                            # 如果在数据库中找不到记录，使用卡片上存储的数据
+                            main_window.memoInterface.lineEdit.setText(
+                                self.titleLabel.text()
+                            )
+                            main_window.memoInterface.textEdit.setText(
+                                self.full_content
+                            )
+                            if hasattr(self, "category") and self.category:
+                                main_window.memoInterface.lineEdit_2.setText(
+                                    self.category
+                                )
+                    else:
+                        # 如果没有memo_id，使用卡片上存储的数据
+                        main_window.memoInterface.lineEdit.setText(
+                            self.titleLabel.text()
+                        )
+                        main_window.memoInterface.textEdit.setText(self.full_content)
+                        if hasattr(self, "category") and self.category:
+                            main_window.memoInterface.lineEdit_2.setText(self.category)
+
+                    # 关闭数据库连接
+                    db.close()
+
+                except Exception as e:
+                    print(f"获取备忘录数据时出错: {str(e)}")
+                    # 出错时使用卡片上存储的内容
+                    main_window.memoInterface.lineEdit.setText(self.titleLabel.text())
+                    main_window.memoInterface.textEdit.setText(self.full_content)
+                    if hasattr(self, "category") and self.category:
+                        main_window.memoInterface.lineEdit_2.setText(self.category)
 
                 # 更新字数统计
                 main_window.memoInterface.update_word_count()
 
+                # 显示成功提示
                 InfoBar.success(
                     title="备忘录已加载",
-                    content=f"正在编辑「{self.titleLabel.text()}」",
+                    content=f"正在编辑「{main_window.memoInterface.lineEdit.text()}」",
                     orient=Qt.Horizontal,
                     isClosable=True,
                     position=InfoBarPosition.TOP,
@@ -233,7 +290,6 @@ class AppCard(CardWidget):
     def share_to_qq(self):
         """创建QQ分享图片"""
         self._generate_share_image("QQ")
-
 
     def _generate_share_image(self, platform):
         """创建分享图片并显示"""
@@ -325,7 +381,9 @@ class AppCard(CardWidget):
             draw.rectangle([(0, 0), (width, 60)], fill=(0, 120, 212))
 
             # 绘制标题
-            draw.text((20, 15), f"【备忘录】{title}", fill=(255, 255, 255), font=title_font)
+            draw.text(
+                (20, 15), f"【备忘录】{title}", fill=(255, 255, 255), font=title_font
+            )
 
             # 修改: 改进绘制内容行逻辑，正确处理空行
             y_pos = 80
@@ -411,7 +469,6 @@ class AppCard(CardWidget):
                     Qt.Dialog  # 基本对话框
                     | Qt.WindowTitleHint  # 有标题栏
                     | Qt.WindowCloseButtonHint  # 有关闭按钮
-                    
                 )
 
                 dialog.setAttribute(Qt.WA_DeleteOnClose, True)  # 关闭时自动删除
