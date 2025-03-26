@@ -49,6 +49,10 @@ class MyInterface(ScrollArea):
             self.user_data = self.db.get_certain_user(username)
             self.user_id = self.user_data["id"]
             self.memo_count = self.db.get_memo_count(self.user_id)
+
+            if "register_time" not in self.user_data:
+                self.user_data["register_time"] = "default_time"
+                print("警告：用户数据中缺少注册时间字段")
         finally:
             if self.db:
                 self.db.close
@@ -772,7 +776,9 @@ class CloudCard(CardWidget):
                 # 创建一个带时间戳的备份文件名
                 timestamp = int(time.time())
                 user_id = self.user_id
-                backup_filename = f"memo_backup_{computer_id}_{user_id}_{timestamp}.json"
+                register_time = str(self.parent.user_data["register_time"])
+                register_time = register_time.replace(" ", "_").replace(":", "-")
+                backup_filename = f"memo_backup_{computer_id}_{user_id}_{register_time}_{timestamp}.json"
                 
                 # 将数据转换为JSON字符串
                 memo_json = json.dumps(memo_list, ensure_ascii=False, indent=2)
@@ -923,13 +929,25 @@ class CloudCard(CardWidget):
                     parts = filename.split('_')
                     
                     # 确保文件名格式正确: memo_backup_{computer_id}_{user_id}_{timestamp}.json
-                    if len(parts) >= 5 and parts[0] == "memo" and parts[1] == "backup":
+                    if len(parts) >= 6 and parts[0] == "memo" and parts[1] == "backup":
                         file_computer_id = parts[2]
                         file_user_id = parts[3]
                         
-                        # 检查是否是当前用户的备份
-                        if str(file_user_id) == str(user_id):
-                            timestamp = int(parts[4].split('.')[0])  # 去掉.json后缀
+                        # 获取文件名的末尾部分（时间戳.json）
+                        timestamp_part = parts[-1]
+                        
+                        # 获取注册时间（可能包含多个下划线，所以需要特别处理）
+                        # 我们假设timestamp_part是最后一个元素，其前面的所有部分（除了前4个）都是注册时间的一部分
+                        register_time_parts = parts[4:-1]
+                        file_register_time = "_".join(register_time_parts)
+                        
+                        # 处理当前用户的注册时间为相同的格式
+                        current_register_time = str(self.parent.user_data.get("register_time", "unknown"))
+                        current_register_time = current_register_time.replace(" ", "_").replace(":", "-").replace("/", "-")
+                        
+                        # 检查是否是当前用户的备份（基于ID和注册时间）
+                        if str(file_user_id) == str(user_id) and file_register_time == current_register_time:
+                            timestamp = int(timestamp_part.split('.')[0])  # 去掉.json后缀
                             backup_info = {
                                 'key': object_key,
                                 'timestamp': timestamp,
