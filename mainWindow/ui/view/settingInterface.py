@@ -34,6 +34,7 @@ from qfluentwidgets import (
     ToolTipFilter,
     ToolTipPosition,
     SwitchSettingCard,
+    RangeSettingCard,
 )
 from config import cfg
 
@@ -105,6 +106,15 @@ class SettingInterface(ScrollArea):
         self.completionCard.setSizePolicy(
             QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         )
+        self.completionTimeCard = RangeSettingCard(
+            configItem=cfg.completionTime,
+            icon=FluentIcon.STOP_WATCH,
+            title="自动补全延迟",
+            content="光标停留后多少秒开始自动补全",
+        )
+        self.completionTimeCard.setSizePolicy(
+            QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        )
 
         # 关于相关
         self.aboutGroup = SettingCardGroup(self.tr("关于"), self.scrollWidget)
@@ -134,6 +144,7 @@ class SettingInterface(ScrollArea):
         self.customizationGroup.addSettingCard(self.directoryCard)
         self.customizationGroup.addSettingCard(self.apiCard)
         self.customizationGroup.addSettingCard(self.completionCard)
+        self.customizationGroup.addSettingCard(self.completionTimeCard)
         self.aboutGroup.addSettingCard(self.helpCard)
         self.aboutGroup.addSettingCard(self.aboutCard)
         self.vBoxLayout.addWidget(self.label, 0, Qt.AlignLeft | Qt.AlignTop)

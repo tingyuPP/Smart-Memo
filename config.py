@@ -8,6 +8,8 @@ from qfluentwidgets import (
     qconfig,
     ConfigItem,
     FolderValidator,
+    RangeValidator,
+    RangeConfigItem,
 )
 import os
 
@@ -21,6 +23,9 @@ class MyConfig(QConfig):
     apiKey = ConfigItem("MainWindow", "APIKey", "", restart=False)
     enableAutoCompletion = ConfigItem(
         "MainWindow", "EnableAutoCompletion", True, validator=BoolValidator(),restart=False
+    )
+    completionTime = RangeConfigItem(
+        "MainWindow", "CompletionTime", 1, validator=RangeValidator(1, 10), restart=False
     )
 
 
