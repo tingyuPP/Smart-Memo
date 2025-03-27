@@ -1289,6 +1289,7 @@ class mainInterface(Ui_mainwindow, QWidget):
 
         # 创建 QVBoxLayout
         self.cardLayout = QVBoxLayout()
+        self.cardLayout.setAlignment(Qt.AlignTop)
 
         self.scrollAreaWidgetContents.setLayout(
             self.cardLayout
@@ -1299,7 +1300,7 @@ class mainInterface(Ui_mainwindow, QWidget):
         )
 
         self.scrollAreaWidgetContents.setStyleSheet("QWidget{background: transparent}")
-        
+
         # 连接搜索框信号
         self.lineEdit.searchSignal.connect(self.search_memos)
         self.lineEdit.textChanged.connect(self.on_search_text_changed)
@@ -1448,7 +1449,7 @@ class mainInterface(Ui_mainwindow, QWidget):
             # 如果搜索文本为空，显示所有备忘录
             self.update_memo_list()
             return
-        
+
         # 显示搜索中提示
         InfoBar.info(
             title="正在搜索",
@@ -1459,17 +1460,17 @@ class mainInterface(Ui_mainwindow, QWidget):
             duration=1000,
             parent=self,
         )
-        
+
         # 清空现有布局
         for i in reversed(range(self.cardLayout.count())):
             widget = self.cardLayout.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()
-        
+
         # 从数据库获取所有备忘录
         all_memos = self.db.get_memos(user_id=self.user_id)
         found_count = 0
-        
+
         # 筛选出标题包含搜索文本的备忘录
         for memo in all_memos:
             memo_id = memo[0]
@@ -1479,7 +1480,7 @@ class mainInterface(Ui_mainwindow, QWidget):
             title = self.db.decrypt(memo[4])  # 解密标题
             content = self.db.decrypt(memo[5])  # 解密内容
             category = memo[6]
-            
+
             # 检查标题是否包含搜索文本（不区分大小写）
             if text.lower() in title.lower():
                 # 创建并添加卡片
@@ -1494,7 +1495,7 @@ class mainInterface(Ui_mainwindow, QWidget):
                     )
                 )
                 found_count += 1
-        
+
         # 显示搜索结果信息
         if found_count > 0:
             InfoBar.success(
