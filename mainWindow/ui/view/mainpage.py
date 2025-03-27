@@ -1299,6 +1299,10 @@ class mainInterface(Ui_mainwindow, QWidget):
         )
 
         self.scrollAreaWidgetContents.setStyleSheet("QWidget{background: transparent}")
+        
+        # 连接搜索框信号
+        self.lineEdit.searchSignal.connect(self.search_memos)
+        self.lineEdit.textChanged.connect(self.on_search_text_changed)
 
         # 初始化数据库连接
         self.db = DatabaseManager()
@@ -1438,6 +1442,85 @@ class mainInterface(Ui_mainwindow, QWidget):
             parent=self,
         )
 
+    def search_memos(self, text):
+        """根据输入文本搜索备忘录"""
+        if not text.strip():
+            # 如果搜索文本为空，显示所有备忘录
+            self.update_memo_list()
+            return
+        
+        # 显示搜索中提示
+        InfoBar.info(
+            title="正在搜索",
+            content=f"正在搜索包含 \"{text}\" 的备忘录...",
+            orient=Qt.Horizontal,
+            isClosable=True,
+            position=InfoBarPosition.TOP,
+            duration=1000,
+            parent=self,
+        )
+        
+        # 清空现有布局
+        for i in reversed(range(self.cardLayout.count())):
+            widget = self.cardLayout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+        
+        # 从数据库获取所有备忘录
+        all_memos = self.db.get_memos(user_id=self.user_id)
+        found_count = 0
+        
+        # 筛选出标题包含搜索文本的备忘录
+        for memo in all_memos:
+            memo_id = memo[0]
+            user_id = memo[1]
+            created_time = memo[2]
+            modified_time = memo[3]
+            title = self.db.decrypt(memo[4])  # 解密标题
+            content = self.db.decrypt(memo[5])  # 解密内容
+            category = memo[6]
+            
+            # 检查标题是否包含搜索文本（不区分大小写）
+            if text.lower() in title.lower():
+                # 创建并添加卡片
+                self.cardLayout.addWidget(
+                    AppCard(
+                        title,
+                        content,
+                        memo_id=memo_id,
+                        modified_time=modified_time,
+                        category=category,
+                        timer=None,
+                    )
+                )
+                found_count += 1
+        
+        # 显示搜索结果信息
+        if found_count > 0:
+            InfoBar.success(
+                title="搜索完成",
+                content=f"找到 {found_count} 条包含 \"{text}\" 的备忘录",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=2000,
+                parent=self,
+            )
+        else:
+            InfoBar.warning(
+                title="未找到结果",
+                content=f"没有找到包含 \"{text}\" 的备忘录",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=2000,
+                parent=self,
+            )
+
+    def on_search_text_changed(self, text):
+        """当搜索框文本变化时，如果文本为空则恢复显示所有备忘录"""
+        if not text.strip():
+            self.update_memo_list()
 
 if __name__ == "__main__":
     import sys
