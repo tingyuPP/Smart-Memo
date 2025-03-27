@@ -80,11 +80,24 @@ class DatabaseManager:
         END;
         """
 
+        # 创建用户标签表
+        create_tag_table = """
+        CREATE TABLE IF NOT EXISTS tags (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            tag_name TEXT NOT NULL,
+            created_time DATETIME DEFAULT (datetime('now', 'localtime')),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE(user_id, tag_name)  -- 确保每个用户的标签不重复
+        );
+        """
+
         # 执行SQL语句
         self.cursor.execute(create_user_table)
         self.cursor.execute(create_memo_table)
         self.cursor.execute(create_trigger)
         self.cursor.execute(create_todo_table)
+        self.cursor.execute(create_tag_table)  # 添加这一行
 
         # 提交更改
         self.conn.commit()
@@ -555,6 +568,92 @@ class DatabaseManager:
 
         memos = self.cursor.fetchall()
         return memos
+    
+    def get_user_tags(self, user_id):
+        """
+        获取用户的所有标签
+        
+        参数:
+            user_id: 用户ID
+            
+        返回:
+            list: 包含标签信息的字典列表，每个字典包含:
+                {
+                    'id': 标签ID,
+                    'tag_name': 标签名称,
+                    'created_time': 创建时间
+                }
+        """
+        try:
+            self.cursor.execute(
+                """SELECT id, tag_name, created_time 
+                FROM tags 
+                WHERE user_id = ? 
+                ORDER BY created_time DESC""", 
+                (user_id,)
+            )
+            
+            tags = self.cursor.fetchall()
+            result = []
+            
+            for tag in tags:
+                tag_dict = {
+                    'id': tag[0],
+                    'tag_name': tag[1],
+                    'created_time': tag[2]
+                }
+                result.append(tag_dict)
+                
+            return result
+        except sqlite3.Error as e:
+            print(f"获取用户标签失败: {e}")
+            return []
+        
+    def add_tag(self, user_id, tag_name):
+        """
+        为用户添加一个新标签
+        
+        参数:
+            user_id: 用户ID
+            tag_name: 标签名称
+            
+        返回:
+            bool: 添加成功返回True，失败返回False
+            int: 如果成功，返回新标签的ID；如果失败，返回None
+        """
+        try:
+            # 标签名称标准化处理：去除首尾空格，转为小写
+            tag_name = tag_name.strip()
+            
+            if not tag_name:
+                print("标签名称不能为空")
+                return False, None
+                
+            # 检查标签是否已存在
+            self.cursor.execute(
+                "SELECT id FROM tags WHERE user_id = ? AND tag_name = ?",
+                (user_id, tag_name)
+            )
+            
+            existing_tag = self.cursor.fetchone()
+            if existing_tag:
+                print(f"标签 '{tag_name}' 已存在")
+                return True, existing_tag[0]  # 返回现有标签的ID
+                
+            # 添加新标签
+            self.cursor.execute(
+                "INSERT INTO tags (user_id, tag_name) VALUES (?, ?)",
+                (user_id, tag_name)
+            )
+            
+            self.conn.commit()
+            new_tag_id = self.cursor.lastrowid
+            print(f"标签 '{tag_name}' 创建成功")
+            return True, new_tag_id
+            
+        except sqlite3.Error as e:
+            print(f"添加标签失败: {e}")
+            return False, None
 
     def account_login(self, username, password):
         """用户登录，返回用户信息字典或None"""
@@ -711,95 +810,3 @@ class DatabaseManager:
         if self.conn:
             self.conn.close()
 
-
-# 使用测试
-if __name__ == "__main__":
-    import time
-    import os
-
-    # 删除旧的测试数据库
-    db_name = "smart_memo.db"
-    if os.path.exists(db_name):
-        os.remove(db_name)
-        print(f"已删除旧的测试数据库 {db_name}")
-
-    # 创建全新的测试数据库
-    db = DatabaseManager(db_name)
-
-    try:
-        # 创建测试用户
-        success = db.create_user("test_user", "secure_password")
-        if not success:
-            print("创建用户失败！")
-            exit(1)
-
-        # 创建测试备忘录
-        memo_id = db.create_memo(1, "购物清单", "1. 牛奶\n2. 鸡蛋", "个人")
-        print(f"创建的备忘录ID: {memo_id}")
-
-        # 查询初始数据
-        memos = db.get_memos(user_id=1)
-        if not memos:
-            print("没有找到备忘录！")
-            exit(1)
-
-        memo = memos[0]
-
-        print("\n创建后的备忘录数据：")
-        print(
-            f"""
-        ID: {memo[0]}
-        用户ID: {memo[1]}
-        创建时间: {memo[2]}
-        修改时间: {memo[3]}
-        标题: {db.decrypt(memo[4])}
-        内容: {db.decrypt(memo[5])}
-        类别: {memo[6]}
-        """
-        )
-
-        # 保存原始修改时间以便后续比较
-        original_modified_time = memo[3]
-
-        # 等待一段时间
-        print("等待2秒后修改备忘录...")
-        time.sleep(2)
-
-        # 修改备忘录并检查是否成功
-        success = db.update_memo(memo_id, content="1. 牛奶\n2. 鸡蛋\n3. 面包")
-        if not success:
-            print(f"修改备忘录 ID {memo_id} 失败！")
-
-        # 查询更新后的数据
-        memos = db.get_memos(user_id=1)
-        if not memos:
-            print("无法获取更新后的备忘录！")
-            exit(1)
-
-        updated_memo = memos[0]
-
-        print("\n修改后的备忘录数据：")
-        print(
-            f"""
-        ID: {updated_memo[0]}
-        用户ID: {updated_memo[1]}
-        创建时间: {updated_memo[2]}
-        修改时间: {updated_memo[3]} 
-        标题: {db.decrypt(updated_memo[4])}
-        内容: {db.decrypt(updated_memo[5])}
-        类别: {updated_memo[6]}
-        """
-        )
-
-        # 验证修改时间是否有变化
-        if original_modified_time != updated_memo[3]:
-            print("\n✅ 成功：修改时间已更新!")
-        else:
-            print("\n❌ 失败：修改时间未更新!")
-
-        print(f"原始修改时间: {original_modified_time}")
-        print(f"更新后修改时间: {updated_memo[3]}")
-
-    finally:
-        # 关闭连接
-        db.close()
