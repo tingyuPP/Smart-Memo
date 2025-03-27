@@ -1,12 +1,12 @@
 import os
 from PyQt5.QtCore import QObject, pyqtSignal, QThread
+from config import cfg  # 导入配置
 
 class AIService(QObject):
-    # 定义信号，用于通知 UI 线程 AI 处理结果
     resultReady = pyqtSignal(str)
     errorOccurred = pyqtSignal(str)
     
-    # 定义 AI 模式配置
+    # 定义 AI 模式配置（保持不变）
     AI_MODES = {
         "润色": {
             "display_name": "润色笔记",
@@ -42,20 +42,34 @@ class AIService(QObject):
     
     def __init__(self, parent=None):
         super().__init__(parent)
-        # 从环境变量获取 API 密钥
-        self.api_key = os.environ.get("DEEPSEEK_API_KEY", "sk-a4b80e93111b4425bf0a42ffd4e58b43")
+        # 优先使用配置中的 API 密钥，如果没有则尝试从环境变量获取
+        self.api_key = cfg.get(cfg.apiKey) or os.environ.get("DEEPSEEK_API_KEY", "")
         self.client = None
+        self._init_client()
 
-        # 如果有 API 密钥，初始化 OpenAI 客户端
+    def _init_client(self):
+        """初始化 OpenAI 客户端"""
         if self.api_key:
             try:
                 from openai import OpenAI
-
+                
+                # 根据模型选择设置不同的 base_url
+                base_url = self._get_base_url(cfg.get(cfg.aiModel))
+                
                 self.client = OpenAI(
-                    api_key=self.api_key, base_url="https://api.deepseek.com"
+                    api_key=self.api_key,
+                    base_url=base_url
                 )
             except ImportError:
                 print("请先安装 OpenAI SDK: pip install openai")
+
+    def _get_base_url(self, model):
+        """根据模型返回对应的 API 基础 URL"""
+        if model.startswith("deepseek"):
+            return "https://api.deepseek.com"
+        elif model.startswith("gpt"):
+            return "https://api.openai.com/v1"
+        return "https://api.deepseek.com"  # 默认使用 DeepSeek
 
     def generate_content(self, prompt, mode="generate", aux_prompt=""):
         """
@@ -114,18 +128,19 @@ class AIService(QObject):
             self.errorOccurred.emit(error_msg)
             return error_msg
 
-    def _call_deepseek_api(
-        self, prompt, system_prompt="你是一个有用的助手，擅长文字创作和润色。"
-    ):
-        """使用 OpenAI SDK 调用 DeepSeek API"""
+    def _call_deepseek_api(self, prompt, system_prompt="你是一个有用的助手，擅长文字创作和润色。"):
+        """调用 AI API"""
         try:
             messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ]
 
+            # 使用配置中选择的模型
+            model = cfg.get(cfg.aiModel)
+            
             response = self.client.chat.completions.create(
-                model="deepseek-chat",
+                model=model,  # 使用选择的模型
                 messages=messages,
                 temperature=0.7,
                 max_tokens=1000,
@@ -138,20 +153,22 @@ class AIService(QObject):
             raise Exception(f"API 调用出错: {str(e)}")
 
     def _call_deepseek_api_stream(self, prompt, system_prompt="你是一个有用的助手，擅长文字创作和润色。"):
-        """使用流式响应调用 DeepSeek API"""
+        """使用流式响应调用 AI API"""
         try:
             messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
             ]
             
-            # 创建流式响应
+            # 使用配置中选择的模型
+            model = cfg.get(cfg.aiModel)
+            
             stream = self.client.chat.completions.create(
-                model="deepseek-chat",
+                model=model,  # 使用选择的模型
                 messages=messages,
                 temperature=0.7,
                 max_tokens=1000,
-                stream=True  # 启用流式响应
+                stream=True
             )
             
             return stream

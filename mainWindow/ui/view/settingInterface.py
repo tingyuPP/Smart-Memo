@@ -35,8 +35,13 @@ from qfluentwidgets import (
     ToolTipPosition,
     SwitchSettingCard,
     RangeSettingCard,
+    ComboBox,
+    InfoBar,
+    InfoBarPosition,
+    PasswordLineEdit
 )
 from config import cfg
+import os
 
 
 class SettingInterface(ScrollArea):
@@ -93,10 +98,10 @@ class SettingInterface(ScrollArea):
             QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         )
         self.directoryCard.clicked.connect(self.open_file_dialog)
-        self.apiCard = ApiCard()
-        self.apiCard.setSizePolicy(
-            QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        )
+        
+        # 使用新的 AISettingCard 替换原来的 ModelCard 和 ApiCard
+        self.aiSettingCard = AISettingCard()
+        
         self.completionCard = SwitchSettingCard(
             icon=FIF.PENCIL_INK,
             title="启用自动补全",
@@ -142,7 +147,7 @@ class SettingInterface(ScrollArea):
         self.visualGroup.addSettingCard(self.backgroundCard)
         self.visualGroup.addSettingCard(self.colorCard)
         self.customizationGroup.addSettingCard(self.directoryCard)
-        self.customizationGroup.addSettingCard(self.apiCard)
+        self.customizationGroup.addSettingCard(self.aiSettingCard)  # 添加新的卡片
         self.customizationGroup.addSettingCard(self.completionCard)
         self.customizationGroup.addSettingCard(self.completionTimeCard)
         self.aboutGroup.addSettingCard(self.helpCard)
@@ -224,32 +229,80 @@ class ColorCard(ExpandGroupSettingCard):
         w.exec()
 
 
-class ApiCard(SettingCard):
+class AISettingCard(ExpandGroupSettingCard):
     def __init__(self, parent=None):
         super().__init__(
             FluentIcon.ROBOT,
-            "API配置",
-            "在这里设置你自己的大模型API（目前仅支持Deepseek）",
-            parent,
+            "AI 设置",
+            "配置 AI 模型和 API 密钥",
+            parent
         )
-        self.api_key = cfg.get(cfg.apiKey)
-        self.apiButton = TransparentToolButton(FIF.EDIT)
-        self.apiButton.setToolTip("确认修改")
-        self.apiButton.installEventFilter(
-            ToolTipFilter(self.apiButton, showDelay=300, position=ToolTipPosition.TOP)
-        )
-        self.apiEdit = LineEdit()
-        self.apiEdit.setPlaceholderText("请输入API密钥")
-        self.apiEdit.setText(self.api_key)
-        self.apiEdit.setClearButtonEnabled(True)
-        self.apiEdit.setFixedWidth(200)
-        self.hBoxLayout.addWidget(self.apiEdit)
-        self.hBoxLayout.addSpacing(10)
-        self.hBoxLayout.addWidget(self.apiButton)
-        self.hBoxLayout.setContentsMargins(16, 12, 16, 12)
-        self.hBoxLayout.setSpacing(0)
-        self.apiButton.clicked.connect(self.set_api_key)
+        
+        # 模型选择
+        self.modelLabel = BodyLabel("选择模型")
+        self.modelComboBox = ComboBox()
+        self.modelComboBox.addItems([
+            "DeepSeek Chat (推荐)",
+            "DeepSeek Coder",
+            "GPT-3.5 Turbo",
+            "GPT-4"
+        ])
+        self.modelComboBox.setCurrentText(self._get_model_display_name(cfg.get(cfg.aiModel)))
+        self.modelComboBox.setFixedWidth(200)
+        self.modelComboBox.currentTextChanged.connect(self._on_model_changed)
+        
+        # API 密钥
+        self.apiLabel = BodyLabel("API 密钥")
+        self.apiKeyEdit = PasswordLineEdit()
+        self.apiKeyEdit.setClearButtonEnabled(True)
+        self.apiKeyEdit.setFixedWidth(200)
+        self.apiKeyEdit.setText(cfg.get(cfg.apiKey))
+        self.apiKeyEdit.textChanged.connect(self._on_api_key_changed)
 
-    def set_api_key(self):
-        api_key = self.apiEdit.text()
-        cfg.set(cfg.apiKey, api_key)
+        # 调整内部布局
+        self.viewLayout.setContentsMargins(0, 0, 0, 0)
+        self.viewLayout.setSpacing(0)
+
+        # 添加到设置卡中
+        self.add(self.modelLabel, self.modelComboBox)
+        self.add(self.apiLabel, self.apiKeyEdit)
+
+    def add(self, label, widget):
+        w = QWidget()
+        w.setFixedHeight(60)
+        layout = QHBoxLayout(w)
+        layout.setContentsMargins(48, 12, 48, 12)
+        layout.addWidget(label)
+        layout.addStretch(1)
+        layout.addWidget(widget)
+        self.addGroupWidget(w)
+
+    def _get_model_display_name(self, model_id):
+        """将模型ID转换为显示名称"""
+        model_names = {
+            "deepseek-chat": "DeepSeek Chat (推荐)",
+            "deepseek-coder": "DeepSeek Coder",
+            "gpt-3.5-turbo": "GPT-3.5 Turbo",
+            "gpt-4": "GPT-4"
+        }
+        return model_names.get(model_id, model_id)
+    
+    def _get_model_id(self, display_name):
+        """将显示名称转换为模型ID"""
+        model_ids = {
+            "DeepSeek Chat (推荐)": "deepseek-chat",
+            "DeepSeek Coder": "deepseek-coder",
+            "GPT-3.5 Turbo": "gpt-3.5-turbo",
+            "GPT-4": "gpt-4"
+        }
+        return model_ids.get(display_name, display_name)
+    
+    def _on_model_changed(self, text):
+        """当选择改变时更新配置"""
+        model_id = self._get_model_id(text)
+        cfg.set(cfg.aiModel, model_id)
+
+    def _on_api_key_changed(self, text):
+        """当 API 密钥改变时保存配置"""
+        cfg.set(cfg.apiKey, text.strip())
+        os.environ["DEEPSEEK_API_KEY"] = text.strip()

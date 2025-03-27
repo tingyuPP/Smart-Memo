@@ -20,12 +20,29 @@ class MyConfig(QConfig):
     exportDir = ConfigItem(
         "MainWindow", "ExportDir", "", validator=FolderValidator(), restart=False
     )
-    apiKey = ConfigItem("MainWindow", "APIKey", "", restart=False)
+    apiKey = ConfigItem(
+        "MainWindow",
+        "APIKey",
+        "",
+        restart=False
+    )
     enableAutoCompletion = ConfigItem(
         "MainWindow", "EnableAutoCompletion", True, validator=BoolValidator(),restart=False
     )
     completionTime = RangeConfigItem(
         "MainWindow", "CompletionTime", 1, validator=RangeValidator(1, 10), restart=False
+    )
+    aiModel = OptionsConfigItem(
+        "MainWindow",
+        "AIModel",
+        "deepseek-chat",
+        OptionsValidator([
+            "deepseek-chat",
+            "deepseek-coder",
+            "gpt-3.5-turbo",
+            "gpt-4"
+        ]),
+        restart=False
     )
 
 
