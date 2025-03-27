@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import (
     QGraphicsOpacityEffect,
     QTextEdit,
 )
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QColor
 from qfluentwidgets import (
     FluentIcon,
     PrimaryPushButton,
@@ -31,8 +31,11 @@ from qfluentwidgets import (
     MessageBox,
     CheckBox,
     isDarkTheme,
+    FluentStyleSheet,
+    TextEdit,
 )
 from Database import DatabaseManager
+from datetime import datetime
 
 
 class TodoInterface(ScrollArea):
@@ -44,7 +47,7 @@ class TodoInterface(ScrollArea):
 
         # 设置透明背景
         self.setAttribute(Qt.WA_StyledBackground)
-        self.setStyleSheet("background: transparent;")
+        self.setStyleSheet("background: transparent; border: none;")
         self.setFrameShape(ScrollArea.NoFrame)
 
         # 创建主布局
@@ -76,12 +79,27 @@ class TodoInterface(ScrollArea):
         self.toolbarLayout = QHBoxLayout(self.toolbar)
         self.toolbarLayout.setContentsMargins(20, 0, 20, 0)
 
-        # 标题
-        self.titleLabel = BodyLabel("待办事项", self)
+        # 创建垂直布局来放置标题和日期
+        title_layout = QVBoxLayout()
+        title_layout.setSpacing(0)
+
+        # 主标题 - "我的一天"
+        self.titleLabel = BodyLabel("我的一天", self)
         font = self.titleLabel.font()
-        font.setPointSize(12)
+        font.setPointSize(14)
         font.setBold(True)
         self.titleLabel.setFont(font)
+
+        # 日期标签
+        now = datetime.now()
+        weekdays = ["一", "二", "三", "四", "五", "六", "日"]
+        date_str = f"{now.month}月{now.day}日，星期{weekdays[now.weekday()]}"
+        self.dateLabel = BodyLabel(date_str, self)
+        self.dateLabel.setProperty("secondary", True)  # 使用次要文本颜色
+
+        # 添加到垂直布局
+        title_layout.addWidget(self.titleLabel)
+        title_layout.addWidget(self.dateLabel)
 
         # 新建按钮
         self.addBtn = PrimaryPushButton("新建待办", self)
@@ -89,7 +107,7 @@ class TodoInterface(ScrollArea):
         self.addBtn.setFixedWidth(120)
         self.addBtn.clicked.connect(self._show_slide_panel)
 
-        self.toolbarLayout.addWidget(self.titleLabel)
+        self.toolbarLayout.addLayout(title_layout)
         self.toolbarLayout.addStretch()
         self.toolbarLayout.addWidget(self.addBtn)
 
@@ -107,22 +125,36 @@ class TodoInterface(ScrollArea):
 
     def _setup_slide_panel(self):
         """新建待办的滑动面板"""
-        # 半透明遮罩
-        self.maskWidget = QWidget(self.scrollWidget)
+        # 半透明遮罩 - 使用固定透明度，不会影响其他元素
+        # self.maskWidget = QWidget(self.scrollWidget)
+        self.maskWidget = QWidget(self)
         self.maskWidget.setFixedSize(self.size())
         self.maskWidget.setStyleSheet("background-color: rgba(0, 0, 0, 0.5);")
         self.maskWidget.hide()
 
         # 滑动面板
-        self.slidePanel = CardWidget(self.scrollWidget)
+        # self.slidePanel = CardWidget(self.scrollWidget)
+        self.slidePanel = QWidget(self)
         self.slidePanel.setObjectName("SlidePanel")
         self.slidePanel.setAttribute(Qt.WA_StyledBackground)
+        # 确保滑动面板使用主题样式
+        self.slidePanel.setAutoFillBackground(True)
         self.slidePanel.setFixedWidth(self.width())
         self.slidePanel.setMinimumHeight(400)
+        # self.slidePanel.setProperty("hoverEnabled", False)
 
         # 设置圆角属性
         self.slidePanel.setProperty("rounded", True)
         self.slidePanel.setProperty("roundedRadius", 12)
+
+        self.slidePanel.setStyleSheet("""
+        #SlidePanel {
+            background-color: palette(window);
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+            border: 1px solid palette(mid);
+        }
+    """)
 
         # 初始位置在屏幕下方
         self.slidePanel.move(0, self.height())
@@ -134,7 +166,7 @@ class TodoInterface(ScrollArea):
 
         # 标题
         headerLayout = QHBoxLayout()
-        self.panelTitle = BodyLabel("新建待办", self)
+        self.panelTitle = BodyLabel("新建待办", self.slidePanel)
         font = self.panelTitle.font()
         font.setPointSize(12)
         font.setBold(True)
@@ -148,7 +180,7 @@ class TodoInterface(ScrollArea):
         self._setup_input_form(panelLayout)
 
         # 提交按钮
-        self.submitBtn = PrimaryPushButton("创建待办", self)
+        self.submitBtn = PrimaryPushButton("创建待办", self.slidePanel)
         self.submitBtn.setFixedHeight(45)
         self.submitBtn.clicked.connect(self._add_todo)
         panelLayout.addWidget(self.submitBtn)
@@ -162,13 +194,13 @@ class TodoInterface(ScrollArea):
         # 遮罩点击事件
         self.maskWidget.mousePressEvent = lambda e: self._hide_slide_panel()
 
+        # 确保遮罩层可接收鼠标事件
         self.maskWidget.setAttribute(Qt.WA_TransparentForMouseEvents, False)
         self.maskWidget.installEventFilter(self)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.slidePanel.setMaximumHeight(int(self.height() * 0.8))
 
     def _on_animation_finished(self):
-        """动画完成后的处理（新增方法）"""
+        """动画完成后的处理"""
         if self.animation.direction() == QPropertyAnimation.Backward:
             # 隐藏动画完成后
             self.slidePanel.hide()
@@ -179,9 +211,9 @@ class TodoInterface(ScrollArea):
     def _setup_input_form(self, layout):
         """设置输入表单"""
         # 任务输入
-        self.taskInput = QTextEdit()
+        self.taskInput = TextEdit(self.slidePanel)
         self.taskInput.setPlaceholderText("输入待办事项内容...")
-        self.taskInput.setFixedHeight(260)  # 设置固定高度
+        self.taskInput.setFixedHeight(260)
 
         # 设置边框属性
         self.taskInput.setProperty("borderVisible", True)
@@ -191,14 +223,14 @@ class TodoInterface(ScrollArea):
         h_layout.setSpacing(20)
 
         # 分类选择
-        category_label = BodyLabel("分类:")
-        self.categoryCombo = ComboBox()
+        category_label = BodyLabel("分类:", self.slidePanel)
+        self.categoryCombo = ComboBox(self.slidePanel)
         self.categoryCombo.addItems(["工作", "学习", "生活", "其他"])
         self.categoryCombo.setFixedWidth(150)
 
         # 截止时间
-        deadline_label = BodyLabel("截止时间:")
-        self.deadlineEdit = DateTimeEdit()
+        deadline_label = BodyLabel("截止时间:", self.slidePanel)
+        self.deadlineEdit = DateTimeEdit(self.slidePanel)
         self.deadlineEdit.setDisplayFormat("yyyy-MM-dd HH:mm")
         self.deadlineEdit.setDateTime(QDateTime.currentDateTime().addDays(1))
         self.deadlineEdit.setFixedWidth(220)
@@ -211,17 +243,16 @@ class TodoInterface(ScrollArea):
         h_layout.addStretch()
 
         # 将控件添加到主布局
-        layout.addWidget(BodyLabel("待办内容:"))
-        layout.addWidget(self.taskInput, stretch=1)  # 设置拉伸因子
+        layout.addWidget(BodyLabel("待办内容:", self.slidePanel))
+        layout.addWidget(self.taskInput, stretch=1)
         layout.addLayout(h_layout)
 
     def _show_slide_panel(self):
         """显示滑动面板"""
-
+        # 暂时禁用滚动条
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.viewport().installEventFilter(self)
-        self.setFocus(Qt.MouseFocusReason)
 
         panel_height = min(int(self.height() * 0.8), 600)
         self.slidePanel.setFixedHeight(panel_height)
@@ -230,22 +261,25 @@ class TodoInterface(ScrollArea):
         self.slidePanel.setFixedWidth(self.width())
         self.maskWidget.setFixedSize(self.size())
 
-        # 强制重置位置
+        # 滑动面板初始位置
         self.slidePanel.move(0, self.height())
-        self.slidePanel.show()
-        self.maskWidget.show()
+
+        # 确保在显示前设置正确的样式
+        self.slidePanel.update()
 
         # 设置动画
         self.animation.setDirection(QPropertyAnimation.Forward)
         self.animation.setStartValue(QPoint(0, self.height()))
         self.animation.setEndValue(QPoint(0, self.height() - self.slidePanel.height()))
-        self.animation.start()
 
-        # 显示遮罩
+        # 显示遮罩和面板
         self.maskWidget.show()
         self.maskWidget.raise_()
         self.slidePanel.show()
         self.slidePanel.raise_()
+
+        # 开始动画
+        self.animation.start()
 
         # 清空表单
         self.taskInput.clear()
@@ -254,7 +288,7 @@ class TodoInterface(ScrollArea):
 
     def _hide_slide_panel(self):
         """隐藏滑动面板"""
-
+        # 恢复滚动条
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.viewport().removeEventFilter(self)
@@ -263,13 +297,15 @@ class TodoInterface(ScrollArea):
         self.animation.setDirection(QPropertyAnimation.Backward)
         self.animation.start()
 
+        # 确保动画完成后断开连接
+        try:
+            self.animation.finished.disconnect()
+        except:
+            pass
+
         # 动画结束后隐藏
         self.animation.finished.connect(
-            lambda: (
-                self.slidePanel.hide(),
-                self.maskWidget.hide(),
-                self.animation.disconnect(),
-            )
+            lambda: (self.slidePanel.hide(), self.maskWidget.hide())
         )
 
     def eventFilter(self, obj, event):
@@ -287,7 +323,6 @@ class TodoInterface(ScrollArea):
         """窗口大小改变时调整面板位置"""
         super().resizeEvent(event)
         self.maskWidget.setFixedSize(self.size())
-
         self.slidePanel.setFixedWidth(self.width())
 
         if self.slidePanel.isVisible():
@@ -319,6 +354,7 @@ class TodoInterface(ScrollArea):
         except Exception as e:
             InfoBar.error("错误", f"添加失败: {str(e)}", parent=self)
 
+
     def _create_todo_card(self, todo_id, task, deadline, category, is_done):
         """创建单个待办卡片"""
         card = CardWidget()
@@ -326,24 +362,24 @@ class TodoInterface(ScrollArea):
         card.setFixedHeight(100)
         layout = QVBoxLayout(card)
 
-        # 顶部行（复选框+任务+删除按钮）
+        # 顶部行（任务+删除按钮）
         top_layout = QHBoxLayout()
 
-        # 任务复选框
-        self.checkbox = CheckBox(task)
-        self.checkbox.setChecked(is_done)
-        self.checkbox.stateChanged.connect(
-            lambda state: self._update_todo_status(todo_id, state == Qt.Checked)
-        )
+        # 任务标签（替代复选框）
+        task_label = BodyLabel(task)
+        # 使用粗体显示任务内容
+        font = task_label.font()
+        font.setBold(True)
+        task_label.setFont(font)
 
         # 删除按钮
         delete_btn = PushButton()
         delete_btn.setIcon(FluentIcon.DELETE)
-        delete_btn.setFixedSize(28, 28)  # 缩小按钮尺寸
-        delete_btn.setFlat(True)  # 使用flat属性代替透明样式
-        delete_btn.clicked.connect(lambda: self._delete_todo(todo_id, card))
+        delete_btn.setFixedSize(28, 28)
+        delete_btn.setFlat(True)
+        delete_btn.clicked.connect(lambda _, id=todo_id, c=card: self._delete_todo(id, c))
 
-        top_layout.addWidget(self.checkbox, 1)
+        top_layout.addWidget(task_label, 1)
         top_layout.addWidget(delete_btn)
 
         # 底部信息行
@@ -351,11 +387,11 @@ class TodoInterface(ScrollArea):
 
         # 分类标签
         category_label = BodyLabel(f"🏷️ {category}")
-        category_label.setProperty("secondary", True)  # 设置为次要文本颜色
+        category_label.setProperty("secondary", True)
 
         # 截止时间
         deadline_label = BodyLabel(f"⏰ {deadline}")
-        deadline_label.setProperty("secondary", True)  # 设置为次要文本颜色
+        deadline_label.setProperty("secondary", True)
 
         bottom_layout.addWidget(category_label)
         bottom_layout.addStretch(1)
@@ -411,7 +447,10 @@ class TodoInterface(ScrollArea):
         """刷新待办列表"""
         # 清空现有列表
         for i in reversed(range(self.todoLayout.count())):
-            self.todoLayout.itemAt(i).widget().setParent(None)
+            widget = self.todoLayout.itemAt(i).widget()
+            if widget:
+                widget.setParent(None)
+                widget.deleteLater()
 
         # 从数据库加载
         try:
@@ -441,10 +480,6 @@ class TodoInterface(ScrollArea):
             if widget:
                 widget.setParent(None)
                 widget.deleteLater()
-
-        # 清空数据库（可选）
-        # self.db.cursor.execute("DELETE FROM todos WHERE user_id=?", (self.user_id,))
-        # self.db.conn.commit()
 
     def closeEvent(self, event):
         """关闭时清理资源"""

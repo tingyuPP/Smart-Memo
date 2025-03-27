@@ -6,6 +6,8 @@ from mainWindow.mainWindow import MainWindow
 from login.view.faceInterface import FaceLoginInterface
 from config import cfg
 from qframelesswindow import FramelessWindow, StandardTitleBar
+from PyQt5.QtGui import QFont
+
 
 class LoginWindow(FramelessWindow):
 
@@ -19,14 +21,14 @@ class LoginWindow(FramelessWindow):
         #     setTheme(Theme.LIGHT)
         #     print("Light")
         if cfg.get(cfg.themeMode) == Theme.DARK:
-            with open(f'resource/dark.qss', encoding='utf-8') as f:
+            with open(f"resource/dark.qss", encoding="utf-8") as f:
                 self.setStyleSheet(f.read())
 
         self.segmentedWidget = SegmentedWidget(self)
         self.stackedWidget = QStackedWidget(self)
         self.vBoxLayout = QVBoxLayout(self)
         self.setTitleBar(StandardTitleBar(self))
-        self.titleBar.setStyleSheet("background-color: #f0f0f0;")
+        self.titleBar.setStyleSheet("background-color: #f0f0f0; ")
         self.setWindowTitle("SmartMemo")
 
         self.accountInterface = AccountInterface(self)
@@ -37,19 +39,19 @@ class LoginWindow(FramelessWindow):
 
         # 添加标签页
         # self.addSubInterface(self.accountInterface, 'songInterface', 'Song')
-        self.accountInterface.setObjectName('accountInterface')
+        self.accountInterface.setObjectName("accountInterface")
         self.segmentedWidget.addItem(
-            routeKey='accountInterface',
-            text='账密登录',
-            onClick=lambda: self.stackedWidget.setCurrentWidget(self.accountInterface)
+            routeKey="accountInterface",
+            text="账密登录",
+            onClick=lambda: self.stackedWidget.setCurrentWidget(self.accountInterface),
         )
         self.stackedWidget.addWidget(self.accountInterface)
 
-        self.faceInterface.setObjectName('faceInterface')
+        self.faceInterface.setObjectName("faceInterface")
         self.segmentedWidget.addItem(
-            routeKey='faceInterface',
-            text='人脸识别',
-            onClick=lambda: self.stackedWidget.setCurrentWidget(self.faceInterface)
+            routeKey="faceInterface",
+            text="人脸识别",
+            onClick=lambda: self.stackedWidget.setCurrentWidget(self.faceInterface),
         )
         self.stackedWidget.addWidget(self.faceInterface)
 
@@ -78,7 +80,7 @@ class LoginWindow(FramelessWindow):
         self.segmentedWidget.addItem(
             routeKey=objectName,
             text=text,
-            onClick=lambda: self.stackedWidget.setCurrentWidget(widget)
+            onClick=lambda: self.stackedWidget.setCurrentWidget(widget),
         )
 
     def onCurrentIndexChanged(self, index):
@@ -98,4 +100,3 @@ class LoginWindow(FramelessWindow):
     def back_to_account(self):
         self.stackedWidget.setCurrentWidget(self.accountInterface)
         self.segmentedWidget.setCurrentItem(self.accountInterface.objectName())
-
