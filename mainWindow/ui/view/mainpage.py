@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QLabel,
     QFrame,
+    QActionGroup,   
 )
 from qfluentwidgets import FluentIcon
 
@@ -28,6 +29,9 @@ from qfluentwidgets import (
     SubtitleLabel,
     InfoBarPosition,
     Dialog,
+    SplitPushButton,
+    CheckableMenu,
+    MenuIndicatorType,
 )
 from PyQt5.QtWidgets import (
     QWidget,
@@ -1133,7 +1137,6 @@ class AppCard(CardWidget):
                 parent=self.window(),
             )
 
-
 class mainInterface(Ui_mainwindow, QWidget):
     def __init__(self, parent=None, user_id=None):
         super().__init__(parent=parent)
@@ -1146,13 +1149,48 @@ class mainInterface(Ui_mainwindow, QWidget):
         self.toolButton.clicked.connect(self.switch_to_memo_interface)
         self.toolButton_2.clicked.connect(self.sync_memos)
 
-        self.pushButton.addItem("按名称（a-z）排序")
-        self.pushButton.addItem("按创建时间从早到晚排序")
-        self.pushButton.addItem("按创建时间从晚到早排序")
-        self.pushButton.addItem("按修改时间从早到晚排序")
-        self.pushButton.addItem("按修改时间从晚到早排序")
+        frame2_layout = self.frame_2.layout()
 
-        self.pushButton.currentIndexChanged.connect(self.on_sort_option_changed)
+        # 创建 SplitButton 作为排序按钮
+        self.sortButton = SplitPushButton("排序方式", self.frame_2)
+        self.sortButton.setIcon(FluentIcon.SCROLL)
+        frame2_layout.addWidget(self.sortButton)
+
+        # 创建排序字段相关的 Action
+        self.nameAction = Action(FluentIcon.FONT, "按名称", checkable=True)
+        self.createTimeAction = Action(FluentIcon.CALENDAR, "按创建时间", checkable=True)
+        self.modifiedTimeAction = Action(FluentIcon.EDIT, "按修改时间", checkable=True)
+
+        # 创建排序顺序相关的 Action
+        self.ascendAction = Action(FluentIcon.UP, "升序", checkable=True)
+        self.descendAction = Action(FluentIcon.DOWN, "降序", checkable=True)
+
+        # 将动作添加到动作组
+        self.fieldActionGroup = QActionGroup(self)
+        self.fieldActionGroup.addAction(self.nameAction)
+        self.fieldActionGroup.addAction(self.createTimeAction)
+        self.fieldActionGroup.addAction(self.modifiedTimeAction)
+
+        self.orderActionGroup = QActionGroup(self)
+        self.orderActionGroup.addAction(self.ascendAction)
+        self.orderActionGroup.addAction(self.descendAction)
+
+        # 设置默认选中状态
+        self.modifiedTimeAction.setChecked(True)
+        self.descendAction.setChecked(True)
+
+        # 连接信号槽
+        self.fieldActionGroup.triggered.connect(self.on_sort_changed)
+        self.orderActionGroup.triggered.connect(self.on_sort_changed)
+
+        # 创建菜单
+        self.sortMenu = CheckableMenu(parent=self, indicatorType=MenuIndicatorType.RADIO)
+        self.sortMenu.addActions([self.nameAction, self.createTimeAction, self.modifiedTimeAction])
+        self.sortMenu.addSeparator()
+        self.sortMenu.addActions([self.ascendAction, self.descendAction])
+
+        # 设置菜单
+        self.sortButton.setFlyout(self.sortMenu)
 
         # 创建 QVBoxLayout
         self.cardLayout = QVBoxLayout()
@@ -1171,7 +1209,6 @@ class mainInterface(Ui_mainwindow, QWidget):
         self.db = DatabaseManager()
         self.user_id = user_id
 
-
         # 初始加载备忘录列表
         self.update_memo_list()
 
@@ -1185,23 +1222,21 @@ class mainInterface(Ui_mainwindow, QWidget):
 
         # 从数据库获取备忘录
         memos = self.db.get_memos(user_id=self.user_id)
-        sort_option = self.pushButton.currentText()
 
-        if sort_option == "按名称（a-z）排序":
+        # 根据选中的排序选项进行排序
+        if self.nameAction.isChecked():
             # 按标题字母顺序排序
-            memos.sort(key=lambda x: self.db.decrypt(x[4]).lower())
-        elif sort_option == "按创建时间从早到晚排序":
-            # 按创建时间从早到晚排序（默认，数据库可能已经这样排序）
-            memos.sort(key=lambda x: x[2])
-        elif sort_option == "按创建时间从晚到早排序":
-            # 按创建时间从晚到早排序
-            memos.sort(key=lambda x: x[2], reverse=True)
-        elif sort_option == "按修改时间从早到晚排序":
-            # 按修改时间从早到晚排序
-            memos.sort(key=lambda x: x[3])
-        elif sort_option == "按修改时间从晚到早排序":
-            # 按修改时间从晚到早排序
-            memos.sort(key=lambda x: x[3], reverse=True)
+            memos.sort(
+                key=lambda x: self.db.decrypt(x[4]).lower(),
+                reverse=not self.ascendAction.isChecked(),
+            )
+        elif self.createTimeAction.isChecked():
+            # 按创建时间排序
+            memos.sort(key=lambda x: x[2], reverse=not self.ascendAction.isChecked())
+        elif self.modifiedTimeAction.isChecked():
+            # 按修改时间排序
+            memos.sort(key=lambda x: x[3], reverse=not self.ascendAction.isChecked())
+
         # 添加 AppCard 到 cardLayout
         for memo in memos:
             # 从数据库中获取的数据
@@ -1277,12 +1312,22 @@ class mainInterface(Ui_mainwindow, QWidget):
                 main_window.memoInterface.lineEdit_2.clear()  # 清空分类
                 main_window.memoInterface.update_word_count()  # 更新字数统计
 
-                
-
-    def on_sort_option_changed(self, index):
+    def on_sort_changed(self, action):
         """处理排序选项变化事件"""
-        # 显示排序中提示
-        sort_option = self.pushButton.currentText()
+        # 构建当前排序选项文本
+        field_text = ""
+        if self.nameAction.isChecked():
+            field_text = "名称"
+        elif self.createTimeAction.isChecked():
+            field_text = "创建时间"
+        elif self.modifiedTimeAction.isChecked():
+            field_text = "修改时间"
+
+        order_text = "升序" if self.ascendAction.isChecked() else "降序"
+        sort_option = f"按{field_text}{order_text}"
+
+        # 更新按钮文本显示当前排序方式
+        self.sortButton.setText(f"{field_text} {order_text}")
 
         # 更新备忘录列表
         self.update_memo_list()
@@ -1297,11 +1342,6 @@ class mainInterface(Ui_mainwindow, QWidget):
             duration=2000,
             parent=self,
         )
-
-    def closeEvent(self, event):
-        """关闭窗口时关闭数据库连接"""
-        self.db.close()
-        event.accept()
 
 
 if __name__ == "__main__":
