@@ -14,6 +14,7 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QGraphicsOpacityEffect,
     QTextEdit,
+    QFrame,
 )
 from PyQt5.QtGui import QFont, QColor
 from qfluentwidgets import (
@@ -33,6 +34,7 @@ from qfluentwidgets import (
     isDarkTheme,
     FluentStyleSheet,
     TextEdit,
+    ToggleToolButton,
 )
 from Database import DatabaseManager
 from datetime import datetime
@@ -120,6 +122,7 @@ class TodoInterface(ScrollArea):
         self.todoGroup.setStyleSheet("background: transparent;")
         self.todoLayout = QVBoxLayout(self.todoGroup)
         self.todoLayout.setSpacing(15)
+        self.todoLayout.setAlignment(Qt.AlignTop)
         self.todoLayout.setContentsMargins(20, 20, 20, 20)
         self.vBoxLayout.addWidget(self.todoGroup)
 
@@ -207,6 +210,11 @@ class TodoInterface(ScrollArea):
             self.maskWidget.hide()
             # 确保重置到屏幕底部
             self.slidePanel.move(0, self.height())
+        try:
+            self.animation.finished.disconnect(self._on_animation_finished)
+        except:
+            pass
+        self.animation.finished.connect(self._on_animation_finished)
 
     def _setup_input_form(self, layout):
         """设置输入表单"""
@@ -354,7 +362,6 @@ class TodoInterface(ScrollArea):
         except Exception as e:
             InfoBar.error("错误", f"添加失败: {str(e)}", parent=self)
 
-
     def _create_todo_card(self, todo_id, task, deadline, category, is_done):
         """创建单个待办卡片"""
         card = CardWidget()
@@ -362,25 +369,49 @@ class TodoInterface(ScrollArea):
         card.setFixedHeight(100)
         layout = QVBoxLayout(card)
 
-        # 顶部行（任务+删除按钮）
+        # 顶部行（任务+状态切换按钮）
         top_layout = QHBoxLayout()
 
-        # 任务标签（替代复选框）
+        # 任务标签
         task_label = BodyLabel(task)
         # 使用粗体显示任务内容
         font = task_label.font()
         font.setBold(True)
         task_label.setFont(font)
 
-        # 删除按钮
-        delete_btn = PushButton()
-        delete_btn.setIcon(FluentIcon.DELETE)
-        delete_btn.setFixedSize(28, 28)
-        delete_btn.setFlat(True)
-        delete_btn.clicked.connect(lambda _, id=todo_id, c=card: self._delete_todo(id, c))
+        # 设置样式 - 根据完成状态设置
+        if is_done:
+            task_label.setStyleSheet(
+                """
+                BodyLabel {
+                    font-size: 14px;
+                    color: gray;
+                    padding: 5px;
+                    text-decoration: line-through;
+                }
+            """
+            )
+        else:
+            task_label.setStyleSheet(
+                """
+                BodyLabel {
+                    font-size: 14px;
+                    padding: 5px;
+                }
+            """
+            )
+
+        # 状态切换按钮
+        status_btn = ToggleToolButton()
+        status_btn.setIcon(FluentIcon.CANCEL if is_done else FluentIcon.ACCEPT)
+        status_btn.setFixedSize(28, 28)
+        status_btn.setChecked(is_done)  # 设置初始状态
+        status_btn.toggled.connect(
+            lambda checked, id=todo_id: self._update_todo_status(id, checked)
+        )
 
         top_layout.addWidget(task_label, 1)
-        top_layout.addWidget(delete_btn)
+        top_layout.addWidget(status_btn)
 
         # 底部信息行
         bottom_layout = QHBoxLayout()
@@ -388,10 +419,14 @@ class TodoInterface(ScrollArea):
         # 分类标签
         category_label = BodyLabel(f"🏷️ {category}")
         category_label.setProperty("secondary", True)
+        if is_done:
+            category_label.setStyleSheet("color: gray;")
 
         # 截止时间
         deadline_label = BodyLabel(f"⏰ {deadline}")
         deadline_label.setProperty("secondary", True)
+        if is_done:
+            deadline_label.setStyleSheet("color: gray;")
 
         bottom_layout.addWidget(category_label)
         bottom_layout.addStretch(1)
@@ -404,14 +439,88 @@ class TodoInterface(ScrollArea):
         # 添加到列表
         self.todoLayout.addWidget(card)
 
+        return card
+
     def _update_todo_status(self, todo_id, is_done):
         """更新待办状态"""
         try:
             self.db.update_todo_status(todo_id, is_done)
+            self._refresh_list()  # 刷新列表
         except Exception as e:
             InfoBar.error(
                 title="错误",
                 content=f"状态更新失败: {str(e)}",
+                orient=Qt.Horizontal,
+                position=InfoBarPosition.TOP,
+                parent=self,
+            )
+
+    def _refresh_list(self):
+        """刷新待办列表"""
+        # 清空现有列表
+        print("refresh")
+        for i in reversed(range(self.todoLayout.count())):
+            widget = self.todoLayout.itemAt(i).widget()
+            if widget:
+                widget.setParent(None)
+                widget.deleteLater()
+
+        # 从数据库加载
+        try:
+            todos = self.db.get_todos(self.user_id, show_completed=True)
+            completed_todos = []
+            incomplete_todos = []
+
+            for todo in todos:
+                if todo[4]:  # is_done
+                    completed_todos.append(todo)
+                else:
+                    incomplete_todos.append(todo)
+
+            # 先添加未完成的待办事项
+            for todo in incomplete_todos:
+                self._create_todo_card(
+                    todo_id=todo[0],
+                    task=todo[1],
+                    deadline=todo[2],
+                    category=todo[3] if len(todo) > 3 else "未分类",
+                    is_done=False,
+                )
+            print("未完成的待办事项", incomplete_todos)
+            # 添加分隔符
+            if completed_todos and incomplete_todos:
+                separator = QFrame()
+                separator.setFrameShape(QFrame.HLine)
+                separator.setFrameShadow(QFrame.Sunken)
+                # 增强分隔符样式，使其更加明显
+                separator.setStyleSheet("""
+                    border: none;
+                    background-color: palette(mid);
+                    height: 2px;
+                    margin: 15px 0;
+                """)
+                self.todoLayout.addWidget(separator)
+
+                # 可选：添加一个标签来表示已完成部分
+                completed_label = BodyLabel("已完成")
+                completed_label.setStyleSheet("color: gray; font-size: 13px; margin-top: 5px;")
+                self.todoLayout.addWidget(completed_label)
+
+            # 再添加已完成的待办事项
+            for todo in completed_todos:
+                self._create_todo_card(
+                    todo_id=todo[0],
+                    task=todo[1],
+                    deadline=todo[2],
+                    category=todo[3] if len(todo) > 3 else "未分类",
+                    is_done=True,  # 强制设为已完成状态
+                )
+            print("已完成的待办事项", completed_todos)
+
+        except Exception as e:
+            InfoBar.error(
+                title="错误",
+                content=f"加载待办失败: {str(e)}",
                 orient=Qt.Horizontal,
                 position=InfoBarPosition.TOP,
                 parent=self,
@@ -438,35 +547,6 @@ class TodoInterface(ScrollArea):
             InfoBar.error(
                 title="错误",
                 content=f"删除失败: {str(e)}",
-                orient=Qt.Horizontal,
-                position=InfoBarPosition.TOP,
-                parent=self,
-            )
-
-    def _refresh_list(self):
-        """刷新待办列表"""
-        # 清空现有列表
-        for i in reversed(range(self.todoLayout.count())):
-            widget = self.todoLayout.itemAt(i).widget()
-            if widget:
-                widget.setParent(None)
-                widget.deleteLater()
-
-        # 从数据库加载
-        try:
-            todos = self.db.get_todos(self.user_id)
-            for todo in todos:
-                self._create_todo_card(
-                    todo_id=todo[0],
-                    task=todo[1],
-                    deadline=todo[2],
-                    category=todo[3] if len(todo) > 3 else "未分类",
-                    is_done=todo[4] if len(todo) > 4 else False,
-                )
-        except Exception as e:
-            InfoBar.error(
-                title="错误",
-                content=f"加载待办失败: {str(e)}",
                 orient=Qt.Horizontal,
                 position=InfoBarPosition.TOP,
                 parent=self,
