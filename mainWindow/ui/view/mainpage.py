@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QLabel,
     QFrame,
-    QActionGroup,   
+    QActionGroup,
 )
 from qfluentwidgets import FluentIcon
 
@@ -156,7 +156,7 @@ class AppCard(CardWidget):
             Action(
                 FluentIcon.DELETE,
                 "删除",
-                triggered=lambda: print("删除成功"),
+                triggered=self.delete_memo,
             )
         )
         # 添加分割线
@@ -193,6 +193,94 @@ class AppCard(CardWidget):
         self.menu.exec_(
             self.moreButton.mapToGlobal(QPoint(0, self.moreButton.height()))
         )
+
+    def delete_memo(self):
+        """删除当前备忘录"""
+        if not self.memo_id:
+            InfoBar.warning(
+                title="无法删除",
+                content="找不到备忘录ID",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self.window(),
+            )
+            return
+
+        # 显示确认对话框
+        dialog = Dialog(
+            "确认删除",
+            f"确定要删除备忘录「{self.titleLabel.text()}」吗？此操作不可撤销。",
+            self.window(),
+        )
+
+        # 设置确认按钮文本
+        dialog.yesButton.setText("删除")
+        dialog.cancelButton.setText("取消")
+
+        # 如果用户点击确认删除
+        if dialog.exec():
+            try:
+                # 创建数据库连接
+                db = DatabaseManager()
+
+                # 执行删除操作
+                success = db.delete_memo(self.memo_id)
+
+                # 关闭数据库连接
+                db.close()
+
+                if success:
+                    # 显示删除成功提示
+                    InfoBar.success(
+                        title="删除成功",
+                        content=f"备忘录「{self.titleLabel.text()}」已删除",
+                        orient=Qt.Horizontal,
+                        isClosable=True,
+                        position=InfoBarPosition.TOP,
+                        duration=2000,
+                        parent=self.window(),
+                    )
+
+                    # 刷新主界面的备忘录列表
+                    main_window = self.window()
+                    if hasattr(main_window, "update_memo_list"):
+                        main_window.update_memo_list()
+                    elif hasattr(main_window, "homeInterface") and hasattr(
+                        main_window.homeInterface, "update_memo_list"
+                    ):
+                        main_window.homeInterface.update_memo_list()
+
+                    # 如果卡片仍在布局中，从布局中移除自己
+                    parent = self.parent()
+                    if parent and hasattr(parent, "layout"):
+                        layout = parent.layout()
+                        if layout:
+                            layout.removeWidget(self)
+                            self.deleteLater()
+                else:
+                    # 显示删除失败提示
+                    InfoBar.error(
+                        title="删除失败",
+                        content="无法删除备忘录，请重试",
+                        orient=Qt.Horizontal,
+                        isClosable=True,
+                        position=InfoBarPosition.TOP,
+                        duration=3000,
+                        parent=self.window(),
+                    )
+            except Exception as e:
+                # 显示错误提示
+                InfoBar.error(
+                    title="删除失败",
+                    content=f"发生错误: {str(e)}",
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP,
+                    duration=3000,
+                    parent=self.window(),
+                )
 
     def on_double_clicked(self):
         # 在这里编写双击 AppCard 后要执行的操作
@@ -1137,6 +1225,7 @@ class AppCard(CardWidget):
                 parent=self.window(),
             )
 
+
 class mainInterface(Ui_mainwindow, QWidget):
     def __init__(self, parent=None, user_id=None):
         super().__init__(parent=parent)
@@ -1158,7 +1247,9 @@ class mainInterface(Ui_mainwindow, QWidget):
 
         # 创建排序字段相关的 Action
         self.nameAction = Action(FluentIcon.FONT, "按名称", checkable=True)
-        self.createTimeAction = Action(FluentIcon.CALENDAR, "按创建时间", checkable=True)
+        self.createTimeAction = Action(
+            FluentIcon.CALENDAR, "按创建时间", checkable=True
+        )
         self.modifiedTimeAction = Action(FluentIcon.EDIT, "按修改时间", checkable=True)
 
         # 创建排序顺序相关的 Action
@@ -1184,8 +1275,12 @@ class mainInterface(Ui_mainwindow, QWidget):
         self.orderActionGroup.triggered.connect(self.on_sort_changed)
 
         # 创建菜单
-        self.sortMenu = CheckableMenu(parent=self, indicatorType=MenuIndicatorType.RADIO)
-        self.sortMenu.addActions([self.nameAction, self.createTimeAction, self.modifiedTimeAction])
+        self.sortMenu = CheckableMenu(
+            parent=self, indicatorType=MenuIndicatorType.RADIO
+        )
+        self.sortMenu.addActions(
+            [self.nameAction, self.createTimeAction, self.modifiedTimeAction]
+        )
         self.sortMenu.addSeparator()
         self.sortMenu.addActions([self.ascendAction, self.descendAction])
 

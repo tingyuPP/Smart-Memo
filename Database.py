@@ -56,7 +56,7 @@ class DatabaseManager:
             FOREIGN KEY (user_id) REFERENCES users(id)
         );
         """
-        
+
         # 创建待办表
         create_todo_table = """
         CREATE TABLE IF NOT EXISTS todos (
@@ -70,7 +70,6 @@ class DatabaseManager:
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         );
         """
-
 
         # 创建修改时间触发器 - 使用localtime
         create_trigger = """
@@ -163,14 +162,14 @@ class DatabaseManager:
         self.conn.commit()
         print("备忘录创建成功")
         return self.cursor.lastrowid
-    
+
     def get_memo_by_id(self, memo_id):
         """
         根据备忘录ID获取完整的备忘录信息
-        
+
         参数:
             memo_id: 备忘录ID
-            
+
         返回:
             dict: 包含备忘录完整信息的字典，解密后的数据
             {
@@ -187,24 +186,24 @@ class DatabaseManager:
         try:
             self.cursor.execute("SELECT * FROM memos WHERE id = ?", (memo_id,))
             memo = self.cursor.fetchone()
-            
+
             if not memo:
                 return None
-                
+
             # 返回解密后的数据
             return {
-                'id': memo[0],
-                'user_id': memo[1],
-                'created_time': memo[2],
-                'modified_time': memo[3],
-                'title': self.decrypt(memo[4]),
-                'content': self.decrypt(memo[5]),
-                'category': memo[6]
+                "id": memo[0],
+                "user_id": memo[1],
+                "created_time": memo[2],
+                "modified_time": memo[3],
+                "title": self.decrypt(memo[4]),
+                "content": self.decrypt(memo[5]),
+                "category": memo[6],
             }
         except Exception as e:
             print(f"获取备忘录数据时出错: {str(e)}")
             return None
-    
+
     def delete_memos_by_user(self, user_id):
         """删除用户的所有备忘录"""
         try:
@@ -214,16 +213,34 @@ class DatabaseManager:
         except sqlite3.Error as e:
             print(f"删除备忘录失败: {e}")
             return False
-        
+
+    def delete_memo(self, memo_id):
+        """删除指定ID的备忘录
+
+        参数:
+            memo_id: 备忘录ID
+
+        返回:
+            bool: 删除成功返回True，失败返回False
+        """
+        try:
+            self.cursor.execute("DELETE FROM memos WHERE id = ?", (memo_id,))
+            self.conn.commit()
+            deleted_rows = self.cursor.rowcount
+            return deleted_rows > 0
+        except sqlite3.Error as e:
+            print(f"删除备忘录失败: {e}")
+            return False
+
     def add_todo(self, user_id, task, deadline, category="未分类"):
         """添加待办事项（带分类）
-        
+
         Args:
             user_id: 用户ID
             task: 任务内容
             deadline: 截止时间 (格式: 'YYYY-MM-DD HH:MM')
             category: 任务分类 (默认'未分类')
-        
+
         Returns:
             int: 新创建的待办ID
         """
@@ -232,7 +249,7 @@ class DatabaseManager:
                 """INSERT INTO todos 
                 (user_id, task, deadline, category) 
                 VALUES (?, ?, ?, ?)""",
-                (user_id, task, deadline, category)
+                (user_id, task, deadline, category),
             )
             self.conn.commit()
             print("待办创建成功")
@@ -243,12 +260,12 @@ class DatabaseManager:
 
     def get_todos(self, user_id, show_completed=False, category_filter=None):
         """获取用户的待办事项
-        
+
         Args:
             user_id: 用户ID
             show_completed: 是否显示已完成事项
             category_filter: 按分类筛选 (None表示不过滤)
-        
+
         Returns:
             list: 待办事项列表，每个元素为元组:
                 (id, task, deadline, category, is_done, created_time)
@@ -257,16 +274,16 @@ class DatabaseManager:
             query = """SELECT id, task, deadline, category, is_done, created_time 
                     FROM todos WHERE user_id = ?"""
             params = [user_id]
-            
+
             if not show_completed:
                 query += " AND is_done = 0"
-            
+
             if category_filter:
                 query += " AND category = ?"
                 params.append(category_filter)
-            
+
             query += " ORDER BY deadline, created_time"
-            
+
             self.cursor.execute(query, tuple(params))
             return self.cursor.fetchall()
         except sqlite3.Error as e:
@@ -275,18 +292,18 @@ class DatabaseManager:
 
     def update_todo_status(self, todo_id, is_done):
         """更新待办完成状态
-        
+
         Args:
             todo_id: 待办ID
             is_done: 是否完成 (True/False)
-        
+
         Returns:
             bool: 是否更新成功
         """
         try:
             self.cursor.execute(
-                "UPDATE todos SET is_done = ? WHERE id = ?",
-                (int(is_done), todo_id))
+                "UPDATE todos SET is_done = ? WHERE id = ?", (int(is_done), todo_id)
+            )
             self.conn.commit()
             return self.cursor.rowcount > 0
         except sqlite3.Error as e:
@@ -295,10 +312,10 @@ class DatabaseManager:
 
     def delete_todo(self, todo_id):
         """删除待办事项
-        
+
         Args:
             todo_id: 待办ID
-        
+
         Returns:
             bool: 是否删除成功
         """
@@ -312,17 +329,17 @@ class DatabaseManager:
 
     def get_todo_categories(self, user_id):
         """获取用户的所有待办分类
-        
+
         Args:
             user_id: 用户ID
-        
+
         Returns:
             list: 分类名称列表
         """
         try:
             self.cursor.execute(
-                "SELECT DISTINCT category FROM todos WHERE user_id = ?",
-                (user_id,))
+                "SELECT DISTINCT category FROM todos WHERE user_id = ?", (user_id,)
+            )
             return [row[0] for row in self.cursor.fetchall()]
         except sqlite3.Error as e:
             print(f"获取分类失败: {e}")
@@ -350,11 +367,16 @@ class DatabaseManager:
         # 将元组列表转换为字典列表
         result = []
         for user in users:
-            user_dict = {"id": user[0], "username": user[1], "face_data": user[2], "register_time": user[3]}
+            user_dict = {
+                "id": user[0],
+                "username": user[1],
+                "face_data": user[2],
+                "register_time": user[3],
+            }
             result.append(user_dict)
 
         return result
-    
+
     def get_memo_count(self, user_id):
         """获取用户的备忘录数量"""
         self.cursor.execute("SELECT COUNT(*) FROM memos WHERE user_id = ?", (user_id,))
