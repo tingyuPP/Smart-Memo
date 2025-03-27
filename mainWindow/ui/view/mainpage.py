@@ -143,8 +143,8 @@ class AppCard(CardWidget):
         self.textLayout.setSpacing(4)
 
     def setup_context_menu(self):
-        if self.timer:
-            self.timer.stop()
+        # if self.timer:
+        #     self.timer.stop()
         self.menu = RoundMenu(parent=self)
 
         # 逐个添加动作，Action 继承自 QAction，接受 FluentIconBase 类型的图标
@@ -182,7 +182,7 @@ class AppCard(CardWidget):
 
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         # if self.timer:
-        #     self.timer.start(6000)
+        #     self.timer.start(1000)
         # self.customContextMenuRequested.connect(self.showContextMenu)  # 注释掉这行
 
     def showContextMenu(self, pos):
@@ -1170,10 +1170,7 @@ class mainInterface(Ui_mainwindow, QWidget):
         # 初始化数据库连接
         self.db = DatabaseManager()
         self.user_id = user_id
-        # 定时器，定期更新备忘录列表
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.update_memo_list)
-        self.timer.start(1000)
+
 
         # 初始加载备忘录列表
         self.update_memo_list()
@@ -1223,7 +1220,7 @@ class mainInterface(Ui_mainwindow, QWidget):
                     memo_id=memo_id,
                     modified_time=modified_time,
                     category=category,
-                    timer=self.timer,  # 传递 timer
+                    timer=None,  # 传递 timer
                 )
             )  # 修改参数
 
@@ -1279,6 +1276,8 @@ class mainInterface(Ui_mainwindow, QWidget):
                 main_window.memoInterface.textEdit.clear()  # 清空内容
                 main_window.memoInterface.lineEdit_2.clear()  # 清空分类
                 main_window.memoInterface.update_word_count()  # 更新字数统计
+
+                
 
     def on_sort_option_changed(self, index):
         """处理排序选项变化事件"""

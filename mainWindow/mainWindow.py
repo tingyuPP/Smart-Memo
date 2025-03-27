@@ -52,15 +52,13 @@ class MainWindow(FluentWindow):
         # 创建子界面，实际使用时将 Widget 换成自己的子界面
         self.homeInterface = mainInterface(self, user_id)
         self.memoInterface = memoInterface(self, user_id)
-        self.videoInterface = Widget("Video Interface", self)
         self.settingInterface = SettingInterface("设置", self)
-        self.albumInterface = Widget("Album Interface", self)
-        self.albumInterface1 = Widget("Album Interface 1", self)
         self.myInterface = MyInterface("My Interface", username, self)
         self.todoInterface = TodoInterface(self, user_id)
         # print(self.myInterface.objectName())
 
         self.initNavigation()
+        self.stackedWidget.currentChanged.connect(self.onCurrentInterfaceChanged)
 
         QTimer.singleShot(1600, self.splashScreen.close)
         self.initWindow()
@@ -69,16 +67,11 @@ class MainWindow(FluentWindow):
         self.addSubInterface(self.homeInterface, FIF.HOME, "主页")
         self.addSubInterface(self.memoInterface, FIF.ADD, "新建备忘录")
         self.addSubInterface(self.todoInterface, FIF.PIN, "待办")
-        self.addSubInterface(self.videoInterface, FIF.VIDEO, "Video library")
+
 
         self.navigationInterface.addSeparator()
 
-        self.addSubInterface(
-            self.albumInterface, FIF.ALBUM, "Albums", NavigationItemPosition.SCROLL
-        )
-        self.addSubInterface(
-            self.albumInterface1, FIF.ALBUM, "Album 1", parent=self.albumInterface
-        )
+
 
         # if self.user_data["avatar"]:
         #     self.addSubInterface(self.myInterface, self.create_round_icon(self.user_data["avatar"]), 'My Page', NavigationItemPosition.BOTTOM)
@@ -158,6 +151,19 @@ class MainWindow(FluentWindow):
 
         # 创建并返回图标
         return QIcon(target_pixmap)
+
+
+    def onCurrentInterfaceChanged(self, index):
+        """处理界面切换事件"""
+        # 获取当前显示的界面
+        current_widget = self.stackedWidget.widget(index)
+
+        # 如果切换到了主页，就刷新备忘录列表
+        if current_widget == self.homeInterface:
+            # 确保主页已初始化数据库连接
+            if hasattr(self.homeInterface, "db") and self.homeInterface.db:
+                self.homeInterface.update_memo_list()
+                print("已切换到主页，更新备忘录列表")
 
 
 if __name__ == "__main__":
