@@ -210,11 +210,6 @@ class TodoInterface(ScrollArea):
             self.maskWidget.hide()
             # 确保重置到屏幕底部
             self.slidePanel.move(0, self.height())
-        try:
-            self.animation.finished.disconnect(self._on_animation_finished)
-        except:
-            pass
-        self.animation.finished.connect(self._on_animation_finished)
 
     def _setup_input_form(self, layout):
         """设置输入表单"""
@@ -304,17 +299,6 @@ class TodoInterface(ScrollArea):
         # 设置动画反向
         self.animation.setDirection(QPropertyAnimation.Backward)
         self.animation.start()
-
-        # 确保动画完成后断开连接
-        try:
-            self.animation.finished.disconnect()
-        except:
-            pass
-
-        # 动画结束后隐藏
-        self.animation.finished.connect(
-            lambda: (self.slidePanel.hide(), self.maskWidget.hide())
-        )
 
     def eventFilter(self, obj, event):
         """拦截所有可能导致滚动的事件"""
