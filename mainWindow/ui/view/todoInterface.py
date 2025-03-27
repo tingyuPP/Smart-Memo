@@ -7,6 +7,7 @@ from PyQt5.QtCore import (
     QTimer,
     QTime,
     QEvent,
+    QDate,
 )
 from PyQt5.QtWidgets import (
     QWidget,
@@ -35,6 +36,8 @@ from qfluentwidgets import (
     FluentStyleSheet,
     TextEdit,
     ToggleToolButton,
+    CalendarPicker,
+    TimePicker,
 )
 from Database import DatabaseManager
 from datetime import datetime
@@ -233,16 +236,24 @@ class TodoInterface(ScrollArea):
 
         # 截止时间
         deadline_label = BodyLabel("截止时间:", self.slidePanel)
-        self.deadlineEdit = DateTimeEdit(self.slidePanel)
-        self.deadlineEdit.setDisplayFormat("yyyy-MM-dd HH:mm")
-        self.deadlineEdit.setDateTime(QDateTime.currentDateTime().addDays(1))
-        self.deadlineEdit.setFixedWidth(220)
+
+        self.calendarPicker = CalendarPicker(self.slidePanel)
+        self.timePicker = TimePicker(self.slidePanel)
+        month = QDateTime.currentDateTime().date().month()
+        year = QDateTime.currentDateTime().date().year()
+        day = QDateTime.currentDateTime().date().day()
+        self.calendarPicker.setDate(QDate(year, month, day + 1))
+        minute = QDateTime.currentDateTime().time().minute()
+        hour = QDateTime.currentDateTime().time().hour()
+        self.timePicker.setTime(QTime(hour, minute))
+
 
         # 添加到水平布局
         h_layout.addWidget(category_label)
         h_layout.addWidget(self.categoryCombo)
         h_layout.addWidget(deadline_label)
-        h_layout.addWidget(self.deadlineEdit)
+        h_layout.addWidget(self.calendarPicker)
+        h_layout.addWidget(self.timePicker)
         h_layout.addStretch()
 
         # 将控件添加到主布局
@@ -287,7 +298,14 @@ class TodoInterface(ScrollArea):
         # 清空表单
         self.taskInput.clear()
         self.categoryCombo.setCurrentIndex(0)
-        self.deadlineEdit.setDateTime(QDateTime.currentDateTime().addDays(1))
+        # self.deadlineEdit.setDateTime(QDateTime.currentDateTime().addDays(1))
+        month = QDateTime.currentDateTime().date().month()
+        year = QDateTime.currentDateTime().date().year()
+        day = QDateTime.currentDateTime().date().day()
+        self.calendarPicker.setDate(QDate(year, month, day + 1))
+        minute = QDateTime.currentDateTime().time().minute()
+        hour = QDateTime.currentDateTime().time().hour()
+        self.timePicker.setTime(QTime(hour, minute))
 
     def _hide_slide_panel(self):
         """隐藏滑动面板"""
@@ -328,6 +346,10 @@ class TodoInterface(ScrollArea):
         if not task:
             InfoBar.warning("提示", "请输入待办内容", parent=self)
             return
+        
+        date = self.calendarPicker.date
+        time = self.timePicker.time
+        deadline = QDateTime(date, time).toString("yyyy-MM-dd HH:mm")
 
         try:
             # 保存到数据库
@@ -335,7 +357,7 @@ class TodoInterface(ScrollArea):
                 user_id=self.user_id,
                 task=task,
                 category=self.categoryCombo.currentText(),
-                deadline=self.deadlineEdit.dateTime().toString("yyyy-MM-dd HH:mm"),
+                deadline=deadline,
             )
 
             # 关闭面板并刷新
