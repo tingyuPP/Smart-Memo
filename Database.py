@@ -67,6 +67,7 @@ class DatabaseManager:
             category TEXT DEFAULT '未分类',
             is_done BOOLEAN DEFAULT FALSE,
             created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+            completed_time DATETIME,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         );
         """
@@ -246,17 +247,7 @@ class DatabaseManager:
             return False
 
     def add_todo(self, user_id, task, deadline, category="未分类"):
-        """添加待办事项（带分类）
-
-        Args:
-            user_id: 用户ID
-            task: 任务内容
-            deadline: 截止时间 (格式: 'YYYY-MM-DD HH:MM')
-            category: 任务分类 (默认'未分类')
-
-        Returns:
-            int: 新创建的待办ID
-        """
+        """添加待办事项（带分类）"""
         try:
             self.cursor.execute(
                 """INSERT INTO todos 
@@ -271,20 +262,32 @@ class DatabaseManager:
             print(f"添加待办失败: {e}")
             return None
 
-    def get_todos(self, user_id, show_completed=False, category_filter=None):
-        """获取用户的待办事项
 
-        Args:
-            user_id: 用户ID
-            show_completed: 是否显示已完成事项
-            category_filter: 按分类筛选 (None表示不过滤)
-
-        Returns:
-            list: 待办事项列表，每个元素为元组:
-                (id, task, deadline, category, is_done, created_time)
-        """
+    def update_todo_status(self, todo_id, is_done):
+        """更新待办完成状态"""
         try:
-            query = """SELECT id, task, deadline, category, is_done, created_time 
+            if is_done:
+                # 标记为已完成，记录完成时间
+                self.cursor.execute(
+                    "UPDATE todos SET is_done = 1, completed_time = datetime('now', 'localtime') WHERE id = ?",
+                    (todo_id,),
+                )
+            else:
+                # 标记为未完成，清除完成时间
+                self.cursor.execute(
+                    "UPDATE todos SET is_done = 0, completed_time = NULL WHERE id = ?",
+                    (todo_id,),
+                )
+            self.conn.commit()
+            return self.cursor.rowcount > 0
+        except sqlite3.Error as e:
+            print(f"更新待办状态失败: {e}")
+            return False
+
+    def get_todos(self, user_id, show_completed=False, category_filter=None):
+        """获取用户的待办事项"""
+        try:
+            query = """SELECT id, task, deadline, category, is_done, created_time, completed_time
                     FROM todos WHERE user_id = ?"""
             params = [user_id]
 
@@ -295,33 +298,13 @@ class DatabaseManager:
                 query += " AND category = ?"
                 params.append(category_filter)
 
-            query += " ORDER BY deadline, created_time"
+            query += " ORDER BY is_done, deadline, created_time"
 
             self.cursor.execute(query, tuple(params))
             return self.cursor.fetchall()
         except sqlite3.Error as e:
             print(f"获取待办失败: {e}")
             return []
-
-    def update_todo_status(self, todo_id, is_done):
-        """更新待办完成状态
-
-        Args:
-            todo_id: 待办ID
-            is_done: 是否完成 (True/False)
-
-        Returns:
-            bool: 是否更新成功
-        """
-        try:
-            self.cursor.execute(
-                "UPDATE todos SET is_done = ? WHERE id = ?", (int(is_done), todo_id)
-            )
-            self.conn.commit()
-            return self.cursor.rowcount > 0
-        except sqlite3.Error as e:
-            print(f"更新待办状态失败: {e}")
-            return False
 
     def delete_todo(self, todo_id):
         """删除待办事项
@@ -568,7 +551,7 @@ class DatabaseManager:
 
         memos = self.cursor.fetchall()
         return memos
-    
+
     def get_user_tags(self, user_id):
         """
         获取用户的所有标签
@@ -592,10 +575,10 @@ class DatabaseManager:
                 ORDER BY created_time DESC""", 
                 (user_id,)
             )
-            
+
             tags = self.cursor.fetchall()
             result = []
-            
+
             for tag in tags:
                 tag_dict = {
                     'id': tag[0],
@@ -603,12 +586,12 @@ class DatabaseManager:
                     'created_time': tag[2]
                 }
                 result.append(tag_dict)
-                
+
             return result
         except sqlite3.Error as e:
             print(f"获取用户标签失败: {e}")
             return []
-        
+
     def add_tag(self, user_id, tag_name):
         """
         为用户添加一个新标签
@@ -624,33 +607,33 @@ class DatabaseManager:
         try:
             # 标签名称标准化处理：去除首尾空格，转为小写
             tag_name = tag_name.strip()
-            
+
             if not tag_name:
                 print("标签名称不能为空")
                 return False, None
-                
+
             # 检查标签是否已存在
             self.cursor.execute(
                 "SELECT id FROM tags WHERE user_id = ? AND tag_name = ?",
                 (user_id, tag_name)
             )
-            
+
             existing_tag = self.cursor.fetchone()
             if existing_tag:
                 print(f"标签 '{tag_name}' 已存在")
                 return True, existing_tag[0]  # 返回现有标签的ID
-                
+
             # 添加新标签
             self.cursor.execute(
                 "INSERT INTO tags (user_id, tag_name) VALUES (?, ?)",
                 (user_id, tag_name)
             )
-            
+
             self.conn.commit()
             new_tag_id = self.cursor.lastrowid
             print(f"标签 '{tag_name}' 创建成功")
             return True, new_tag_id
-            
+
         except sqlite3.Error as e:
             print(f"添加标签失败: {e}")
             return False, None
@@ -809,4 +792,3 @@ class DatabaseManager:
         """关闭数据库连接"""
         if self.conn:
             self.conn.close()
-
