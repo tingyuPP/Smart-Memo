@@ -38,6 +38,7 @@ from qfluentwidgets import (
     ToggleToolButton,
     CalendarPicker,
     TimePicker,
+    Theme,
 )
 
 
@@ -47,7 +48,7 @@ import threading
 from desktop_notifier import DesktopNotifier, Button, ReplyField, Urgency
 from PyQt5.QtCore import QObject, pyqtSignal
 from Database import DatabaseManager
-
+from config import cfg
 from PyQt5.QtCore import QUrl
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 import os
@@ -183,6 +184,16 @@ class TodoInterface(ScrollArea):
             border: 1px solid palette(mid);
         }
     """)
+        
+        if cfg.get(cfg.themeMode) == Theme.DARK:
+            self.slidePanel.setStyleSheet("""
+            #SlidePanel {
+                background-color: rgb(39, 39, 39);
+                border-top-left-radius: 12px;
+                border-top-right-radius: 12px;
+                border: 1px solid palette(mid);
+            }
+        """)
 
         # 初始位置在屏幕下方
         self.slidePanel.move(0, self.height())

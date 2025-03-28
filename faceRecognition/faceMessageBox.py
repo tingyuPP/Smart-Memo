@@ -42,11 +42,17 @@ class CameraThread(QThread):
         return True
     
     def stop_capture(self):
-        """停止捕获"""
-        self.mutex.lock()
+        """停止摄像头捕获"""
         self.running = False
-        self.mutex.unlock()
-        self.wait()  # 等待线程结束
+        time.sleep(0.5)  # 给线程一些时间来处理标志变更
+        
+        # 确保释放摄像头资源
+        if hasattr(self, 'cap') and self.cap is not None:
+            self.cap.release()
+            self.cap = None
+            cv2.destroyAllWindows()  # 关闭所有OpenCV窗口
+            
+        print("摄像头资源已释放")
     
     def run(self):
         """线程主循环"""
@@ -378,15 +384,27 @@ class FaceRegistrationMessageBox(MessageBoxBase):
         # 停止人脸信息更新计时器
         if self.face_update_timer.isActive():
             self.face_update_timer.stop()
-            
-        # 停止工作线程
-        if self.camera_thread.isRunning():
-            self.camera_thread.stop_capture()
-            self.camera_thread.wait()  # 确保等待线程完全停止
-            
-        if self.face_thread.isRunning():
+        
+        # 停止工作线程前先清除引用
+        self.faces_feedback = []
+        
+        # 停止人脸处理线程
+        if hasattr(self, 'face_thread') and self.face_thread.isRunning():
             self.face_thread.stop_processing()
-            self.face_thread.wait()  # 确保等待线程完全停止
+            self.face_thread.wait(2000)  # 等待最多2秒
+            if self.face_thread.isRunning():
+                self.face_thread.terminate()  # 强制终止
+                self.face_thread.wait()
+        
+        # 停止摄像头线程
+        if hasattr(self, 'camera_thread') and self.camera_thread.isRunning():
+            self.camera_thread.stop_capture()
+            self.camera_thread.wait(2000)  # 等待最多2秒
+            if self.camera_thread.isRunning():
+                self.camera_thread.terminate()  # 强制终止
+                self.camera_thread.wait()
+        
+        # 其余代码...
         
         # 恢复按钮状态
         self.start_button.setText("开始人脸采集")
@@ -545,15 +563,13 @@ class FaceRegistrationMessageBox(MessageBoxBase):
         )
     
     def closeEvent(self, event):
-        """窗口关闭事件 - 确保所有线程都安全停止"""
-        # 停止捕获线程
-        self.stop_capture()
-        
-        # 如果特征提取线程正在运行，停止它
-        if hasattr(self, 'extraction_thread') and self.extraction_thread:
-            if self.extraction_thread.isRunning():
-                self.extraction_thread.terminate()  # 强制终止线程
-                self.extraction_thread.wait()       # 等待线程结束
+        """窗口关闭事件处理"""
+        # 确保停止所有线程和释放资源
+        if hasattr(self, 'camera_thread') and self.camera_thread.isRunning():
+            self.stop_capture()
+            
+        # 手动清理OpenCV相关资源
+        cv2.destroyAllWindows()
         
         # 调用父类方法
         super().closeEvent(event)
