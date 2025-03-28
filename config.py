@@ -10,6 +10,7 @@ from qfluentwidgets import (
     FolderValidator,
     RangeValidator,
     RangeConfigItem,
+    ConfigItem,
 )
 import os
 
@@ -35,13 +36,27 @@ class MyConfig(QConfig):
     aiModel = OptionsConfigItem(
         "MainWindow",
         "AIModel",
-        "deepseek-chat",
+        "deepseek-chat",  # 默认使用 deepseek-chat
         OptionsValidator([
             "deepseek-chat",
-            "deepseek-coder",
-            "gpt-3.5-turbo",
-            "gpt-4"
+            "gpt-4o",
+            "glm-4-flash",
+            "custom"
         ]),
+        restart=False
+    )
+    # 自定义模型配置
+    customBaseUrl = ConfigItem(
+        "MainWindow",
+        "CustomBaseUrl",
+        "",
+        restart=False
+    )
+    
+    customModelId = ConfigItem(
+        "MainWindow",
+        "CustomModelId",
+        "",
         restart=False
     )
 

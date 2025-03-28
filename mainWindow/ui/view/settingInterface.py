@@ -42,6 +42,7 @@ from qfluentwidgets import (
 )
 from config import cfg
 import os
+from services.ai_service import AIService
 
 
 class SettingInterface(ScrollArea):
@@ -241,16 +242,23 @@ class AISettingCard(ExpandGroupSettingCard):
         # 模型选择
         self.modelLabel = BodyLabel("选择模型")
         self.modelComboBox = ComboBox()
-        self.modelComboBox.addItems([
-            "DeepSeek Chat (推荐)",
-            "DeepSeek Coder",
-            "GPT-3.5 Turbo",
-            "GPT-4"
-        ])
-        self.modelComboBox.setCurrentText(self._get_model_display_name(cfg.get(cfg.aiModel)))
+        
+        # 使用 AIService 中的模型配置
+        model_display_names = [
+            config["display_name"] 
+            for config in AIService.MODEL_CONFIGS.values()
+        ]
+        self.modelComboBox.addItems(model_display_names)
+        
+        # 设置当前选中的模型
+        current_model = cfg.get(cfg.aiModel)
+        current_display_name = AIService.MODEL_CONFIGS.get(current_model, {}).get("display_name", "")
+        if current_display_name:
+            self.modelComboBox.setCurrentText(current_display_name)
+            
         self.modelComboBox.setFixedWidth(200)
         self.modelComboBox.currentTextChanged.connect(self._on_model_changed)
-        
+
         # API 密钥
         self.apiLabel = BodyLabel("API 密钥")
         self.apiKeyEdit = PasswordLineEdit()
@@ -259,6 +267,17 @@ class AISettingCard(ExpandGroupSettingCard):
         self.apiKeyEdit.setText(cfg.get(cfg.apiKey))
         self.apiKeyEdit.textChanged.connect(self._on_api_key_changed)
 
+        # 自定义模型设置
+        self.baseUrlLabel = BodyLabel("Base URL")
+        self.baseUrlEdit = LineEdit()
+        self.baseUrlEdit.setPlaceholderText("例如: https://api.example.com/v1")
+        self.baseUrlEdit.setFixedWidth(200)
+        
+        self.modelIdLabel = BodyLabel("Model ID")
+        self.modelIdEdit = LineEdit()
+        self.modelIdEdit.setPlaceholderText("例如: gpt-3.5-turbo")
+        self.modelIdEdit.setFixedWidth(200)
+
         # 调整内部布局
         self.viewLayout.setContentsMargins(0, 0, 0, 0)
         self.viewLayout.setSpacing(0)
@@ -266,43 +285,91 @@ class AISettingCard(ExpandGroupSettingCard):
         # 添加到设置卡中
         self.add(self.modelLabel, self.modelComboBox)
         self.add(self.apiLabel, self.apiKeyEdit)
+        
+        # 添加自定义设置（初始隐藏）
+        self.customUrlWidget = self._create_setting_widget(self.baseUrlLabel, self.baseUrlEdit)
+        self.customModelWidget = self._create_setting_widget(self.modelIdLabel, self.modelIdEdit)
+        self.addGroupWidget(self.customUrlWidget)
+        self.addGroupWidget(self.customModelWidget)
+        
+        # 初始化自定义设置的可见性
+        self._update_custom_settings_visibility()
 
-    def add(self, label, widget):
+    def _create_setting_widget(self, label, widget, indent=True):
+        """创建一个设置项小部件"""
         w = QWidget()
         w.setFixedHeight(60)
         layout = QHBoxLayout(w)
-        layout.setContentsMargins(48, 12, 48, 12)
+        # 修改缩进边距，使其与其他设置项对齐
+        layout.setContentsMargins(48, 12, 48, 12)  # 移除特殊缩进，统一使用标准边距
         layout.addWidget(label)
         layout.addStretch(1)
         layout.addWidget(widget)
-        self.addGroupWidget(w)
+        return w
 
-    def _get_model_display_name(self, model_id):
-        """将模型ID转换为显示名称"""
-        model_names = {
-            "deepseek-chat": "DeepSeek Chat (推荐)",
-            "deepseek-coder": "DeepSeek Coder",
-            "gpt-3.5-turbo": "GPT-3.5 Turbo",
-            "gpt-4": "GPT-4"
-        }
-        return model_names.get(model_id, model_id)
-    
+    def add(self, label, widget):
+        """添加普通设置项"""
+        self.addGroupWidget(self._create_setting_widget(label, widget, indent=False))
+
+    def _update_custom_settings_visibility(self):
+        """更新自定义设置的可见性"""
+        is_custom = self._get_model_id(self.modelComboBox.currentText()) == "custom"
+        
+        # 保存当前展开状态
+        was_expanded = self.isExpand
+        
+        # 如果是展开状态，先收起
+        if was_expanded:
+            self.setExpand(False)  
+        
+        # 设置可见性
+        self.customUrlWidget.setVisible(is_custom)
+        self.customModelWidget.setVisible(is_custom)
+        
+        if is_custom:
+            # 加载保存的自定义设置
+            self.baseUrlEdit.setText(cfg.get(cfg.customBaseUrl))
+            self.modelIdEdit.setText(cfg.get(cfg.customModelId))
+            # 连接信号
+            self.baseUrlEdit.textChanged.connect(self._on_custom_settings_changed)
+            self.modelIdEdit.textChanged.connect(self._on_custom_settings_changed)
+        else:
+            # 断开信号连接
+            try:
+                self.baseUrlEdit.textChanged.disconnect()
+                self.modelIdEdit.textChanged.disconnect()
+            except:
+                pass
+        
+        # 如果之前是展开状态，重新展开
+        if was_expanded:
+            self.setExpand(True)    # 使用 setExpanded 来展开
+
+    def _on_custom_settings_changed(self):
+        """当自定义设置改变时保存配置"""
+        cfg.set(cfg.customBaseUrl, self.baseUrlEdit.text().strip())
+        cfg.set(cfg.customModelId, self.modelIdEdit.text().strip())
+        
+        # 更新 MODEL_CONFIGS 中的自定义模型配置
+        AIService.MODEL_CONFIGS["custom"].update({
+            "base_url": self.baseUrlEdit.text().strip(),
+            "model_id": self.modelIdEdit.text().strip()
+        })
+
     def _get_model_id(self, display_name):
         """将显示名称转换为模型ID"""
-        model_ids = {
-            "DeepSeek Chat (推荐)": "deepseek-chat",
-            "DeepSeek Coder": "deepseek-coder",
-            "GPT-3.5 Turbo": "gpt-3.5-turbo",
-            "GPT-4": "gpt-4"
-        }
-        return model_ids.get(display_name, display_name)
+        for model_id, config in AIService.MODEL_CONFIGS.items():
+            if config["display_name"] == display_name:
+                return model_id
+        return display_name
     
     def _on_model_changed(self, text):
         """当选择改变时更新配置"""
         model_id = self._get_model_id(text)
         cfg.set(cfg.aiModel, model_id)
+        self._update_custom_settings_visibility()
 
     def _on_api_key_changed(self, text):
         """当 API 密钥改变时保存配置"""
         cfg.set(cfg.apiKey, text.strip())
-        os.environ["DEEPSEEK_API_KEY"] = text.strip()
+        os.environ["OPENAI_API_KEY"] = text.strip()  # 使用通用的 OPENAI_API_KEY 环境变量

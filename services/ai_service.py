@@ -5,7 +5,49 @@ from config import cfg  # 导入配置
 class AIService(QObject):
     resultReady = pyqtSignal(str)
     errorOccurred = pyqtSignal(str)
-    
+
+    # 模型配置
+    MODEL_CONFIGS = {
+        # DeepSeek 系列
+        "deepseek-chat": {
+            "display_name": "DeepSeek-V3",
+            "base_url": "https://api.deepseek.com/v1",
+            "max_tokens": 4096,
+            "provider": "deepseek",
+            "description": "DeepSeek 通用对话模型，支持中英双语",
+            "model_id": "deepseek-chat"  # 修改这里，使用正确的模型ID
+        },
+        # OpenAI 系列
+        "gpt-4o": {
+            "display_name": "GPT-4o",
+            "base_url": "https://api.openai.com/v1",
+            "max_tokens": 8192,
+            "provider": "openai",
+            "description": "OpenAI最强大的模型",
+            "model_id": "gpt-4o"
+        },
+        
+        # 智谱 AI 系列
+        "glm-4-flash": {
+            "display_name": "GLM-4-Flash",
+            "base_url": "https://open.bigmodel.cn/api/paas/v4",  # 修改这里，移除多余的路径
+            "max_tokens": 4096,
+            "provider": "deepseek",
+            "description": "GLM-4-Flash，支持中英双语",
+            "model_id": "glm-4-flash"
+        },
+        
+        # 自定义模型配置
+        "custom": {
+            "display_name": "自定义模型",
+            "base_url": "",  # 用户自定义
+            "max_tokens": 4096,
+            "provider": "custom",
+            "description": "自定义API设置",
+            "model_id": ""  # 用户自定义
+        }
+    }
+
     # 定义 AI 模式配置（保持不变）
     AI_MODES = {
         "润色": {
@@ -43,33 +85,52 @@ class AIService(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         # 优先使用配置中的 API 密钥，如果没有则尝试从环境变量获取
-        self.api_key = cfg.get(cfg.apiKey) or os.environ.get("DEEPSEEK_API_KEY", "")
+        self.api_key = cfg.get(cfg.apiKey) or os.environ.get("OPENAI_API_KEY", "")
         self.client = None
         self._init_client()
 
     def _init_client(self):
-        """初始化 OpenAI 客户端"""
-        if self.api_key:
-            try:
+        """初始化 API 客户端"""
+        if not self.api_key:
+            return
+            
+        try:
+            model = cfg.get(cfg.aiModel)
+            provider = self.MODEL_CONFIGS.get(model, {}).get("provider", "deepseek")
+            
+            if provider == "openai":
                 from openai import OpenAI
-                
-                # 根据模型选择设置不同的 base_url
-                base_url = self._get_base_url(cfg.get(cfg.aiModel))
-                
                 self.client = OpenAI(
                     api_key=self.api_key,
-                    base_url=base_url
+                    base_url=self._get_base_url(model)
                 )
-            except ImportError:
-                print("请先安装 OpenAI SDK: pip install openai")
+            elif provider == "anthropic":
+                import anthropic
+                self.client = anthropic.Anthropic(
+                    api_key=self.api_key
+                )
+            else:  # deepseek 和其他使用 OpenAI 兼容接口的服务
+                from openai import OpenAI
+                self.client = OpenAI(
+                    api_key=self.api_key,
+                    base_url=self._get_base_url(model)
+                )
+        except ImportError as e:
+            print(f"请安装相关 SDK: {str(e)}")
 
     def _get_base_url(self, model):
         """根据模型返回对应的 API 基础 URL"""
-        if model.startswith("deepseek"):
-            return "https://api.deepseek.com"
-        elif model.startswith("gpt"):
-            return "https://api.openai.com/v1"
-        return "https://api.deepseek.com"  # 默认使用 DeepSeek
+        config = self.MODEL_CONFIGS.get(model)
+        if config:
+            return config["base_url"]
+        return "https://api.deepseek.com/v1"  # 默认使用 DeepSeek
+
+    def _get_max_tokens(self, model):
+        """获取模型的最大 token 限制"""
+        config = self.MODEL_CONFIGS.get(model)
+        if config:
+            return config["max_tokens"]
+        return 4096  # 默认值
 
     def generate_content(self, prompt, mode="generate", aux_prompt=""):
         """
@@ -136,14 +197,18 @@ class AIService(QObject):
                 {"role": "user", "content": prompt},
             ]
 
-            # 使用配置中选择的模型
+            # 获取选择的模型配置
             model = cfg.get(cfg.aiModel)
+            model_config = self.MODEL_CONFIGS.get(model)
+            
+            # 使用实际的模型ID进行API调用
+            model_id = model_config.get("model_id") if model_config else model
             
             response = self.client.chat.completions.create(
-                model=model,  # 使用选择的模型
+                model=model_id,  # 使用实际的模型ID
                 messages=messages,
                 temperature=0.7,
-                max_tokens=1000,
+                max_tokens=self._get_max_tokens(model),
                 stream=False,
             )
 
@@ -162,12 +227,14 @@ class AIService(QObject):
             
             # 使用配置中选择的模型
             model = cfg.get(cfg.aiModel)
+            model_config = self.MODEL_CONFIGS.get(model)
+            model_id = model_config.get("model_id") if model_config else model
             
             stream = self.client.chat.completions.create(
-                model=model,  # 使用选择的模型
+                model=model_id,  # 使用实际的模型ID
                 messages=messages,
                 temperature=0.7,
-                max_tokens=1000,
+                max_tokens=self._get_max_tokens(model),
                 stream=True
             )
             
