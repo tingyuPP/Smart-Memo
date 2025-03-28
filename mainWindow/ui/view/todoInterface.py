@@ -38,9 +38,20 @@ from qfluentwidgets import (
     ToggleToolButton,
     CalendarPicker,
     TimePicker,
+    Theme,
 )
+
+
+import asyncio
+from datetime import datetime, timedelta
+import threading
+from desktop_notifier import DesktopNotifier, Button, ReplyField, Urgency
+from PyQt5.QtCore import QObject, pyqtSignal
 from Database import DatabaseManager
-from datetime import datetime
+from config import cfg
+from PyQt5.QtCore import QUrl
+from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
+import os
 
 
 class TodoInterface(ScrollArea):
@@ -74,6 +85,18 @@ class TodoInterface(ScrollArea):
 
         # 加载数据
         self._refresh_list()
+
+        # 初始化提醒系统
+        self.notifier = TodoNotifier(self.user_id)
+        # 连接信号
+        self.notifier.status_changed.connect(self._update_todo_status)
+        self.notifier.query_todos.connect(self.notifier.handle_db_query)
+        self.notifier.todos_result.connect(self._update_notifier_todos)
+        # 启动提醒系统
+        self.notifier.start()
+
+        # 音频管理器
+        self.sound_manager = SoundManager()
 
     def _setup_toolbar(self):
         """顶部工具栏设置"""
@@ -161,6 +184,16 @@ class TodoInterface(ScrollArea):
             border: 1px solid palette(mid);
         }
     """)
+        
+        if cfg.get(cfg.themeMode) == Theme.DARK:
+            self.slidePanel.setStyleSheet("""
+            #SlidePanel {
+                background-color: rgb(39, 39, 39);
+                border-top-left-radius: 12px;
+                border-top-right-radius: 12px;
+                border: 1px solid palette(mid);
+            }
+        """)
 
         # 初始位置在屏幕下方
         self.slidePanel.move(0, self.height())
@@ -246,7 +279,6 @@ class TodoInterface(ScrollArea):
         minute = QDateTime.currentDateTime().time().minute()
         hour = QDateTime.currentDateTime().time().hour()
         self.timePicker.setTime(QTime(hour, minute))
-
 
         # 添加到水平布局
         h_layout.addWidget(category_label)
@@ -346,7 +378,7 @@ class TodoInterface(ScrollArea):
         if not task:
             InfoBar.warning("提示", "请输入待办内容", parent=self)
             return
-        
+
         date = self.calendarPicker.date
         time = self.timePicker.time
         deadline = QDateTime(date, time).toString("yyyy-MM-dd HH:mm")
@@ -412,9 +444,14 @@ class TodoInterface(ScrollArea):
         status_btn.setIcon(FluentIcon.CANCEL if is_done else FluentIcon.ACCEPT)
         status_btn.setFixedSize(28, 28)
         status_btn.setChecked(is_done)  # 设置初始状态
-        status_btn.toggled.connect(
-            lambda checked, id=todo_id: self._update_todo_status(id, checked)
-        )
+        # 添加音效
+        def on_status_toggled(checked):
+            # 播放相应的音效
+            self.sound_manager.play("complete" if checked else "undo")
+            # 更新数据库状态
+            self._update_todo_status(todo_id, checked)
+
+        status_btn.toggled.connect(on_status_toggled)
 
         top_layout.addWidget(task_label, 1)
         top_layout.addWidget(status_btn)
@@ -558,6 +595,10 @@ class TodoInterface(ScrollArea):
                 parent=self,
             )
 
+    def _update_notifier_todos(self, todos):
+        """更新通知器的待办数据缓存"""
+        self.notifier.current_todos = todos
+
     def _clear_all(self):
         """清空所有待办"""
         # 这里可以添加确认对话框
@@ -571,3 +612,168 @@ class TodoInterface(ScrollArea):
         """关闭时清理资源"""
         self.db.close()
         event.accept()
+
+
+class TodoNotifier(QObject):
+    """待办事项提醒系统"""
+
+    # 信号定义
+    status_changed = pyqtSignal(int, bool)  # 更新状态信号
+    query_todos = pyqtSignal(int)  # 请求待办数据信号
+    todos_result = pyqtSignal(list)  # 待办数据结果信号
+
+    def __init__(self, user_id):
+        super().__init__()
+        self.user_id = user_id
+        self.notifier = DesktopNotifier()
+        self.check_interval = 60  # 检查间隔（秒）
+        self._running = False
+        self._thread = None
+        self.notified_ids = set()  # 已通知的待办ID，避免重复通知
+        self.current_todos = []  # 缓存待办数据
+
+    def start(self):
+        """启动提醒系统"""
+        if self._running:
+            return
+
+        self._running = True
+        self._thread = threading.Thread(target=self._run_async_loop, daemon=True)
+        self._thread.start()
+
+    def stop(self):
+        """停止提醒系统"""
+        self._running = False
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=1)
+
+    def handle_db_query(self, user_id):
+        """处理数据库查询请求 - 在主线程中执行"""
+        try:
+            db = DatabaseManager()  # 在主线程创建新的连接
+            todos = db.get_todos(user_id, show_completed=False)
+            self.todos_result.emit(todos)
+            db.close()
+        except Exception as e:
+            print(f"查询待办事项失败: {e}")
+            self.todos_result.emit([])
+
+    def _run_async_loop(self):
+        """运行异步事件循环"""
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(self._check_todos_loop())
+
+    async def _check_todos_loop(self):
+        """定期检查待办事项"""
+        while self._running:
+            # 发送信号请求数据
+            self.query_todos.emit(self.user_id)
+            # 等待一小段时间以确保数据返回
+            await asyncio.sleep(0.5)
+            # 检查待办
+            await self._process_todos()
+            # 等待下一个检查周期
+            await asyncio.sleep(self.check_interval)
+
+    def send_notification_in_main_thread(self, todo_id, task, deadline, category):
+        """在主线程中发送通知"""
+        try:
+            # 创建通知选项
+            def mark_as_done():
+                # 只发送信号，让主线程处理数据库操作
+                self.status_changed.emit(todo_id, True)
+                print(f"请求标记待办为完成: {task}")
+
+            def dismiss():
+                print(f"用户已忽略提醒: {task}")
+
+            buttons = [
+                Button(title="标记为完成", on_pressed=mark_as_done, identifier="done"),
+                Button(title="稍后提醒", on_pressed=dismiss, identifier="dismiss"),
+            ]
+
+            time_str = deadline.split(" ")[1] if " " in deadline else deadline
+
+            # 直接在主线程中调用notifier.send，避免线程问题
+            asyncio.create_task(
+                self._async_send_notification(
+                    title=f"待办提醒: {category}",
+                    message=f"{task}\n截止时间: {time_str}",
+                    buttons=buttons,
+                    todo_id=todo_id,
+                )
+            )
+
+        except Exception as e:
+            print(f"发送通知时出错: {e}")
+
+    async def _async_send_notification(self, title, message, buttons, todo_id):
+        """异步发送通知"""
+        try:
+            await self.notifier.send(
+                title=title,
+                message=message,
+                buttons=buttons,
+                urgency=Urgency.Critical,
+                timeout=30,
+            )
+        except Exception as e:
+            print(f"发送通知失败: {e}")
+
+    async def _process_todos(self):
+        """处理待办数据"""
+        try:
+            now = datetime.now()
+
+            for todo in self.current_todos:
+                todo_id, task, deadline_str, category, is_done = todo[:5]
+
+                # 跳过已通知的待办
+                if todo_id in self.notified_ids:
+                    continue
+
+                # 解析截止时间
+                try:
+                    deadline = datetime.strptime(deadline_str, "%Y-%m-%d %H:%M")
+                    time_left = deadline - now
+
+                    # 发送通知
+                    if timedelta(minutes=-1) <= time_left <= timedelta(minutes=1):
+                        # 直接调用主线程的发送通知方法
+                        self.send_notification_in_main_thread(
+                            todo_id, task, deadline_str, category
+                        )
+                        self.notified_ids.add(todo_id)
+
+                except ValueError:
+                    continue
+        except Exception as e:
+            print(f"处理待办事项时出错: {e}")
+
+
+class SoundManager:
+    """音效管理器"""
+
+    def __init__(self):
+        self.player = QMediaPlayer()
+        self.sounds = {
+            "complete": "resource/complete.mp3",
+            "undo": "resource/undo.mp3",
+            "notification": "resource/sounds/notification.wav",
+        }
+
+    def play(self, sound_name):
+        """播放指定的音效"""
+        if sound_name not in self.sounds:
+            return
+
+        sound_path = self.sounds[sound_name]
+        if not os.path.exists(sound_path):
+            print(f"音效文件不存在: {sound_path}")
+            return
+
+        url = QUrl.fromLocalFile(sound_path)
+        content = QMediaContent(url)
+        self.player.setMedia(content)
+        self.player.play()
