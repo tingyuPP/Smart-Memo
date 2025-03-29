@@ -194,6 +194,15 @@ class TodoInterface(ScrollArea):
                 border: 1px solid palette(mid);
             }
         """)
+        else :
+            self.slidePanel.setStyleSheet("""
+            #SlidePanel {
+                background-color: rgb(255, 255, 255);
+                border-top-left-radius: 12px;
+                border-top-right-radius: 12px;
+                border: 1px solid palette(mid);
+            }
+        """)
 
         # 初始位置在屏幕下方
         self.slidePanel.move(0, self.height())
@@ -302,6 +311,24 @@ class TodoInterface(ScrollArea):
 
         panel_height = min(int(self.height() * 0.8), 600)
         self.slidePanel.setFixedHeight(panel_height)
+        if cfg.get(cfg.themeMode) == Theme.DARK:
+            self.slidePanel.setStyleSheet("""
+            #SlidePanel {
+                background-color: rgb(39, 39, 39);
+                border-top-left-radius: 12px;
+                border-top-right-radius: 12px;
+                border: 1px solid palette(mid);
+            }
+        """)
+        else :
+            self.slidePanel.setStyleSheet("""
+            #SlidePanel {
+                background-color: rgb(255, 255, 255);
+                border-top-left-radius: 12px;
+                border-top-right-radius: 12px;
+                border: 1px solid palette(mid);
+            }
+        """)
 
         # 更新面板尺寸
         self.slidePanel.setFixedWidth(self.width())
