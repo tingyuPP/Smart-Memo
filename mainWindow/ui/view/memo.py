@@ -82,15 +82,15 @@ class memoInterface(Ui_memo, QWidget):
     def __init__(self, parent=None, user_id=None):
         super().__init__(parent=parent)
         self.setupUi(self)
-        
+
         self.db = DatabaseManager()
         self.user_id = user_id
-        
+
         # 使用AIHandler单例
         self.ai_handler = AIHandler.get_instance(self)
         if self.user_id:  # 确保有用户ID时才构建上下文
             self.ai_handler.ai_service.build_memory_context(self.user_id, self.db)
-        
+
         # 添加定期更新记忆上下文的机制
         self.memory_update_timer = QTimer(self)
         self.memory_update_timer.timeout.connect(self._update_memory_context)
@@ -157,7 +157,7 @@ class memoInterface(Ui_memo, QWidget):
 
         # 创建智能文本编辑器并设置配置
         self.textEdit = SmartTextEdit(self)
-        
+
         layout.addWidget(self.textEdit)
 
         for i in range(layout.count()):
@@ -177,10 +177,11 @@ class memoInterface(Ui_memo, QWidget):
         # 连接信号
         self.textEdit.textChanged.connect(self.update_markdown_preview)
         self.textEdit.textChanged.connect(self.update_word_count)
-        
+
         # 初始化显示
         self.update_markdown_preview()
         self.update_word_count()
+        self.update_tag_combobox()
 
     def _update_memory_context(self):
         """定期更新AI记忆上下文"""
@@ -189,6 +190,51 @@ class memoInterface(Ui_memo, QWidget):
                 self.ai_handler.ai_service.build_memory_context(self.user_id, self.db)
         except Exception as e:
             print(f"更新记忆上下文时出错: {str(e)}")
+
+    def showEvent(self, event):
+        """当窗口显示时调用"""
+        # 更新标签下拉框
+        self.update_tag_combobox()
+
+        # 调用父类方法
+        super().showEvent(event)
+
+    def load_user_tags(self):
+        """从数据库加载用户的所有历史标签"""
+        if not self.user_id:
+            return []
+
+        try:
+            # 获取用户的所有标签
+            tags = self.db.get_user_tags(self.user_id)
+
+            # 提取标签名称
+            tag_names = [tag['tag_name'] for tag in tags]
+            return tag_names
+        except Exception as e:
+            print(f"加载用户标签时出错: {str(e)}")
+            return []
+
+
+    def update_tag_combobox(self):
+        """更新标签下拉框的选项"""
+        # 保存当前选中的标签
+        current_tag = self.lineEdit_2.text()
+
+        # 加载用户的历史标签
+        tag_names = self.load_user_tags()
+
+        # 清空现有选项
+        self.lineEdit_2.clear()
+
+        # 添加标签选项
+        self.lineEdit_2.addItems(tag_names)
+
+        # 如果有原来的标签，则恢复选择
+        if current_tag and current_tag in tag_names:
+            index = self.lineEdit_2.findText(current_tag)
+            if index >= 0:
+                self.lineEdit_2.setCurrentIndex(index)
 
     def toggle_markdown_preview(self):
         """切换Markdown预览模式"""
@@ -276,6 +322,11 @@ class memoInterface(Ui_memo, QWidget):
             return False
 
         try:
+            if category and self.user_id:
+                try:
+                    self.db.add_tag(self.user_id, category)
+                except Exception as e:
+                    print(f"保存标签时出错: {str(e)}")
             # 根据是否有memo_id决定创建新备忘录还是更新现有备忘录
             if self.memo_id is None:
                 # 创建新备忘录
@@ -1017,7 +1068,7 @@ class memoInterface(Ui_memo, QWidget):
                 parent=self
             )
             return
-        
+
         # 获取当前备忘录内容
         memo_content = self.textEdit.toPlainText()
         if not memo_content.strip():
@@ -1027,7 +1078,7 @@ class memoInterface(Ui_memo, QWidget):
                 parent=self
             )
             return
-        
+
         # 显示加载状态提示
         self.state_tooltip = StateToolTip(
             "正在处理", 
@@ -1040,23 +1091,23 @@ class memoInterface(Ui_memo, QWidget):
         )
         self.state_tooltip.show()
         QApplication.processEvents()
-        
+
         # 创建一个线程来处理待办提取
         class TodoExtractThread(QThread):
             resultReady = pyqtSignal(int, list)
-            
+
             def __init__(self, ai_handler, memo_content, user_id):
                 super().__init__()
                 self.ai_handler = ai_handler
                 self.memo_content = memo_content
                 self.user_id = user_id
-                
+
             def run(self):
                 count, todos = self.ai_handler.extract_todos_from_memo(
                     self.memo_content, self.user_id
                 )
                 self.resultReady.emit(count, todos)
-        
+
         # 创建并启动线程
         self.todo_thread = TodoExtractThread(
             self.ai_handler, memo_content, self.user_id
@@ -1073,14 +1124,14 @@ class memoInterface(Ui_memo, QWidget):
             QApplication.processEvents()
             # 设置一个短暂的延迟后关闭提示
             QTimer.singleShot(1000, lambda: self.safely_close_tooltip())
-        
+
         if count > 0:
             InfoBar.success(
                 title="提取成功",
                 content=f"已成功提取并添加 {count} 个待办事项",
                 parent=self
             )
-            
+
             # 显示提取结果对话框
             self._show_extracted_todos_dialog(todos)
         else:
@@ -1096,50 +1147,50 @@ class memoInterface(Ui_memo, QWidget):
         dialog = QDialog(self.window())
         dialog.setWindowTitle("提取的待办事项")
         dialog.resize(400, 500)  # 设置合适的大小
-        
+
         # 创建主布局
         main_layout = QVBoxLayout(dialog)
-        
+
         # 添加说明文本
         label = BodyLabel("以下是从备忘录中提取的待办事项：")
         main_layout.addWidget(label)
-        
+
         # 创建滚动区域以容纳多个待办事项
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
-        
+
         # 创建内容容器
         content_widget = QWidget()
         content_layout = QVBoxLayout(content_widget)
-        
+
         # 添加待办列表
         for i, todo in enumerate(todos):
             task = todo.get('task', '')
             deadline = todo.get('deadline', '无截止日期')
             category = todo.get('category', '未分类')
-            
+
             card = SimpleCardWidget()
             card_layout = QVBoxLayout(card)
-            
+
             task_label = StrongBodyLabel(f"{i+1}. {task}")
             deadline_label = BodyLabel(f"截止日期: {deadline if deadline else '无'}")
             category_label = BodyLabel(f"类别: {category}")
-            
+
             card_layout.addWidget(task_label)
             card_layout.addWidget(deadline_label)
             card_layout.addWidget(category_label)
-            
+
             content_layout.addWidget(card)
-        
+
         # 设置滚动区域的内容
         scroll.setWidget(content_widget)
         main_layout.addWidget(scroll)
-        
+
         # 添加提示
         tip = CaptionLabel("这些待办事项已自动添加到您的待办列表中")
         main_layout.addWidget(tip)
-        
+
         # 添加按钮
         button_layout = QHBoxLayout()
         button = PrimaryPushButton("确定")
@@ -1148,7 +1199,7 @@ class memoInterface(Ui_memo, QWidget):
         button_layout.addWidget(button)
         button_layout.addStretch()
         main_layout.addLayout(button_layout)
-        
+
         # 显示对话框
         dialog.exec_()
 
@@ -1160,6 +1211,7 @@ class memoInterface(Ui_memo, QWidget):
                 self.state_tooltip = None
         except Exception as e:
             print(f"关闭提示框时出错: {str(e)}")
+
 
 if __name__ == "__main__":
     import sys
