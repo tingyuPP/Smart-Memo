@@ -184,7 +184,7 @@ class TodoInterface(ScrollArea):
             border: 1px solid palette(mid);
         }
     """)
-        
+
         if cfg.get(cfg.themeMode) == Theme.DARK:
             self.slidePanel.setStyleSheet("""
             #SlidePanel {
@@ -457,14 +457,26 @@ class TodoInterface(ScrollArea):
             """
             )
         else:
-            task_label.setStyleSheet(
+            if cfg.get(cfg.themeMode) == Theme.DARK:
+                task_label.setStyleSheet(
+                    """
+                    BodyLabel {
+                        font-size: 14px;
+                        color: white;
+                        padding: 5px;
+                    }
                 """
-                BodyLabel {
-                    font-size: 14px;
-                    padding: 5px;
-                }
-            """
-            )
+                )
+            else:
+                task_label.setStyleSheet(
+                    """
+                    BodyLabel {
+                        font-size: 14px;
+                        color: black;
+                        padding: 5px;
+                    }
+                """
+                )
 
         # 状态切换按钮
         status_btn = ToggleToolButton()

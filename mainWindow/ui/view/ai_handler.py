@@ -17,11 +17,12 @@ from qfluentwidgets import (
     RoundMenu,
     Action,
     CheckBox,
-    FluentIcon
+    FluentIcon,
 )
 from services.ai_service import AIService
 import os, re
 from Database import DatabaseManager
+
 
 class AIWorkerThread(QThread):
     finished = pyqtSignal(str)
@@ -36,17 +37,21 @@ class AIWorkerThread(QThread):
 
     def run(self):
         try:
-            result = self.ai_service.generate_content(self.text, self.mode, self.aux_prompt)
+            result = self.ai_service.generate_content(
+                self.text, self.mode, self.aux_prompt
+            )
             self.finished.emit(result)
         except Exception as e:
             self.error.emit(str(e))
 
+
 class AIStreamWorkerThread(QThread):
     """处理流式响应的工作线程"""
+
     chunkReceived = pyqtSignal(str)  # 接收到新的文本块
     finished = pyqtSignal()  # 流式响应完成
     error = pyqtSignal(str)  # 发生错误
-    
+
     def __init__(self, ai_service, mode, text, aux_prompt=""):
         super().__init__()
         self.ai_service = ai_service
@@ -54,36 +59,39 @@ class AIStreamWorkerThread(QThread):
         self.text = text
         self.aux_prompt = aux_prompt
         self._stop_requested = False
-    
+
     def run(self):
         try:
             # 获取流式响应
-            stream = self.ai_service.generate_content_stream(self.text, self.mode, self.aux_prompt)
-            
+            stream = self.ai_service.generate_content_stream(
+                self.text, self.mode, self.aux_prompt
+            )
+
             # 累积的完整响应
             full_response = ""
-            
+
             # 处理流式响应
             for chunk in stream:
                 if self._stop_requested:
                     break
-                
+
                 # 从响应块中提取文本
                 if hasattr(chunk.choices[0].delta, "content"):
                     content = chunk.choices[0].delta.content
                     if content:
                         full_response += content
                         self.chunkReceived.emit(content)
-            
+
             if not self._stop_requested:
                 self.finished.emit()
-                
+
         except Exception as e:
             self.error.emit(str(e))
-    
+
     def stop(self):
         """请求停止流式响应处理"""
         self._stop_requested = True
+
 
 class AIDialog(QDialog):
     """AI 处理对话框"""
@@ -95,10 +103,10 @@ class AIDialog(QDialog):
         self.result_text = ""
         self.state_tooltip = None
         self.worker_thread = None  # 添加工作线程属性
-        
+
         # 使用传入的AI服务实例，而不是创建新的
         self.ai_service = ai_service
-        
+
         self.setup_ui()
 
         # 设置窗口标志
@@ -162,23 +170,23 @@ class AIDialog(QDialog):
 
         self.cancel_button = PrimaryPushButton("取消")
         self.cancel_button.clicked.connect(self.reject)
-        
+
         self.stop_button = PrimaryPushButton("停止生成")
         self.stop_button.setEnabled(False)
         self.stop_button.clicked.connect(self.stop_generation)
-        
+
         button_layout.addWidget(self.generate_button)
         button_layout.addWidget(self.use_button)
         button_layout.addWidget(self.cancel_button)
         button_layout.addWidget(self.stop_button)
-        
+
         layout.addLayout(button_layout)
 
         # 连接AI服务信号
         if self.ai_service:
             self.ai_service.resultReady.connect(self.handle_ai_result)
             self.ai_service.errorOccurred.connect(self.handle_ai_error)
-        
+
         # 添加流式响应选项
         self.use_streaming = True  # 默认启用流式响应
 
@@ -236,9 +244,9 @@ class AIDialog(QDialog):
         """生成内容"""
         self.disable_all_inputs()
         self.show_loading_state()
-        
+
         # 添加调试代码，检查记忆上下文
-        if hasattr(self.ai_service, '_memory_context'):
+        if hasattr(self.ai_service, "_memory_context"):
             context = self.ai_service._memory_context
             if context:
                 print(f"AIDialog - 记忆上下文长度: {len(context)} 字符")
@@ -246,9 +254,9 @@ class AIDialog(QDialog):
                 print("AIDialog - 记忆上下文为空")
         else:
             print("AIDialog - 记忆上下文属性不存在")
-        
+
         # 获取辅助提示词（如果有）
-        aux_prompt = self.aux_edit.toPlainText() if hasattr(self, 'aux_edit') else ""
+        aux_prompt = self.aux_edit.toPlainText() if hasattr(self, "aux_edit") else ""
 
         if self.mode == "自定义":
             text = self.prompt_edit.toPlainText()
@@ -262,21 +270,21 @@ class AIDialog(QDialog):
                 return
         else:
             text = ""
-        
+
         # 清空结果区域
         self.result_edit.clear()
         self.result_text = ""
-        
+
         # 停止任何正在运行的线程
         self.stop_any_running_threads()
-        
+
         # 根据是否使用流式响应选择不同的处理方式
         if self.use_streaming:
             self.worker_thread = AIStreamWorkerThread(
-                self.ai_service, 
-                self.mode, 
+                self.ai_service,
+                self.mode,
                 text,
-                aux_prompt=aux_prompt  # 添加辅助提示词参数
+                aux_prompt=aux_prompt,  # 添加辅助提示词参数
             )
             self.worker_thread.chunkReceived.connect(self.handle_stream_chunk)
             self.worker_thread.finished.connect(self.handle_stream_finished)
@@ -284,30 +292,30 @@ class AIDialog(QDialog):
             self.stop_button.setEnabled(True)
         else:
             self.worker_thread = AIWorkerThread(
-                self.ai_service, 
-                self.mode, 
+                self.ai_service,
+                self.mode,
                 text,
-                aux_prompt=aux_prompt  # 添加辅助提示词参数
+                aux_prompt=aux_prompt,  # 添加辅助提示词参数
             )
             self.worker_thread.finished.connect(self.handle_ai_result)
             self.worker_thread.error.connect(self.handle_ai_error)
-        
+
         self.worker_thread.start()
-    
+
     def stop_generation(self):
         """停止生成过程"""
         if self.worker_thread and isinstance(self.worker_thread, AIStreamWorkerThread):
             self.worker_thread.stop()
             self.stop_button.setEnabled(False)
-            
+
             # 重新启用生成按钮和其他控件
             self.generate_button.setEnabled(True)
             self.cancel_button.setEnabled(True)
-            if hasattr(self, 'prompt_edit'):
+            if hasattr(self, "prompt_edit"):
                 self.prompt_edit.setReadOnly(False)
-            
+
             # 显示已停止消息
-            if hasattr(self, 'state_tooltip') and self.state_tooltip:
+            if hasattr(self, "state_tooltip") and self.state_tooltip:
                 try:
                     self.state_tooltip.setContent("生成已停止")
                     self.state_tooltip.setState(True)
@@ -317,7 +325,7 @@ class AIDialog(QDialog):
                 finally:
                     # 设置一个短暂的延迟后关闭提示
                     QTimer.singleShot(1000, lambda: self.safely_close_tooltip())
-    
+
     def stop_any_running_threads(self):
         """停止任何正在运行的线程"""
         if self.worker_thread and self.worker_thread.isRunning():
@@ -325,25 +333,25 @@ class AIDialog(QDialog):
                 self.worker_thread.stop()
             self.worker_thread.terminate()
             self.worker_thread.wait()
-    
+
     @pyqtSlot(str)
     def handle_stream_chunk(self, chunk):
         """处理流式响应的文本块"""
         try:
             # 追加新的文本块到结果
             self.result_text += chunk
-            
+
             # 更新 UI
             self.result_edit.setText(self.result_text)
-            
+
             # 滚动到底部
             cursor = self.result_edit.textCursor()
             cursor.movePosition(QTextCursor.End)
             self.result_edit.setTextCursor(cursor)
-            
+
         except Exception as e:
             print(f"处理流式响应块时出错: {str(e)}")
-    
+
     @pyqtSlot()
     def handle_stream_finished(self):
         """处理流式响应完成"""
@@ -352,7 +360,7 @@ class AIDialog(QDialog):
             self.use_button.setEnabled(True)
             self.cancel_button.setEnabled(True)
             self.stop_button.setEnabled(False)
-            if hasattr(self, 'prompt_edit'):
+            if hasattr(self, "prompt_edit"):
                 self.prompt_edit.setReadOnly(False)
 
             if hasattr(self, "state_tooltip") and self.state_tooltip:
@@ -367,16 +375,16 @@ class AIDialog(QDialog):
 
         except Exception as e:
             print(f"处理流式响应完成时出错: {str(e)}")
-    
+
     def disable_all_inputs(self):
         """禁用所有输入控件"""
         self.generate_button.setEnabled(False)
         self.use_button.setEnabled(False)
         self.cancel_button.setEnabled(False)
         self.stop_button.setEnabled(False)
-        if hasattr(self, 'prompt_edit'):
+        if hasattr(self, "prompt_edit"):
             self.prompt_edit.setReadOnly(True)
-    
+
     def safely_close_tooltip(self):
         """安全关闭提示框"""
         if hasattr(self, "state_tooltip") and self.state_tooltip:
@@ -394,7 +402,7 @@ class AIDialog(QDialog):
             self.generate_button.setEnabled(True)
             self.cancel_button.setEnabled(True)
             self.stop_button.setEnabled(False)
-            if hasattr(self, 'prompt_edit'):
+            if hasattr(self, "prompt_edit"):
                 self.prompt_edit.setReadOnly(False)
 
             if hasattr(self, "state_tooltip") and self.state_tooltip:
@@ -417,15 +425,15 @@ class AIDialog(QDialog):
         try:
             self.result_text = result
             self.result_edit.setText(result)
-            
+
             self.generate_button.setEnabled(True)
             self.use_button.setEnabled(True)
             self.cancel_button.setEnabled(True)
             self.stop_button.setEnabled(False)
-            if hasattr(self, 'prompt_edit'):
+            if hasattr(self, "prompt_edit"):
                 self.prompt_edit.setReadOnly(False)
-            
-            if hasattr(self, 'state_tooltip') and self.state_tooltip:
+
+            if hasattr(self, "state_tooltip") and self.state_tooltip:
                 try:
                     self.state_tooltip.setContent("处理完成")
                     self.state_tooltip.setState(True)
@@ -434,14 +442,14 @@ class AIDialog(QDialog):
                     pass
                 finally:
                     QTimer.singleShot(1000, lambda: self.safely_close_tooltip())
-            
+
         except Exception as e:
             print(f"处理AI结果时出错: {str(e)}")
 
     def closeEvent(self, event):
         """关闭对话框时清理资源"""
         self.stop_any_running_threads()
-        
+
         if self.state_tooltip:
             try:
                 self.state_tooltip.close()
@@ -453,7 +461,7 @@ class AIDialog(QDialog):
         self.use_button.setEnabled(False)
         self.cancel_button.setEnabled(True)
         self.stop_button.setEnabled(False)
-        if hasattr(self, 'prompt_edit'):
+        if hasattr(self, "prompt_edit"):
             self.prompt_edit.setReadOnly(False)
 
         event.accept()
@@ -461,9 +469,9 @@ class AIDialog(QDialog):
 
 class AIHandler:
     """AI 功能处理类"""
-    
+
     _instance = None  # 类变量，用于存储单例实例
-    
+
     @classmethod
     def get_instance(cls, parent=None):
         """获取AIHandler单例实例"""
@@ -473,11 +481,12 @@ class AIHandler:
             except Exception as e:
                 print(f"创建AIHandler实例时出错: {str(e)}")
                 import traceback
+
                 traceback.print_exc()
                 # 创建一个降级版本的AIHandler
                 cls._instance = cls._create_fallback_instance(parent)
         return cls._instance
-    
+
     @classmethod
     def _create_fallback_instance(cls, parent):
         """创建降级版本的AIHandler实例"""
@@ -485,19 +494,20 @@ class AIHandler:
         handler.parent = parent
         # 创建一个空的AI服务
         from services.ai_service import AIService
+
         handler.ai_service = AIService.__new__(AIService)
         handler.ai_service._memory_context = ""
         handler.ai_service.client = None
         return handler
-    
+
     def __init__(self, parent: QWidget):
         # 如果已经有实例，直接返回
         if AIHandler._instance is not None:
             return
-            
+
         self.parent = parent
         self.ai_service = AIService()  # 初始化 AI 服务
-        
+
         # 设置单例实例
         AIHandler._instance = self
 
@@ -559,16 +569,20 @@ class AIHandler:
             # 获取当前光标位置
             current_cursor = text_edit.textCursor()
             current_position = current_cursor.position()
-            
+
             # 将光标移动到文本末尾
             current_cursor.movePosition(QTextCursor.End)
             text_edit.setTextCursor(current_cursor)
-            
+
             # 获取当前文本框的所有内容
             current_text = text_edit.toPlainText()
 
             # 直接插入续写内容，不添加换行和空格
-            current_cursor.insertText(result_text) if current_text else text_edit.setText(result_text)
+            (
+                current_cursor.insertText(result_text)
+                if current_text
+                else text_edit.setText(result_text)
+            )
         else:
             # 处理其他模式（朋友圈文案、一句诗、自定义等）
             # 如果文本框为空，直接设置文本
@@ -579,7 +593,7 @@ class AIHandler:
                 current_cursor = text_edit.textCursor()
                 current_cursor.movePosition(QTextCursor.End)
                 text_edit.setTextCursor(current_cursor)
-                
+
                 # 在新行插入内容
                 current_cursor.insertText("\n\n" + result_text)
 
@@ -599,11 +613,11 @@ class AIHandler:
 
     def extract_todos_from_memo(self, memo_content, user_id):
         """从备忘录内容中提取待办事项
-        
+
         Args:
             memo_content: 备忘录内容
             user_id: 用户ID
-            
+
         Returns:
             tuple: (添加的待办数量, 有效待办列表)
         """
@@ -615,7 +629,7 @@ class AIHandler:
 2. 截止日期（如果有）
 3. 类别（如果有）
 
-请以JSON格式返回结果，格式如下：
+请一定以JSON格式返回结果，格式如下：
 ```json
 [
   {
@@ -629,135 +643,151 @@ class AIHandler:
 如果无法识别截止日期，请使用null。如果无法识别类别，请使用"未分类"。"""
 
             prompt = f"请从以下备忘录内容中提取所有待办事项：\n\n{memo_content}"
-            
+
             # 使用AI服务生成内容
             # 注意：这里使用generate_content方法而不是process_with_ai
-            result = self.ai_service.generate_content(prompt, mode="自定义")
-            
+            result = self.ai_service.generate_content(
+                system_prompt+prompt, mode="自定义"
+            )
+
             # 尝试解析JSON结果
             todos = self._parse_ai_todo_result(result)
-            
+
             # 处理有效的待办事项
             valid_todos = []
-            
+
             # 处理提取的待办事项
             for todo in todos:
                 if not isinstance(todo, dict):
                     continue
-                    
+
                 # 确保有任务内容
-                task = todo.get('task', '').strip() if isinstance(todo.get('task'), str) else ''
+                task = (
+                    todo.get("task", "").strip()
+                    if isinstance(todo.get("task"), str)
+                    else ""
+                )
                 if not task:
                     continue
-                    
+
                 # 处理截止日期
-                deadline = todo.get('deadline')
+                deadline = todo.get("deadline")
                 if not deadline or deadline == "null" or not isinstance(deadline, str):
                     # 如果没有截止日期，设置为一周后
                     from datetime import datetime, timedelta
-                    deadline = (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')
-                    
+
+                    deadline = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
+
                 # 处理类别
-                category = todo.get('category', '未分类')
+                category = todo.get("category", "未分类")
                 if not category or category == "null" or not isinstance(category, str):
                     category = "未分类"
-                    
-                valid_todos.append({
-                    'task': task,
-                    'deadline': deadline,
-                    'category': category
-                })
-            
+
+                valid_todos.append(
+                    {"task": task, "deadline": deadline, "category": category}
+                )
+
             # 添加到数据库
             db = DatabaseManager()
             added_count = 0
-            
+
             for todo in valid_todos:
                 print(f"添加待办: {todo}")
-                todo_id = db.add_todo(user_id, todo['task'], todo['deadline'], todo['category'])
+                todo_id = db.add_todo(
+                    user_id, todo["task"], todo["deadline"], todo["category"]
+                )
                 if todo_id:
                     added_count += 1
-            
+
             return added_count, valid_todos
         except Exception as e:
             import traceback
+
             print(f"处理待办提取结果时出错: {str(e)}")
             print(traceback.format_exc())
             return 0, []
-            
+
     def _parse_ai_todo_result(self, result):
         """解析AI返回的文本，提取待办事项"""
         import json
         import re
-        
+
         print("AI返回结果:", result)
-        
+
         if not result or not result.strip():
             print("AI返回结果为空")
             return []
-        
+
         # 尝试直接解析JSON
         try:
-            # 查找JSON数组模式 [...] 
-            json_pattern = r'\[[\s\S]*\]'
+            # 查找JSON数组模式 [...]
+            json_pattern = r"\[[\s\S]*\]"
             json_match = re.search(json_pattern, result)
-            
+
             if json_match:
                 # 提取JSON字符串
                 json_str = json_match.group(0)
                 print("提取的JSON字符串:", json_str)
-                
+
                 # 尝试解析JSON
                 todos = json.loads(json_str)
                 print(f"成功解析JSON，找到 {len(todos)} 个待办事项")
                 return todos
         except Exception as e:
             print(f"JSON解析错误: {str(e)}")
-        
+
         # 如果JSON解析失败，尝试手动解析文本
         print("尝试手动解析文本")
         todos = []
-        
+
         # 分行处理文本
-        lines = result.split('\n')
+        lines = result.split("\n")
         current_todo = None
-        
+
         for line in lines:
             line = line.strip()
             if not line:
                 continue
-            
+
             # 检查是否是新的待办项（数字开头或包含明确的任务标记）
-            if re.match(r'^\d+[\.\)、]', line) or line.lower().startswith('task') or '任务' in line:
+            if (
+                re.match(r"^\d+[\.\)、]", line)
+                or line.lower().startswith("task")
+                or "任务" in line
+            ):
                 # 保存之前的任务（如果有）
-                if current_todo and 'task' in current_todo and current_todo['task']:
+                if current_todo and "task" in current_todo and current_todo["task"]:
                     todos.append(current_todo)
                     print(f"添加按行解析的待办: {current_todo}")
-                
+
                 # 创建新任务
                 current_todo = {"task": "", "deadline": None, "category": "未分类"}
-                
+
                 # 提取任务内容
-                task_content = re.sub(r'^\d+[\.\)、]\s*', '', line)
-                task_content = re.sub(r'^task[:\s]+', '', task_content, flags=re.IGNORECASE)
-                task_content = re.sub(r'^任务[:\s]+', '', task_content)
-                current_todo['task'] = task_content
-            
+                task_content = re.sub(r"^\d+[\.\)、]\s*", "", line)
+                task_content = re.sub(
+                    r"^task[:\s]+", "", task_content, flags=re.IGNORECASE
+                )
+                task_content = re.sub(r"^任务[:\s]+", "", task_content)
+                current_todo["task"] = task_content
+
             # 检查是否包含截止日期
-            elif 'deadline' in line.lower() or '截止日期' in line or '截止时间' in line:
-                date_match = re.search(r'(\d{4}-\d{2}-\d{2})', line)
+            elif "deadline" in line.lower() or "截止日期" in line or "截止时间" in line:
+                date_match = re.search(r"(\d{4}-\d{2}-\d{2})", line)
                 if date_match:
-                    current_todo['deadline'] = date_match.group(1)
-            
+                    current_todo["deadline"] = date_match.group(1)
+
             # 检查是否包含类别
-            elif 'category' in line.lower() or '类别' in line or '分类' in line:
-                category_match = re.search(r'[类别分类category]+[:\s]+(.+)', line, re.IGNORECASE)
+            elif "category" in line.lower() or "类别" in line or "分类" in line:
+                category_match = re.search(
+                    r"[类别分类category]+[:\s]+(.+)", line, re.IGNORECASE
+                )
                 if category_match:
-                    current_todo['category'] = category_match.group(1).strip()
-        
+                    current_todo["category"] = category_match.group(1).strip()
+
         # 添加最后一个任务（如果有）
-        if current_todo and 'task' in current_todo and current_todo['task']:
+        if current_todo and "task" in current_todo and current_todo["task"]:
             todos.append(current_todo)
             print(f"添加最后一个按行解析的待办: {current_todo}")
-        
+
         return todos

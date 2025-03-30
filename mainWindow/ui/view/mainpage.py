@@ -1404,8 +1404,6 @@ class mainInterface(Ui_mainwindow, QWidget):
         if hasattr(main_window, "switch_to_newmemo_interface"):
             main_window.switch_to_newmemo_interface()
 
-            
-
     def on_sort_changed(self, action):
         """处理排序选项变化事件"""
         # 构建当前排序选项文本
@@ -1447,7 +1445,7 @@ class mainInterface(Ui_mainwindow, QWidget):
         # 显示搜索中提示
         InfoBar.info(
             title="正在搜索",
-            content=f"正在搜索包含 \"{text}\" 的备忘录...",
+            content=f'正在搜索包含 "{text}" 的备忘录...',
             orient=Qt.Horizontal,
             isClosable=True,
             position=InfoBarPosition.TOP,
@@ -1494,7 +1492,7 @@ class mainInterface(Ui_mainwindow, QWidget):
         if found_count > 0:
             InfoBar.success(
                 title="搜索完成",
-                content=f"找到 {found_count} 条包含 \"{text}\" 的备忘录",
+                content=f'找到 {found_count} 条包含 "{text}" 的备忘录',
                 orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
@@ -1504,7 +1502,7 @@ class mainInterface(Ui_mainwindow, QWidget):
         else:
             InfoBar.warning(
                 title="未找到结果",
-                content=f"没有找到包含 \"{text}\" 的备忘录",
+                content=f'没有找到包含 "{text}" 的备忘录',
                 orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
@@ -1516,6 +1514,7 @@ class mainInterface(Ui_mainwindow, QWidget):
         """当搜索框文本变化时，如果文本为空则恢复显示所有备忘录"""
         if not text.strip():
             self.update_memo_list()
+
 
 if __name__ == "__main__":
     import sys

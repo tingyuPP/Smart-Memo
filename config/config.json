@@ -1,7 +1,7 @@
 {
     "MainWindow": {
-        "AIModel": "custom",
-        "APIKey": "111",
+        "AIModel": "deepseek-chat",
+        "APIKey": "sk-321a37160770493da44d2fd53435c05d",
         "CompletionTime": 4,
         "CustomBaseUrl": "",
         "CustomModelId": "",

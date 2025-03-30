@@ -170,9 +170,9 @@ class memoInterface(Ui_memo, QWidget):
             self.textEdit, 1, 0
         )  # 将 textEdit 添加到网格布局的第一行第一列
 
-        self.textBrowser.setStyleSheet(
-            "background-color: #F7F7F7; border: 1px solid #E0E0E0; border-radius: 5px;"
-        )
+        # self.textBrowser.setStyleSheet(
+        #     "background-color: #F7F7F7; border: 1px solid #E0E0E0; border-radius: 5px;"
+        # )
 
         # 连接信号
         self.textEdit.textChanged.connect(self.update_markdown_preview)

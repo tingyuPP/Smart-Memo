@@ -91,7 +91,6 @@ class MainWindow(FluentWindow):
 
         self.stackedWidget.currentChanged.connect(self.onInterfaceChanged)
 
-
     def onInterfaceChanged(self, index):
         # 获取上一个界面和当前界面
         current_widget = self.stackedWidget.widget(index)
@@ -200,6 +199,12 @@ class MainWindow(FluentWindow):
             if hasattr(self.homeInterface, "db") and self.homeInterface.db:
                 self.homeInterface.update_memo_list()
                 print("已切换到主页，更新备忘录列表")
+
+        elif current_widget == self.todoInterface:
+            # 确保待办事项界面已初始化数据库连接
+            if hasattr(self.todoInterface, "db") and self.todoInterface.db:
+                self.todoInterface._refresh_list()
+                print("已切换到待办事项界面，更新待办事项列表")
 
 
 if __name__ == "__main__":
