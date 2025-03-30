@@ -552,6 +552,44 @@ class DatabaseManager:
         memos = self.cursor.fetchall()
         return memos
 
+    def get_recent_memos(self, user_id, limit=10):
+        """获取用户最近的备忘录
+        
+        Args:
+            user_id: 用户ID
+            limit: 返回的备忘录数量限制
+            
+        Returns:
+            list: 包含备忘录信息的字典列表
+        """
+        try:
+            self.cursor.execute(
+                """
+                SELECT id, user_id, created_time, modified_time, title, content, category 
+                FROM memos 
+                WHERE user_id = ?
+                ORDER BY modified_time DESC
+                LIMIT ?
+                """,
+                (user_id, limit)
+            )
+            memos = self.cursor.fetchall()
+            
+            # 返回解密后的数据
+            return [{
+                'id': memo[0],
+                'user_id': memo[1],
+                'created_time': memo[2],
+                'modified_time': memo[3],
+                'title': self.decrypt(memo[4]),
+                'content': self.decrypt(memo[5]),
+                'category': memo[6]
+            } for memo in memos]
+            
+        except Exception as e:
+            print(f"获取用户最近备忘录失败: {str(e)}")
+            return []
+
     def get_user_tags(self, user_id):
         """
         获取用户的所有标签
@@ -792,3 +830,32 @@ class DatabaseManager:
         """关闭数据库连接"""
         if self.conn:
             self.conn.close()
+
+    def get_all_memos_by_user(self, user_id):
+        """获取用户的所有备忘录"""
+        try:
+            self.cursor.execute(
+                """
+                SELECT id, user_id, created_time, modified_time, title, content, category 
+                FROM memos 
+                WHERE user_id = ?
+                ORDER BY modified_time DESC
+                """,
+                (user_id,)
+            )
+            memos = self.cursor.fetchall()
+            
+            # 返回解密后的数据
+            return [{
+                'id': memo[0],
+                'user_id': memo[1],
+                'created_time': memo[2],
+                'modified_time': memo[3],
+                'title': self.decrypt(memo[4]),
+                'content': self.decrypt(memo[5]),
+                'category': memo[6]
+            } for memo in memos]
+            
+        except Exception as e:
+            print(f"获取用户备忘录失败: {str(e)}")
+            return []

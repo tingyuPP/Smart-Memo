@@ -1,4 +1,5 @@
 import os
+import traceback
 from PyQt5.QtCore import QObject, pyqtSignal, QThread
 from config import cfg  # 导入配置
 
@@ -32,7 +33,7 @@ class AIService(QObject):
             "display_name": "GLM-4-Flash",
             "base_url": "https://open.bigmodel.cn/api/paas/v4",  # 修改这里，移除多余的路径
             "max_tokens": 4096,
-            "provider": "deepseek",
+            "provider": "zhipuai",
             "description": "GLM-4-Flash，支持中英双语",
             "model_id": "glm-4-flash"
         },
@@ -79,44 +80,74 @@ class AIService(QObject):
             "display_name": "智能续写",
             "description": "根据当前输入智能续写内容",
             "system_prompt": "你是一位专业的文字助手。请根据用户提供的文本片段，续写后续内容。续写应当简短（不超过30个字），自然衔接，保持风格一致。严格避免重复用户已有的文本，只输出全新的内容。不要添加任何解释。"
+        },
+        "待办提取": {
+            "display_name": "提取待办事项",
+            "description": "AI 将分析备忘录内容，识别并提取其中的待办事项",
+            "system_prompt": "你是一位专业的任务管理助手。请分析以下文本内容，识别其中可能的待办事项。待办事项通常包含需要完成的任务，可能有截止日期。对于每个识别出的待办事项，请提供以下信息：1. 任务内容 2. 截止日期（如果有）3. 任务类别（如果能推断出）。请以JSON格式返回结果，格式为：[{\"task\":\"任务内容\",\"deadline\":\"YYYY-MM-DD\",\"category\":\"类别\"}]。如果无法识别出截止日期，请将deadline设为null。如果无法推断类别，请将category设为\"未分类\"。"
         }
     }
     
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        # 优先使用配置中的 API 密钥，如果没有则尝试从环境变量获取
-        self.api_key = cfg.get(cfg.apiKey) or os.environ.get("OPENAI_API_KEY", "")
+    def __init__(self):
+        super().__init__()
+        
+        # 初始化记忆上下文
+        self._memory_context = ""
+        self._max_memory_tokens = 2000
+        
+        # 从配置中获取API密钥
+        self.api_key = cfg.get(cfg.apiKey)
+        
+        # 初始化API客户端
         self.client = None
-        self._init_client()
+        self._init_api_client()
+        
+        # 其他初始化...
 
-    def _init_client(self):
-        """初始化 API 客户端"""
-        if not self.api_key:
-            return
-            
+    def _init_api_client(self):
+        """初始化API客户端"""
         try:
-            model = cfg.get(cfg.aiModel)
-            provider = self.MODEL_CONFIGS.get(model, {}).get("provider", "deepseek")
+            # 从配置中获取API密钥
+            api_key = cfg.get(cfg.apiKey)
             
-            if provider == "openai":
+            if not api_key:
+                print("警告: API密钥未设置，AI功能将不可用")
+                self.client = None
+                return
+            
+            # 获取当前选择的模型
+            model = cfg.get(cfg.aiModel)
+            
+            # 根据不同模型初始化不同的客户端
+            if model == "deepseek-chat":
                 from openai import OpenAI
-                self.client = OpenAI(
-                    api_key=self.api_key,
-                    base_url=self._get_base_url(model)
-                )
-            elif provider == "anthropic":
-                import anthropic
-                self.client = anthropic.Anthropic(
-                    api_key=self.api_key
-                )
-            else:  # deepseek 和其他使用 OpenAI 兼容接口的服务
+                self.client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com/v1")
+            elif model == "gpt-4o":
                 from openai import OpenAI
-                self.client = OpenAI(
-                    api_key=self.api_key,
-                    base_url=self._get_base_url(model)
-                )
-        except ImportError as e:
-            print(f"请安装相关 SDK: {str(e)}")
+                self.client = OpenAI(api_key=api_key)
+            elif model == "glm-4-flash":
+                from zhipuai import ZhipuAI
+                self.client = ZhipuAI(api_key=api_key)
+            elif model == "custom":
+                # 自定义模型
+                from openai import OpenAI
+                base_url = cfg.get(cfg.customBaseUrl)
+                if not base_url:
+                    print("警告: 自定义模型的基础URL未设置")
+                    self.client = None
+                    return
+                self.client = OpenAI(api_key=api_key, base_url=base_url)
+            else:
+                print(f"警告: 不支持的模型类型 {model}")
+                self.client = None
+            
+            print(f"AI服务初始化完成，使用模型: {model}")
+            
+        except Exception as e:
+            print(f"初始化API客户端时出错: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            self.client = None
 
     def _get_base_url(self, model):
         """根据模型返回对应的 API 基础 URL"""
@@ -132,60 +163,216 @@ class AIService(QObject):
             return config["max_tokens"]
         return 4096  # 默认值
 
-    def generate_content(self, prompt, mode="generate", aux_prompt=""):
-        """
-        根据提示生成内容
-
-        参数:
-        - prompt: 用户输入的提示或要处理的文本
-        - mode: 处理模式，可以是 "generate"(生成), "polish"(润色), "continue"(续写)
-        - aux_prompt: 用户输入的辅助提示词（可选）
-
-        返回:
-        - 生成的文本内容
-        """
+    def build_memory_context(self, user_id, db):
+        """构建用户的记忆上下文"""
         try:
+            print(f"正在为用户 {user_id} 构建记忆上下文...")
+            
+            # 从数据库获取用户的所有备忘录
+            memos = db.get_all_memos_by_user(user_id)
+            
+            if not memos:
+                print("未找到用户备忘录，记忆上下文为空")
+                self._memory_context = ""  # 使用统一的属性名
+                return
+            
+            # 构建记忆上下文
+            context_parts = []
+            
+            for memo in memos:
+                memo_id = memo['id']
+                title = memo['title']
+                content = memo['content']
+                category = memo['category']
+                
+                # 将备忘录信息添加到上下文
+                memo_context = f"标题: {title}\n分类: {category}\n内容: {content}\n"
+                context_parts.append(memo_context)
+            
+            # 限制上下文长度，避免过大
+            max_context_length = 4000  # 设置最大上下文长度
+            combined_context = "\n---\n".join(context_parts)
+            
+            if len(combined_context) > max_context_length:
+                # 如果上下文过长，只保留最近的几条备忘录
+                truncated_parts = []
+                current_length = 0
+                
+                for part in reversed(context_parts):  # 从最新的备忘录开始
+                    if current_length + len(part) <= max_context_length:
+                        truncated_parts.insert(0, part)  # 插入到列表开头
+                        current_length += len(part)
+                    else:
+                        break
+                
+                combined_context = "\n---\n".join(truncated_parts)
+                print(f"记忆上下文已截断，保留了 {len(truncated_parts)}/{len(context_parts)} 条备忘录")
+            
+            self._memory_context = combined_context  # 使用统一的属性名
+            print(f"记忆上下文构建完成，长度: {len(self._memory_context)} 字符")
+            
+        except Exception as e:
+            print(f"构建记忆上下文时出错: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+            self._memory_context = ""  # 使用统一的属性名
+
+    def _get_enhanced_prompt(self, mode, user_prompt, aux_prompt=""):
+        """获取增强的提示词，统一处理所有模式的记忆上下文"""
+        # 获取模式配置
+        mode_config = self.AI_MODES.get(mode, self.AI_MODES.get("自定义"))
+        system_prompt = mode_config["system_prompt"]
+        
+        # 构建基本提示词
+        if mode == "续写":
+            enhanced_prompt = f"{system_prompt}\n\n已有内容：\n{user_prompt}"
+            if aux_prompt:
+                enhanced_prompt += f"\n\n额外要求：{aux_prompt}"
+            enhanced_prompt += "\n\n请续写（不要重复上面的内容）："
+        elif mode == "润色":
+            enhanced_prompt = f"{system_prompt}\n\n{user_prompt}"
+            if aux_prompt:
+                enhanced_prompt += f"\n\n额外要求：{aux_prompt}"
+        elif mode in ["朋友圈文案", "一句诗"]:
+            enhanced_prompt = f"{system_prompt}\n\n备忘录内容：{user_prompt}"
+            if aux_prompt:
+                enhanced_prompt += f"\n\n额外要求：{aux_prompt}"
+        elif mode == "tab续写":
+            enhanced_prompt = f"{system_prompt}\n\n已有内容：\n{user_prompt}\n\n请续写（不要重复上面的内容）："
+        else:  # 自定义模式
+            enhanced_prompt = user_prompt
+        
+        # 添加记忆上下文（如果有）
+        if hasattr(self, '_memory_context') and self._memory_context:
+            memory_prompt = f"""
+            以下是用户之前创建的备忘录内容，你可以参考这些内容来更好地理解用户的需求和风格:
+            
+            {self._memory_context}
+            
+            请基于以上内容，更好地理解用户的风格和偏好。在大多数情况下，不要直接引用这些内容。
+但如果用户明确要求引用或者上下文高度相关时，可以适当引用，但需要明确指出这是来自用户之前的笔记。
+            """
+            # 将记忆上下文添加到系统提示词中
+            enhanced_prompt = f"{memory_prompt}\n\n{enhanced_prompt}"
+            print("已添加记忆上下文到提示词")
+        
+        return enhanced_prompt
+
+    def process_with_ai(self, mode, prompt):
+        """处理AI请求"""
+        try:
+            # 使用增强的提示词
+            full_prompt = self._get_enhanced_prompt(mode, prompt)
+            print("发送给AI的完整提示词：", full_prompt)  # 添加调试信息
+            response = self._call_deepseek_api(full_prompt)
+            return response
+            
+        except Exception as e:
+            raise Exception(f"AI 处理出错: {str(e)}")
+
+    def generate_content(self, prompt, mode="generate", aux_prompt=""):
+        """生成内容"""
+        try:
+            # 检查API客户端是否初始化
+            if not self.client:
+                # 尝试重新初始化
+                self._init_api_client()
+                
+            if not self.client:
+                # 如果仍然无法初始化，返回错误信息
+                error_msg = "AI服务未初始化，请在设置中配置有效的API密钥"
+                self.errorOccurred.emit(error_msg)
+                return error_msg
+            
+            print(f"\n===== AI生成内容 =====")
+            print(f"模式: {mode}")
+            print(f"提示词: {prompt[:50]}..." if len(prompt) > 50 else f"提示词: {prompt}")
+            
             # 获取模式配置
             mode_config = self.AI_MODES.get(mode, self.AI_MODES.get("自定义"))
             system_prompt = mode_config["system_prompt"]
             
-            if mode == "tab续写":
-                # tab续写模式保持不变
-                sentences = prompt.split('。')
-                context = '。'.join(sentences[-3:-1]) + '。' if len(sentences) > 2 else prompt
-                system_prompt = "你是一位专业的文字助手。请根据以下文本上下文续写内容。要求：1. 续写内容必须与上文自然衔接；2. 严格避免重复已有的句子和表达；3. 保持相同的写作风格；4. 生成内容简短（不超过30字）。只输出续写的内容，不要重复已有文本，不要添加任何解释。"
-                full_prompt = f"上文内容：{context}\n请续写："
-            else:
-                # 处理其他模式，加入辅助提示词
-                if aux_prompt:
-                    if mode == "续写":
-                        full_prompt = f"{system_prompt}\n\n已有内容：\n{prompt}\n\n额外要求：{aux_prompt}"
-                    elif mode == "润色":
-                        full_prompt = f"{system_prompt}\n\n需要润色的内容：\n{prompt}\n\n额外要求：{aux_prompt}"
-                    elif mode in ["朋友圈文案", "一句诗"]:
-                        full_prompt = f"{system_prompt}\n\n备忘录内容：{prompt}\n\n额外要求：{aux_prompt}"
-                    else:  # 自定义模式
-                        full_prompt = f"{prompt}\n\n额外要求：{aux_prompt}"
+            # 检查记忆上下文
+            print(f"检查记忆上下文...")
+            if hasattr(self, '_memory_context'):
+                print(f"记忆上下文属性存在")
+                if self._memory_context:
+                    print(f"记忆上下文不为空，长度: {len(self._memory_context)} 字符")
+                    memory_prompt = f"""
+以下是用户之前创建的备忘录内容，你可以参考这些内容来更好地理解用户的需求和风格:
+
+{self._memory_context}
+
+请基于以上内容，更好地理解用户的风格和偏好。在大多数情况下，不要直接引用这些内容。
+但如果用户明确要求引用或者上下文高度相关时，可以适当引用，但需要明确指出这是来自用户之前的笔记。
+"""
+                    system_prompt = f"{memory_prompt}\n\n{system_prompt}"
+                    print("已添加记忆上下文到系统提示词")
                 else:
-                    # 没有辅助提示词时保持原有逻辑
-                    if mode == "续写":
-                        full_prompt = f"{system_prompt}\n\n已有内容：\n{prompt}"
-                    elif mode == "润色":
-                        full_prompt = f"{system_prompt}\n\n{prompt}"
-                    elif mode in ["朋友圈文案", "一句诗"]:
-                        full_prompt = f"{system_prompt}\n\n备忘录内容：{prompt}"
-                    else:  # 自定义模式
-                        full_prompt = prompt
+                    print("记忆上下文为空")
+                    print("警告：记忆上下文为空或未初始化")
+            else:
+                print("记忆上下文属性不存在")
+                print("警告：记忆上下文为空或未初始化")
             
-            if not self.client:
-                raise Exception("API 客户端未初始化，请检查API密钥配置")
-
-            response = self._call_deepseek_api(full_prompt, system_prompt)
-            self.resultReady.emit(response)
-            return response
-
+            # 打印调试信息
+            print(f"系统提示词长度: {len(system_prompt)} 字符")
+            print(f"用户提示词长度: {len(prompt)} 字符")
+            print("=====================\n")
+            
+            # 构建完整提示词
+            if mode == "续写":
+                full_prompt = f"{prompt}"
+                if aux_prompt:
+                    full_prompt += f"\n\n额外要求：{aux_prompt}"
+            elif mode == "润色":
+                full_prompt = f"{prompt}"
+                if aux_prompt:
+                    full_prompt += f"\n\n额外要求：{aux_prompt}"
+            elif mode in ["朋友圈文案", "一句诗"]:
+                full_prompt = f"备忘录内容：{prompt}"
+                if aux_prompt:
+                    full_prompt += f"\n\n额外要求：{aux_prompt}"
+            else:  # 自定义模式
+                full_prompt = prompt
+            
+            # 调用API
+            model = cfg.get(cfg.aiModel)
+            model_config = self.MODEL_CONFIGS.get(model, {})
+            
+            # 构建消息列表
+            messages = []
+            
+            # 添加系统消息（如果有）
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            
+            # 添加用户消息
+            messages.append({"role": "user", "content": full_prompt})
+            
+            # 获取模型ID
+            model_id = model_config.get("model_id") if model_config else model
+            
+            # 打印调试信息
+            print(f"使用模型: {model_id}")
+            print(f"系统提示词长度: {len(system_prompt)} 字符")
+            print(f"用户提示词长度: {len(full_prompt)} 字符")
+            
+            # 调用API
+            response = self.client.chat.completions.create(
+                model=model_id,
+                messages=messages,
+                temperature=0.7,
+                max_tokens=self._get_max_tokens(model)
+            )
+            
+            # 提取生成的内容
+            generated_content = response.choices[0].message.content
+            
+            return generated_content
+            
         except Exception as e:
-            error_msg = f"AI 处理出错: {str(e)}"
+            error_msg = f"AI处理出错: {str(e)}"
             self.errorOccurred.emit(error_msg)
             return error_msg
 
@@ -217,17 +404,32 @@ class AIService(QObject):
         except Exception as e:
             raise Exception(f"API 调用出错: {str(e)}")
 
-    def _call_deepseek_api_stream(self, prompt, system_prompt="你是一个有用的助手，擅长文字创作和润色。"):
-        """使用流式响应调用 AI API"""
-        try:
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ]
+    def _call_deepseek_api_stream(self, prompt, system_prompt=""):
+        """调用DeepSeek API进行流式响应
+        
+        Args:
+            prompt: 用户提示词
+            system_prompt: 系统提示词
             
-            # 使用配置中选择的模型
+        Returns:
+            流式响应对象
+        """
+        try:
+            # 获取当前选择的模型
             model = cfg.get(cfg.aiModel)
-            model_config = self.MODEL_CONFIGS.get(model)
+            model_config = self.MODEL_CONFIGS.get(model, {})
+            
+            # 构建消息列表
+            messages = []
+            
+            # 添加系统消息（如果有）
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            
+            # 添加用户消息
+            messages.append({"role": "user", "content": prompt})
+            
+            # 获取模型ID
             model_id = model_config.get("model_id") if model_config else model
             
             stream = self.client.chat.completions.create(
@@ -260,27 +462,73 @@ class AIService(QObject):
             mode_config = self.AI_MODES.get(mode, self.AI_MODES.get("自定义"))
             system_prompt = mode_config["system_prompt"]
             
+            # 添加记忆上下文到系统提示词
+            if hasattr(self, '_memory_context') and self._memory_context:
+                memory_prompt = f"""
+以下是用户之前创建的备忘录内容，你可以参考这些内容来更好地理解用户的需求和风格:
+
+{self._memory_context}
+
+请基于以上内容，更好地理解用户的风格和偏好。在大多数情况下，不要直接引用这些内容。
+但如果用户明确要求引用或者上下文高度相关时，可以适当引用，但需要明确指出这是来自用户之前的笔记。
+"""
+                system_prompt = f"{memory_prompt}\n\n{system_prompt}"
+                print("已添加记忆上下文到系统提示词")
+            else:
+                print("警告：记忆上下文为空或未初始化")
+            
             # 构建完整提示词
             if mode == "续写":
-                full_prompt = f"{system_prompt}\n\n已有内容：\n{prompt}"
+                full_prompt = f"{prompt}"
                 if aux_prompt:
                     full_prompt += f"\n\n额外要求：{aux_prompt}"
-                full_prompt += "\n\n请续写（不要重复上面的内容）："
             elif mode == "润色":
-                full_prompt = f"{system_prompt}\n\n{prompt}"
+                full_prompt = f"{prompt}"
                 if aux_prompt:
                     full_prompt += f"\n\n额外要求：{aux_prompt}"
             elif mode in ["朋友圈文案", "一句诗"]:
-                full_prompt = f"{system_prompt}\n\n备忘录内容：{prompt}"
+                full_prompt = f"备忘录内容：{prompt}"
                 if aux_prompt:
                     full_prompt += f"\n\n额外要求：{aux_prompt}"
             else:  # 自定义模式
                 full_prompt = prompt
             
+            # 初始化API客户端（如果尚未初始化）
+            if not self.client:
+                self._init_api_client()
+            
             if not self.client:
                 raise Exception("API 客户端未初始化，请检查API密钥配置")
-                
-            return self._call_deepseek_api_stream(full_prompt, system_prompt)
+            
+            # 打印调试信息
+            print(f"系统提示词长度: {len(system_prompt)} 字符")
+            print(f"用户提示词长度: {len(full_prompt)} 字符")
+            
+            # 构建消息列表
+            messages = []
+            
+            # 添加系统消息（如果有）
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            
+            # 添加用户消息
+            messages.append({"role": "user", "content": full_prompt})
+            
+            # 获取模型ID
+            model = cfg.get(cfg.aiModel)
+            model_config = self.MODEL_CONFIGS.get(model, {})
+            model_id = model_config.get("model_id") if model_config else model
+            
+            # 调用API
+            stream = self.client.chat.completions.create(
+                model=model_id,
+                messages=messages,
+                temperature=0.7,
+                max_tokens=self._get_max_tokens(model),
+                stream=True
+            )
+            
+            return stream
         
         except Exception as e:
             error_msg = f"AI 流式处理出错: {str(e)}"

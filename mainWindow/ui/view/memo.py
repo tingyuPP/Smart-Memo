@@ -28,6 +28,9 @@ from qfluentwidgets import (
     InfoBarPosition,
     TextEdit,
     StateToolTip,
+    SimpleCardWidget,
+    StrongBodyLabel,
+    Dialog
 )
 from PyQt5.QtWidgets import (
     QWidget,
@@ -79,10 +82,19 @@ class memoInterface(Ui_memo, QWidget):
     def __init__(self, parent=None, user_id=None):
         super().__init__(parent=parent)
         self.setupUi(self)
-
-        self.db = DatabaseManager()  # 初始化数据库连接
-        self.user_id = user_id  # 获取用户ID
-        self.ai_handler = AIHandler(self)  # 创建 AI 处理器实例
+        
+        self.db = DatabaseManager()
+        self.user_id = user_id
+        
+        # 使用AIHandler单例
+        self.ai_handler = AIHandler.get_instance(self)
+        if self.user_id:  # 确保有用户ID时才构建上下文
+            self.ai_handler.ai_service.build_memory_context(self.user_id, self.db)
+        
+        # 添加定期更新记忆上下文的机制
+        self.memory_update_timer = QTimer(self)
+        self.memory_update_timer.timeout.connect(self._update_memory_context)
+        self.memory_update_timer.start(1 * 60 * 1000)  # 每分钟更新一次
 
         self.memo_id = None  # 添加memo_id属性，用于跟踪当前备忘录的ID
 
@@ -126,6 +138,14 @@ class memoInterface(Ui_memo, QWidget):
             )
         )
 
+        self.frame_2.addAction(
+            Action(
+                FluentIcon.CHECKBOX,
+                "提取待办事项",
+                triggered=self.extract_todos,
+            )
+        )
+
         self.lineEdit.setPlaceholderText("请输入备忘录标题")
         self.lineEdit_2.setPlaceholderText("请选择标签")
 
@@ -161,6 +181,14 @@ class memoInterface(Ui_memo, QWidget):
         # 初始化显示
         self.update_markdown_preview()
         self.update_word_count()
+
+    def _update_memory_context(self):
+        """定期更新AI记忆上下文"""
+        try:
+            if self.user_id and hasattr(self, 'ai_handler') and hasattr(self.ai_handler, 'ai_service'):
+                self.ai_handler.ai_service.build_memory_context(self.user_id, self.db)
+        except Exception as e:
+            print(f"更新记忆上下文时出错: {str(e)}")
 
     def toggle_markdown_preview(self):
         """切换Markdown预览模式"""
@@ -656,8 +684,6 @@ class memoInterface(Ui_memo, QWidget):
                 )
 
                 # 直接使用标题和指导文本作为Dialog的参数
-                from qfluentwidgets import Dialog
-
                 dialog = Dialog(
                     f"分享到{platform}",
                     f"请使用{platform}扫描下方二维码查看图片并分享",
@@ -726,8 +752,6 @@ class memoInterface(Ui_memo, QWidget):
                 url_layout.addWidget(url_label)
 
                 # 使用TextEdit来显示可选择的文本，自适应主题
-                from qfluentwidgets import TextEdit
-
                 url_text = TextEdit()
                 url_text.setPlainText(image_url)
                 url_text.setReadOnly(True)
@@ -884,37 +908,6 @@ class memoInterface(Ui_memo, QWidget):
             print(traceback.format_exc())
             return None
 
-    def _generate_qrcode_for_url(self, url, platform):
-        """为URL生成二维码并返回QPixmap"""
-        try:
-            # 创建二维码
-            qr = qrcode.QRCode(
-                version=1,
-                error_correction=qrcode.constants.ERROR_CORRECT_L,
-                box_size=10,
-                border=4,
-            )
-            qr.add_data(url)
-            qr.make(fit=True)
-
-            # 生成二维码图像
-            img = qr.make_image(fill_color="black", back_color="white")
-
-            # 将PIL图像转换为QPixmap
-            buffer = BytesIO()
-            img.save(buffer, format="PNG")
-            buffer.seek(0)
-
-            qimage = QPixmap()
-            qimage.loadFromData(QByteArray(buffer.getvalue()))
-
-            return qimage
-
-        except Exception as e:
-            print(f"生成二维码时发生错误: {str(e)}")
-            return QPixmap()
-
-
     def _show_local_image_dialog(self, file_path, platform, parent_widget):
         """显示本地图片对话框"""
         dialog = QDialog(parent_widget)
@@ -1015,6 +1008,158 @@ class memoInterface(Ui_memo, QWidget):
         except Exception as e:
             print(f"复制到剪贴板失败: {str(e)}")
 
+    def extract_todos(self):
+        """从当前备忘录内容中提取待办事项"""
+        if not self.user_id:
+            InfoBar.error(
+                title="错误",
+                content="请先登录",
+                parent=self
+            )
+            return
+        
+        # 获取当前备忘录内容
+        memo_content = self.textEdit.toPlainText()
+        if not memo_content.strip():
+            InfoBar.warning(
+                title="提示",
+                content="备忘录内容为空，无法提取待办事项",
+                parent=self
+            )
+            return
+        
+        # 显示加载状态提示
+        self.state_tooltip = StateToolTip(
+            "正在处理", 
+            "AI正在分析备忘录内容，提取待办事项...", 
+            parent=self
+        )
+        self.state_tooltip.move(
+            (self.width() - self.state_tooltip.width()) // 2,
+            (self.height() - self.state_tooltip.height()) // 2
+        )
+        self.state_tooltip.show()
+        QApplication.processEvents()
+        
+        # 创建一个线程来处理待办提取
+        class TodoExtractThread(QThread):
+            resultReady = pyqtSignal(int, list)
+            
+            def __init__(self, ai_handler, memo_content, user_id):
+                super().__init__()
+                self.ai_handler = ai_handler
+                self.memo_content = memo_content
+                self.user_id = user_id
+                
+            def run(self):
+                count, todos = self.ai_handler.extract_todos_from_memo(
+                    self.memo_content, self.user_id
+                )
+                self.resultReady.emit(count, todos)
+        
+        # 创建并启动线程
+        self.todo_thread = TodoExtractThread(
+            self.ai_handler, memo_content, self.user_id
+        )
+        self.todo_thread.resultReady.connect(self._on_todos_extracted)
+        self.todo_thread.start()
+
+    def _on_todos_extracted(self, count, todos):
+        """待办提取完成后的回调"""
+        # 关闭加载状态提示
+        if hasattr(self, 'state_tooltip') and self.state_tooltip:
+            self.state_tooltip.setState(True)
+            self.state_tooltip.setContent("处理完成")
+            QApplication.processEvents()
+            # 设置一个短暂的延迟后关闭提示
+            QTimer.singleShot(1000, lambda: self.safely_close_tooltip())
+        
+        if count > 0:
+            InfoBar.success(
+                title="提取成功",
+                content=f"已成功提取并添加 {count} 个待办事项",
+                parent=self
+            )
+            
+            # 显示提取结果对话框
+            self._show_extracted_todos_dialog(todos)
+        else:
+            InfoBar.warning(
+                title="提示",
+                content="未能从备忘录中识别出待办事项",
+                parent=self
+            )
+
+    def _show_extracted_todos_dialog(self, todos):
+        """显示提取的待办事项对话框"""
+        # 创建自定义对话框
+        dialog = QDialog(self.window())
+        dialog.setWindowTitle("提取的待办事项")
+        dialog.resize(400, 500)  # 设置合适的大小
+        
+        # 创建主布局
+        main_layout = QVBoxLayout(dialog)
+        
+        # 添加说明文本
+        label = BodyLabel("以下是从备忘录中提取的待办事项：")
+        main_layout.addWidget(label)
+        
+        # 创建滚动区域以容纳多个待办事项
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        
+        # 创建内容容器
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        
+        # 添加待办列表
+        for i, todo in enumerate(todos):
+            task = todo.get('task', '')
+            deadline = todo.get('deadline', '无截止日期')
+            category = todo.get('category', '未分类')
+            
+            card = SimpleCardWidget()
+            card_layout = QVBoxLayout(card)
+            
+            task_label = StrongBodyLabel(f"{i+1}. {task}")
+            deadline_label = BodyLabel(f"截止日期: {deadline if deadline else '无'}")
+            category_label = BodyLabel(f"类别: {category}")
+            
+            card_layout.addWidget(task_label)
+            card_layout.addWidget(deadline_label)
+            card_layout.addWidget(category_label)
+            
+            content_layout.addWidget(card)
+        
+        # 设置滚动区域的内容
+        scroll.setWidget(content_widget)
+        main_layout.addWidget(scroll)
+        
+        # 添加提示
+        tip = CaptionLabel("这些待办事项已自动添加到您的待办列表中")
+        main_layout.addWidget(tip)
+        
+        # 添加按钮
+        button_layout = QHBoxLayout()
+        button = PrimaryPushButton("确定")
+        button.clicked.connect(dialog.accept)
+        button_layout.addStretch()
+        button_layout.addWidget(button)
+        button_layout.addStretch()
+        main_layout.addLayout(button_layout)
+        
+        # 显示对话框
+        dialog.exec_()
+
+    def safely_close_tooltip(self):
+        """安全关闭提示框"""
+        try:
+            if hasattr(self, 'state_tooltip') and self.state_tooltip:
+                self.state_tooltip.close()
+                self.state_tooltip = None
+        except Exception as e:
+            print(f"关闭提示框时出错: {str(e)}")
 
 if __name__ == "__main__":
     import sys

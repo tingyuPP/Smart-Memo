@@ -16,10 +16,12 @@ from qfluentwidgets import (
     InfoBarPosition,
     RoundMenu,
     Action,
-    CheckBox
+    CheckBox,
+    FluentIcon
 )
 from services.ai_service import AIService
-
+import os, re
+from Database import DatabaseManager
 
 class AIWorkerThread(QThread):
     finished = pyqtSignal(str)
@@ -86,15 +88,18 @@ class AIStreamWorkerThread(QThread):
 class AIDialog(QDialog):
     """AI 处理对话框"""
 
-    def __init__(self, mode, text="", parent=None):
+    def __init__(self, mode, text="", parent=None, ai_service=None):
         super().__init__(parent)
         self.mode = mode
         self.input_text = text
         self.result_text = ""
         self.state_tooltip = None
         self.worker_thread = None  # 添加工作线程属性
+        
+        # 使用传入的AI服务实例，而不是创建新的
+        self.ai_service = ai_service
+        
         self.setup_ui()
-
 
         # 设置窗口标志
         self.setWindowFlags(Qt.Dialog | Qt.WindowStaysOnTopHint)
@@ -169,10 +174,10 @@ class AIDialog(QDialog):
         
         layout.addLayout(button_layout)
 
-        # 创建 AI 服务实例
-        self.ai_service = AIService()
-        self.ai_service.resultReady.connect(self.handle_ai_result)
-        self.ai_service.errorOccurred.connect(self.handle_ai_error)
+        # 连接AI服务信号
+        if self.ai_service:
+            self.ai_service.resultReady.connect(self.handle_ai_result)
+            self.ai_service.errorOccurred.connect(self.handle_ai_error)
         
         # 添加流式响应选项
         self.use_streaming = True  # 默认启用流式响应
@@ -231,7 +236,17 @@ class AIDialog(QDialog):
         """生成内容"""
         self.disable_all_inputs()
         self.show_loading_state()
-
+        
+        # 添加调试代码，检查记忆上下文
+        if hasattr(self.ai_service, '_memory_context'):
+            context = self.ai_service._memory_context
+            if context:
+                print(f"AIDialog - 记忆上下文长度: {len(context)} 字符")
+            else:
+                print("AIDialog - 记忆上下文为空")
+        else:
+            print("AIDialog - 记忆上下文属性不存在")
+        
         # 获取辅助提示词（如果有）
         aux_prompt = self.aux_edit.toPlainText() if hasattr(self, 'aux_edit') else ""
 
@@ -446,9 +461,45 @@ class AIDialog(QDialog):
 
 class AIHandler:
     """AI 功能处理类"""
-
+    
+    _instance = None  # 类变量，用于存储单例实例
+    
+    @classmethod
+    def get_instance(cls, parent=None):
+        """获取AIHandler单例实例"""
+        if cls._instance is None:
+            try:
+                cls._instance = AIHandler(parent)
+            except Exception as e:
+                print(f"创建AIHandler实例时出错: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                # 创建一个降级版本的AIHandler
+                cls._instance = cls._create_fallback_instance(parent)
+        return cls._instance
+    
+    @classmethod
+    def _create_fallback_instance(cls, parent):
+        """创建降级版本的AIHandler实例"""
+        handler = object.__new__(cls)
+        handler.parent = parent
+        # 创建一个空的AI服务
+        from services.ai_service import AIService
+        handler.ai_service = AIService.__new__(AIService)
+        handler.ai_service._memory_context = ""
+        handler.ai_service.client = None
+        return handler
+    
     def __init__(self, parent: QWidget):
+        # 如果已经有实例，直接返回
+        if AIHandler._instance is not None:
+            return
+            
         self.parent = parent
+        self.ai_service = AIService()  # 初始化 AI 服务
+        
+        # 设置单例实例
+        AIHandler._instance = self
 
     def show_ai_menu(self, text_edit):
         """显示 AI 菜单"""
@@ -490,7 +541,8 @@ class AIHandler:
             cursor.selectedText() if cursor.hasSelection() else text_edit.toPlainText()
         )
 
-        dialog = AIDialog(mode, text, self.parent)
+        # 传递AI服务实例
+        dialog = AIDialog(mode, text, self.parent, ai_service=self.ai_service)
         result = dialog.exec_()
 
         if result == QDialog.Accepted and dialog.result_text:
@@ -544,3 +596,168 @@ class AIHandler:
             duration=2000,
             parent=self.parent,
         )
+
+    def extract_todos_from_memo(self, memo_content, user_id):
+        """从备忘录内容中提取待办事项
+        
+        Args:
+            memo_content: 备忘录内容
+            user_id: 用户ID
+            
+        Returns:
+            tuple: (添加的待办数量, 有效待办列表)
+        """
+        try:
+            # 构建提示词
+            system_prompt = """你是一个专业的待办事项提取助手。请从用户的备忘录内容中识别出所有可能的待办事项。
+待办事项通常包含需要完成的任务，可能有截止日期。对于每个识别出的待办事项，请提供以下信息：
+1. 任务内容
+2. 截止日期（如果有）
+3. 类别（如果有）
+
+请以JSON格式返回结果，格式如下：
+```json
+[
+  {
+    "task": "任务内容",
+    "deadline": "YYYY-MM-DD",
+    "category": "类别"
+  },
+  ...
+]
+```
+如果无法识别截止日期，请使用null。如果无法识别类别，请使用"未分类"。"""
+
+            prompt = f"请从以下备忘录内容中提取所有待办事项：\n\n{memo_content}"
+            
+            # 使用AI服务生成内容
+            # 注意：这里使用generate_content方法而不是process_with_ai
+            result = self.ai_service.generate_content(prompt, mode="自定义")
+            
+            # 尝试解析JSON结果
+            todos = self._parse_ai_todo_result(result)
+            
+            # 处理有效的待办事项
+            valid_todos = []
+            
+            # 处理提取的待办事项
+            for todo in todos:
+                if not isinstance(todo, dict):
+                    continue
+                    
+                # 确保有任务内容
+                task = todo.get('task', '').strip() if isinstance(todo.get('task'), str) else ''
+                if not task:
+                    continue
+                    
+                # 处理截止日期
+                deadline = todo.get('deadline')
+                if not deadline or deadline == "null" or not isinstance(deadline, str):
+                    # 如果没有截止日期，设置为一周后
+                    from datetime import datetime, timedelta
+                    deadline = (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')
+                    
+                # 处理类别
+                category = todo.get('category', '未分类')
+                if not category or category == "null" or not isinstance(category, str):
+                    category = "未分类"
+                    
+                valid_todos.append({
+                    'task': task,
+                    'deadline': deadline,
+                    'category': category
+                })
+            
+            # 添加到数据库
+            db = DatabaseManager()
+            added_count = 0
+            
+            for todo in valid_todos:
+                print(f"添加待办: {todo}")
+                todo_id = db.add_todo(user_id, todo['task'], todo['deadline'], todo['category'])
+                if todo_id:
+                    added_count += 1
+            
+            return added_count, valid_todos
+        except Exception as e:
+            import traceback
+            print(f"处理待办提取结果时出错: {str(e)}")
+            print(traceback.format_exc())
+            return 0, []
+            
+    def _parse_ai_todo_result(self, result):
+        """解析AI返回的文本，提取待办事项"""
+        import json
+        import re
+        
+        print("AI返回结果:", result)
+        
+        if not result or not result.strip():
+            print("AI返回结果为空")
+            return []
+        
+        # 尝试直接解析JSON
+        try:
+            # 查找JSON数组模式 [...] 
+            json_pattern = r'\[[\s\S]*\]'
+            json_match = re.search(json_pattern, result)
+            
+            if json_match:
+                # 提取JSON字符串
+                json_str = json_match.group(0)
+                print("提取的JSON字符串:", json_str)
+                
+                # 尝试解析JSON
+                todos = json.loads(json_str)
+                print(f"成功解析JSON，找到 {len(todos)} 个待办事项")
+                return todos
+        except Exception as e:
+            print(f"JSON解析错误: {str(e)}")
+        
+        # 如果JSON解析失败，尝试手动解析文本
+        print("尝试手动解析文本")
+        todos = []
+        
+        # 分行处理文本
+        lines = result.split('\n')
+        current_todo = None
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            
+            # 检查是否是新的待办项（数字开头或包含明确的任务标记）
+            if re.match(r'^\d+[\.\)、]', line) or line.lower().startswith('task') or '任务' in line:
+                # 保存之前的任务（如果有）
+                if current_todo and 'task' in current_todo and current_todo['task']:
+                    todos.append(current_todo)
+                    print(f"添加按行解析的待办: {current_todo}")
+                
+                # 创建新任务
+                current_todo = {"task": "", "deadline": None, "category": "未分类"}
+                
+                # 提取任务内容
+                task_content = re.sub(r'^\d+[\.\)、]\s*', '', line)
+                task_content = re.sub(r'^task[:\s]+', '', task_content, flags=re.IGNORECASE)
+                task_content = re.sub(r'^任务[:\s]+', '', task_content)
+                current_todo['task'] = task_content
+            
+            # 检查是否包含截止日期
+            elif 'deadline' in line.lower() or '截止日期' in line or '截止时间' in line:
+                date_match = re.search(r'(\d{4}-\d{2}-\d{2})', line)
+                if date_match:
+                    current_todo['deadline'] = date_match.group(1)
+            
+            # 检查是否包含类别
+            elif 'category' in line.lower() or '类别' in line or '分类' in line:
+                category_match = re.search(r'[类别分类category]+[:\s]+(.+)', line, re.IGNORECASE)
+                if category_match:
+                    current_todo['category'] = category_match.group(1).strip()
+        
+        # 添加最后一个任务（如果有）
+        if current_todo and 'task' in current_todo and current_todo['task']:
+            todos.append(current_todo)
+            print(f"添加最后一个按行解析的待办: {current_todo}")
+        
+        return todos
