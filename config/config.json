@@ -1,6 +1,6 @@
 {
     "MainWindow": {
-        "AIModel": "deepseek-chat",
+        "AIModel": "custom",
         "APIKey": "111",
         "CompletionTime": 4,
         "CustomBaseUrl": "",

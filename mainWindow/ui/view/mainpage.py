@@ -1404,13 +1404,7 @@ class mainInterface(Ui_mainwindow, QWidget):
         if hasattr(main_window, "switch_to_newmemo_interface"):
             main_window.switch_to_newmemo_interface()
 
-            # 清空 memoInterface 的内容
-            if hasattr(main_window, "memoInterface"):
-                main_window.memoInterface.memo_id = None  # 重置 memo_id
-                main_window.memoInterface.lineEdit.clear()  # 清空标题
-                main_window.memoInterface.textEdit.clear()  # 清空内容
-                main_window.memoInterface.lineEdit_2.clear()  # 清空分类
-                main_window.memoInterface.update_word_count()  # 更新字数统计
+            
 
     def on_sort_changed(self, action):
         """处理排序选项变化事件"""
