@@ -5,11 +5,11 @@
         "CompletionTime": 4,
         "CustomBaseUrl": "",
         "CustomModelId": "",
-        "EnableAutoCompletion": true,
+        "EnableAutoCompletion": false,
         "ExportDir": "D:/study/NIS3366/Smart-Memo-Manager"
     },
     "QFluentWidgets": {
         "ThemeColor": "#ff10abf9",
-        "ThemeMode": "Light"
+        "ThemeMode": "Dark"
     }
 }

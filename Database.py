@@ -378,6 +378,11 @@ class DatabaseManager:
         self.cursor.execute("SELECT COUNT(*) FROM memos WHERE user_id = ?", (user_id,))
         return self.cursor.fetchone()[0]
 
+    def get_todo_count(self, user_id):
+        self.cursor.execute(
+            "SELECT COUNT(*) FROM todos WHERE user_id = ?", (user_id,))
+        return self.cursor.fetchone()[0]
+    
     def check_password(self, username, password):
         """检查密码是否正确"""
         self.cursor.execute(

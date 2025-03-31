@@ -49,6 +49,7 @@ class MyInterface(ScrollArea):
             self.user_data = self.db.get_certain_user(username)
             self.user_id = self.user_data["id"]
             self.memo_count = self.db.get_memo_count(self.user_id)
+            self.todo_count = self.db.get_todo_count(self.user_id)
 
             if "register_time" not in self.user_data:
                 self.user_data["register_time"] = "default_time"
@@ -63,7 +64,7 @@ class MyInterface(ScrollArea):
         self.vBoxLayout = QVBoxLayout(self.scrollWidget)
         font = QFont("黑体", 20)
         font.setBold(True)
-        self.infoCard = InfoCard(self.user_data, self.memo_count,self)
+        self.infoCard = InfoCard(self.user_data, self.memo_count, self.todo_count, self)
         self.titleLabel = TitleLabel("个人中心", self)
         self.titleLabel.setFont(font)
         # self.descriptionLabel = BodyLabel("在这里查看和管理您的个人信息")
@@ -76,7 +77,7 @@ class MyInterface(ScrollArea):
         self.faceCard = FaceCard(self)
         self.cloudGroup = SettingCardGroup(self.tr("数据同步"), self.scrollWidget)
         self.cloudCard = CloudCard(
-            FluentIcon.CLOUD, "云端同步", "同步您的数据到云端", self
+            FluentIcon.CLOUD, "云端同步", "同步您的备忘录数据到云端", self
         )
 
         self.__initWidget()
@@ -121,7 +122,7 @@ class MyInterface(ScrollArea):
 
 
 class InfoCard(ElevatedCardWidget):
-    def __init__(self, user_data: dict, memo_count: int, parent=None):
+    def __init__(self, user_data: dict, memo_count: int, todo_count : int,parent=None):
         super().__init__(parent=parent)
         self.user_data = user_data
         self.id = user_data["id"]
@@ -131,6 +132,7 @@ class InfoCard(ElevatedCardWidget):
 
         # 获取或设置备忘录数量（默认为15篇，实际开发中应从数据库获取）
         self.memo_count = memo_count
+        self.todo_count = todo_count
 
         self.__initWidget()
         self.__initLayout()
@@ -149,7 +151,9 @@ class InfoCard(ElevatedCardWidget):
 
         # 创建用户ID标签
         self.idLabel = BodyLabel(f"ID: {self.id}", self)
-
+        id_font = QFont("Microsoft YaHei", 12)  # 创建一个更大的字体
+        self.idLabel.setFont(id_font)
+        
         # 设置头像大小
         self.avatar.setFixedSize(100, 100)  # 保持您的原始设置
 
@@ -163,6 +167,12 @@ class InfoCard(ElevatedCardWidget):
         self.verticalSeparator.setFixedWidth(1)
         self.verticalSeparator.setMinimumHeight(100)  # 设置最小高度
         self.verticalSeparator.setStyleSheet("background-color: rgba(0, 0, 0, 0.1);")
+        
+        # 创建第二个垂直分割线
+        self.verticalSeparator2 = QWidget(self)
+        self.verticalSeparator2.setFixedWidth(1)
+        self.verticalSeparator2.setMinimumHeight(100)
+        self.verticalSeparator2.setStyleSheet("background-color: rgba(0, 0, 0, 0.1);")
 
         # 创建备忘录标题标签
         self.memoTitleLabel = BodyLabel("备忘录数量", self)
@@ -174,6 +184,15 @@ class InfoCard(ElevatedCardWidget):
         count_font.setBold(True)
         # self.memoCountLabel.setFont(count_font)
         self.memoCountLabel.setStyleSheet("color: #0078D4;")  # 使用醒目的蓝色
+        
+        # 创建待办标题标签
+        self.todoTitleLabel = BodyLabel("待办任务", self)
+        self.todoTitleLabel.setAlignment(Qt.AlignCenter)
+        
+        # 创建待办数量标签
+        self.todoCountLabel = TitleLabel(str(self.todo_count), self)
+        # self.todoCountLabel.setFont(count_font)
+        self.todoCountLabel.setStyleSheet("color: #107C10;")  # 使用绿色区分
 
     def __initLayout(self):
         """初始化布局 - 三部分横向布局"""
@@ -227,6 +246,30 @@ class InfoCard(ElevatedCardWidget):
         memoLayout.addStretch(1)
         # 将备忘录布局添加到主布局
         mainLayout.addLayout(memoLayout)
+        
+        # 添加第二个垂直分割线
+        mainLayout.addWidget(self.verticalSeparator2, 0, Qt.AlignVCenter)
+        
+        # 创建最右侧的垂直布局，放置待办任务统计信息
+        todoLayout = QVBoxLayout()
+        todoLayout.setSpacing(10)
+        todoLayout.setContentsMargins(10, 0, 10, 0)
+        
+        # 添加待办标题，左对齐
+        todoLayout.addStretch(1)
+        todoLayout.addWidget(self.todoTitleLabel, 0, Qt.AlignLeft)
+        
+        # 创建水平布局放置待办数量
+        todoCountLayout = QHBoxLayout()
+        todoCountLayout.setSpacing(2)
+        todoCountLayout.addWidget(self.todoCountLabel, 0, Qt.AlignLeft)
+        
+        # 添加数量布局到待办布局
+        todoLayout.addLayout(todoCountLayout)
+        todoLayout.addStretch(1)
+        
+        # 将待办布局添加到主布局
+        mainLayout.addLayout(todoLayout)
 
         # 设置主布局
         self.setLayout(mainLayout)

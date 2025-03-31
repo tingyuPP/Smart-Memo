@@ -67,7 +67,7 @@ class MainWindow(FluentWindow):
 
     def initNavigation(self):
         self.addSubInterface(self.homeInterface, FIF.HOME, "主页")
-        self.addSubInterface(self.memoInterface, FIF.ADD, "新建备忘录")
+        self.addSubInterface(self.memoInterface, FIF.ADD, "编辑备忘录")
         self.addSubInterface(self.todoInterface, FIF.PIN, "待办")
 
         self.navigationInterface.addSeparator()
