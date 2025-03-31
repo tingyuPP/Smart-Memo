@@ -43,7 +43,7 @@ class MainWindow(FluentWindow):
     def __init__(self, user_id=None, username=None):
         super().__init__()
         self.splashScreen = SplashScreen(QIcon("resource/logo.png"), self)
-        self.splashScreen.setIconSize(QSize(100, 100))
+        self.splashScreen.setIconSize(QSize(200, 200))
         self.splashScreen.show()
 
         QApplication.processEvents()
