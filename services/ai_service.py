@@ -84,7 +84,31 @@ class AIService(QObject):
         "待办提取": {
             "display_name": "提取待办事项",
             "description": "AI 将分析备忘录内容，识别并提取其中的待办事项",
-            "system_prompt": "你是一位专业的任务管理助手。请分析以下文本内容，识别其中可能的待办事项。待办事项通常包含需要完成的任务，可能有截止日期。对于每个识别出的待办事项，请提供以下信息：1. 任务内容 2. 截止日期（如果有）3. 任务类别（如果能推断出）。请以JSON格式返回结果，格式为：[{\"task\":\"任务内容\",\"deadline\":\"YYYY-MM-DD\",\"category\":\"类别\"}]。如果无法识别出截止日期，请将deadline设为null。如果无法推断类别，请将category设为\"未分类\"。"
+            "system_prompt": """你是一位专业的任务管理助手。请分析以下文本内容，识别其中可能的待办事项。
+待办事项通常包含需要完成的任务，可能有截止日期。
+
+对于每个识别出的待办事项，请提供以下信息：
+1. 任务内容
+2. 截止日期（如果有）
+3. 任务类别（如果能推断出）
+
+请以JSON数组格式返回结果，格式为：
+[
+  {
+    "task": "任务内容",
+    "deadline": "YYYY-MM-DD",
+    "category": "类别"
+  }
+]
+
+如果无法识别出截止日期，请将deadline设为null。
+如果无法推断类别，请将category设为"未分类"。
+如果没有识别出任何待办事项，请返回空数组 []。
+
+重要提示：
+1. 请确保返回的是有效的JSON格式
+2. 不要在JSON前后添加任何额外文字
+3. 如果没有待办事项，只返回 [] 而不是文字说明"""
         }
     }
     
@@ -95,8 +119,9 @@ class AIService(QObject):
         self._memory_context = ""
         self._max_memory_tokens = 2000
         
-        # 从配置中获取API密钥
+        # 从配置中获取API密钥 - 确保每次都是最新的
         self.api_key = cfg.get(cfg.apiKey)
+        print(f"AIService初始化，使用API密钥: {self.api_key[:3]}{'*' * (len(self.api_key) - 6)}{self.api_key[-3:] if len(self.api_key) > 6 else ''}")
         
         # 初始化API客户端
         self.client = None
@@ -107,13 +132,18 @@ class AIService(QObject):
     def _init_api_client(self):
         """初始化API客户端"""
         try:
-            # 从配置中获取API密钥
+            # 从配置中获取API密钥 - 每次都重新获取最新值
             api_key = cfg.get(cfg.apiKey)
+            self.api_key = api_key  # 更新实例变量
             
             if not api_key:
                 print("警告: API密钥未设置，AI功能将不可用")
                 self.client = None
                 return
+            
+            # 打印API密钥前几位和后几位，用于调试
+            masked_key = f"{api_key[:3]}{'*' * (len(api_key) - 6)}{api_key[-3:] if len(api_key) > 6 else ''}"
+            print(f"初始化API客户端，使用API密钥: {masked_key}，长度: {len(api_key)}")
             
             # 获取当前选择的模型
             model = cfg.get(cfg.aiModel)
@@ -166,7 +196,6 @@ class AIService(QObject):
     def build_memory_context(self, user_id, db):
         """构建用户的记忆上下文"""
         try:
-            print(f"正在为用户 {user_id} 构建记忆上下文...")
             
             # 从数据库获取用户的所有备忘录
             memos = db.get_all_memos_by_user(user_id)
@@ -209,7 +238,6 @@ class AIService(QObject):
                 print(f"记忆上下文已截断，保留了 {len(truncated_parts)}/{len(context_parts)} 条备忘录")
             
             self._memory_context = combined_context  # 使用统一的属性名
-            print(f"记忆上下文构建完成，长度: {len(self._memory_context)} 字符")
             
         except Exception as e:
             print(f"构建记忆上下文时出错: {str(e)}")
@@ -273,13 +301,12 @@ class AIService(QObject):
     def generate_content(self, prompt, mode="generate", aux_prompt=""):
         """生成内容"""
         try:
+            # 每次生成内容前都重新初始化客户端，确保使用最新的API密钥
+            self._init_api_client()
+            
             # 检查API客户端是否初始化
             if not self.client:
-                # 尝试重新初始化
-                self._init_api_client()
-                
-            if not self.client:
-                # 如果仍然无法初始化，返回错误信息
+                # 如果无法初始化，返回错误信息
                 error_msg = "AI服务未初始化，请在设置中配置有效的API密钥"
                 self.errorOccurred.emit(error_msg)
                 return error_msg

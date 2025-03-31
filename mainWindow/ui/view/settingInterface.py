@@ -38,12 +38,12 @@ from qfluentwidgets import (
     ComboBox,
     InfoBar,
     InfoBarPosition,
-    PasswordLineEdit
+    PasswordLineEdit,
+    PrimaryPushButton
 )
 from config import cfg
 import os
 from services.ai_service import AIService
-
 
 class SettingInterface(ScrollArea):
     def __init__(self, text: str, parent=None):
@@ -184,6 +184,53 @@ class SettingInterface(ScrollArea):
         selected_option = item.value
         cfg.set(cfg.importSetting, selected_option)
 
+    def add_apply_button_to_api_settings(self):
+        """在API设置界面添加应用按钮"""
+        # 创建应用按钮
+        self.apply_button = PrimaryPushButton("应用")
+        self.apply_button.clicked.connect(self.apply_api_settings)
+        
+        # 将按钮添加到布局中
+        # 假设设置界面有一个按钮布局
+        self.button_layout.addWidget(self.apply_button)
+
+    def apply_api_settings(self):
+        """应用API设置"""
+        try:
+            # 保存当前设置到配置文件
+            api_key = self.api_key_edit.text().strip()
+            if api_key:
+                cfg.set(cfg.apiKey, api_key)
+            
+            # 重新初始化AI服务
+            from services.ai_service import AIService
+            
+            # 获取主窗口实例
+            main_window = self.window()
+            
+            # 重新初始化所有使用AI服务的组件
+            if hasattr(main_window, 'memo_interface') and hasattr(main_window.memo_interface, 'ai_handler'):
+                # 重新初始化备忘录界面的AI处理器
+                main_window.memo_interface.ai_handler.ai_service = AIService()
+            
+            if hasattr(main_window, 'todo_interface') and hasattr(main_window.todo_interface, 'ai_handler'):
+                # 重新初始化待办界面的AI处理器
+                main_window.todo_interface.ai_handler.ai_service = AIService()
+            
+            # 显示成功消息
+            InfoBar.success(
+                title="设置已应用",
+                content="API设置已成功应用，无需重启程序",
+                parent=self
+            )
+        except Exception as e:
+            # 显示错误消息
+            InfoBar.error(
+                title="应用设置失败",
+                content=f"错误: {str(e)}",
+                parent=self
+            )
+
 
 class ColorCard(ExpandGroupSettingCard):
     def __init__(self, parent=None, mainWindow=None):
@@ -278,6 +325,12 @@ class AISettingCard(ExpandGroupSettingCard):
         self.modelIdEdit.setPlaceholderText("例如: gpt-3.5-turbo")
         self.modelIdEdit.setFixedWidth(200)
 
+        # 应用按钮
+        self.applyLabel = BodyLabel("立即应用设置")
+        self.applyButton = PrimaryPushButton("应用")
+        self.applyButton.setFixedWidth(120)
+        self.applyButton.clicked.connect(self.apply_settings)
+
         # 调整内部布局
         self.viewLayout.setContentsMargins(0, 0, 0, 0)
         self.viewLayout.setSpacing(0)
@@ -292,6 +345,9 @@ class AISettingCard(ExpandGroupSettingCard):
         self.addGroupWidget(self.customUrlWidget)
         self.addGroupWidget(self.customModelWidget)
         
+        # 添加应用按钮（与其他设置项保持一致的布局）
+        self.add(self.applyLabel, self.applyButton)
+        
         # 初始化自定义设置的可见性
         self._update_custom_settings_visibility()
 
@@ -300,8 +356,7 @@ class AISettingCard(ExpandGroupSettingCard):
         w = QWidget()
         w.setFixedHeight(60)
         layout = QHBoxLayout(w)
-        # 修改缩进边距，使其与其他设置项对齐
-        layout.setContentsMargins(48, 12, 48, 12)  # 移除特殊缩进，统一使用标准边距
+        layout.setContentsMargins(48, 12, 48, 12)
         layout.addWidget(label)
         layout.addStretch(1)
         layout.addWidget(widget)
@@ -343,7 +398,7 @@ class AISettingCard(ExpandGroupSettingCard):
         
         # 如果之前是展开状态，重新展开
         if was_expanded:
-            self.setExpand(True)    # 使用 setExpanded 来展开
+            self.setExpand(True)
 
     def _on_custom_settings_changed(self):
         """当自定义设置改变时保存配置"""
@@ -362,7 +417,7 @@ class AISettingCard(ExpandGroupSettingCard):
             if config["display_name"] == display_name:
                 return model_id
         return display_name
-    
+
     def _on_model_changed(self, text):
         """当选择改变时更新配置"""
         model_id = self._get_model_id(text)
@@ -373,3 +428,82 @@ class AISettingCard(ExpandGroupSettingCard):
         """当 API 密钥改变时保存配置"""
         cfg.set(cfg.apiKey, text.strip())
         os.environ["OPENAI_API_KEY"] = text.strip()  # 使用通用的 OPENAI_API_KEY 环境变量
+
+    def apply_settings(self):
+        """应用当前API设置"""
+        try:
+            # 保存当前设置
+            api_key = self.apiKeyEdit.text().strip()
+            model_id = self._get_model_id(self.modelComboBox.currentText())
+            
+            # 打印调试信息
+            print("正在应用API设置...")
+            print(f"API密钥: {api_key[:3]}{'*' * (len(api_key) - 6)}{api_key[-3:] if len(api_key) > 6 else ''}")
+            print(f"API密钥长度: {len(api_key)}")
+            print(f"选择的模型: {model_id}")
+            
+            # 保存到配置
+            cfg.set(cfg.apiKey, api_key)
+            cfg.set(cfg.aiModel, model_id)
+            
+            # 如果是自定义模型，保存自定义设置
+            if model_id == "custom":
+                base_url = self.baseUrlEdit.text().strip()
+                custom_model_id = self.modelIdEdit.text().strip()
+                cfg.set(cfg.customBaseUrl, base_url)
+                cfg.set(cfg.customModelId, custom_model_id)
+                
+                # 更新MODEL_CONFIGS中的自定义模型配置
+                AIService.MODEL_CONFIGS["custom"].update({
+                    "base_url": base_url,
+                    "model_id": custom_model_id
+                })
+            
+            # 更新环境变量
+            os.environ["OPENAI_API_KEY"] = api_key
+            
+            # 获取主窗口实例
+            main_window = self.window()
+            
+            # 重新初始化所有使用AI服务的组件
+            if hasattr(main_window, 'memoInterface') and hasattr(main_window.memoInterface, 'ai_handler'):
+                print("重新初始化备忘录界面的AI处理器")
+                # 创建新的AIService实例
+                new_ai_service = AIService()
+                # 确保新实例使用了最新的API密钥
+                print(f"新AI服务使用的API密钥: {new_ai_service.api_key[:3]}{'*' * (len(new_ai_service.api_key) - 6)}{new_ai_service.api_key[-3:] if len(new_ai_service.api_key) > 6 else ''}")
+                print(f"新AI服务API密钥长度: {len(new_ai_service.api_key)}")
+                main_window.memoInterface.ai_handler.ai_service = new_ai_service
+                
+            if hasattr(main_window, 'todoInterface') and hasattr(main_window.todoInterface, 'ai_handler'):
+                print("重新初始化待办界面的AI处理器")
+                # 为待办界面创建新的AIService实例
+                new_ai_service = AIService()
+                main_window.todoInterface.ai_handler.ai_service = new_ai_service
+            
+            # 显示成功消息
+            InfoBar.success(
+                title="设置已应用",
+                content="API设置已成功应用，无需重启程序",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self.window()
+            )
+        except Exception as e:
+            # 打印详细错误信息
+            import traceback
+            print(f"应用设置失败: {str(e)}")
+            traceback.print_exc()
+            
+            # 显示错误消息
+            InfoBar.error(
+                title="应用设置失败",
+                content=f"错误: {str(e)}",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self.window()
+            )

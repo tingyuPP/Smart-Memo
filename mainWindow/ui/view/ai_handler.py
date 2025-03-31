@@ -696,6 +696,23 @@ class AIHandler:
             print("AI返回结果为空")
             return []
         
+        # 检查是否明确表示无待办事项的各种情况
+        no_todo_patterns = [
+            "无待办事项", "没有待办事项", "未找到待办事项", 
+            "无具体待办事项", "没有具体待办", "未发现待办",
+            "无任务", "没有任务"
+        ]
+        
+        for pattern in no_todo_patterns:
+            if pattern in result:
+                print(f"AI明确表示无待办事项: 匹配'{pattern}'")
+                return []
+        
+        # 检查是否是方括号包裹的非JSON文本（如"[无具体待办事项]"）
+        if re.match(r'^\s*\[[^{\[\]]*\]\s*$', result):
+            print("检测到方括号包裹的非JSON文本")
+            return []
+        
         # 尝试直接解析JSON
         try:
             # 查找JSON数组模式 [...] 
@@ -707,10 +724,32 @@ class AIHandler:
                 json_str = json_match.group(0)
                 print("提取的JSON字符串:", json_str)
                 
+                # 检查是否是空数组
+                if json_str.strip() == "[]":
+                    print("返回了空数组")
+                    return []
+                    
                 # 尝试解析JSON
                 todos = json.loads(json_str)
-                print(f"成功解析JSON，找到 {len(todos)} 个待办事项")
-                return todos
+                
+                # 验证解析结果是否为列表
+                if not isinstance(todos, list):
+                    print("解析结果不是列表")
+                    return []
+                    
+                # 验证每个待办项是否包含必要的字段
+                valid_todos = []
+                for todo in todos:
+                    if isinstance(todo, dict) and 'task' in todo and todo['task']:
+                        # 确保deadline和category字段存在
+                        if 'deadline' not in todo:
+                            todo['deadline'] = None
+                        if 'category' not in todo:
+                            todo['category'] = "未分类"
+                        valid_todos.append(todo)
+                
+                print(f"成功解析JSON，找到 {len(valid_todos)} 个有效待办事项")
+                return valid_todos
         except Exception as e:
             print(f"JSON解析错误: {str(e)}")
         
