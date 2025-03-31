@@ -66,6 +66,7 @@ class DatabaseManager:
             deadline DATETIME NOT NULL,
             category TEXT DEFAULT '未分类',
             is_done BOOLEAN DEFAULT FALSE,
+            is_pinned BOOLEAN DEFAULT 0,
             created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
             completed_time DATETIME,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -262,6 +263,26 @@ class DatabaseManager:
             print(f"添加待办失败: {e}")
             return None
 
+    def update_todo_pin_status(self, todo_id, is_pinned):
+        """更新待办置顶状态
+        
+        Args:
+            todo_id: 待办ID
+            is_pinned: 是否置顶
+            
+        Returns:
+            bool: 更新是否成功
+        """
+        try:
+            self.cursor.execute(
+                "UPDATE todos SET is_pinned = ? WHERE id = ?",
+                (1 if is_pinned else 0, todo_id),
+            )
+            self.conn.commit()
+            return self.cursor.rowcount > 0
+        except sqlite3.Error as e:
+            print(f"更新待办置顶状态失败: {e}")
+            return False
 
     def update_todo_status(self, todo_id, is_done):
         """更新待办完成状态"""
@@ -284,10 +305,11 @@ class DatabaseManager:
             print(f"更新待办状态失败: {e}")
             return False
 
+
     def get_todos(self, user_id, show_completed=False, category_filter=None):
         """获取用户的待办事项"""
         try:
-            query = """SELECT id, task, deadline, category, is_done, created_time, completed_time
+            query = """SELECT id, task, deadline, category, is_done, is_pinned, created_time, completed_time
                     FROM todos WHERE user_id = ?"""
             params = [user_id]
 
@@ -298,7 +320,8 @@ class DatabaseManager:
                 query += " AND category = ?"
                 params.append(category_filter)
 
-            query += " ORDER BY is_done, deadline, created_time"
+            # 排序优先级：置顶 > 未完成 > 截止日期
+            query += " ORDER BY is_pinned DESC, is_done ASC, deadline ASC, created_time ASC"
 
             self.cursor.execute(query, tuple(params))
             return self.cursor.fetchall()
@@ -574,7 +597,7 @@ class DatabaseManager:
                 (user_id, limit)
             )
             memos = self.cursor.fetchall()
-            
+
             # 返回解密后的数据
             return [{
                 'id': memo[0],
@@ -585,7 +608,7 @@ class DatabaseManager:
                 'content': self.decrypt(memo[5]),
                 'category': memo[6]
             } for memo in memos]
-            
+
         except Exception as e:
             print(f"获取用户最近备忘录失败: {str(e)}")
             return []
@@ -844,7 +867,7 @@ class DatabaseManager:
                 (user_id,)
             )
             memos = self.cursor.fetchall()
-            
+
             # 返回解密后的数据
             return [{
                 'id': memo[0],
@@ -855,7 +878,7 @@ class DatabaseManager:
                 'content': self.decrypt(memo[5]),
                 'category': memo[6]
             } for memo in memos]
-            
+
         except Exception as e:
             print(f"获取用户备忘录失败: {str(e)}")
             return []
