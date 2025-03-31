@@ -56,6 +56,7 @@ from config import cfg
 from PyQt5.QtCore import QUrl
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 import os
+import re
 
 
 class TodoInterface(ScrollArea):
@@ -1056,25 +1057,56 @@ class TodoNotifier(QObject):
 
                 # 解析截止时间
                 try:
-                    deadline = datetime.strptime(deadline_str, "%Y-%m-%d %H:%M")
-                    time_left = deadline - now
-
-                    # 改进通知触发条件：
-                    # 1. 当前时间已过截止时间不超过30分钟（逾期提醒）
-                    # 2. 当前时间距离截止时间不超过15分钟（临近提醒）
+                    # 尝试不同的日期格式
+                    formats = ["%Y-%m-%d %H:%M", "%Y-%m-%d"]
+                    deadline_dt = None
+                    
+                    for date_format in formats:
+                        try:
+                            deadline_dt = datetime.strptime(deadline_str, date_format)
+                            # 如果只有日期部分，设置时间为当天结束
+                            if date_format == "%Y-%m-%d":
+                                deadline_dt = deadline_dt.replace(hour=23, minute=59)
+                            break
+                        except ValueError:
+                            continue
+                    
+                    if not deadline_dt:
+                        # 尝试更灵活的解析
+                        try:
+                            # 提取日期部分
+                            date_match = re.search(r'(\d{4}-\d{2}-\d{2})', deadline_str)
+                            # 提取时间部分
+                            time_match = re.search(r'(\d{1,2})[:.：](\d{2})', deadline_str)
+                            
+                            if date_match and time_match:
+                                date_str = date_match.group(1)
+                                hour, minute = int(time_match.group(1)), int(time_match.group(2))
+                                deadline_dt = datetime.strptime(f"{date_str} {hour:02d}:{minute:02d}", "%Y-%m-%d %H:%M")
+                            elif date_match:
+                                deadline_dt = datetime.strptime(f"{date_match.group(1)} 23:59", "%Y-%m-%d %H:%M")
+                            else:
+                                raise ValueError(f"无法解析日期: {deadline_str}")
+                        except:
+                            self.logger.error(f"无法解析截止时间: {deadline_str}")
+                            continue
+                    
+                    time_left = deadline_dt - now
+                    
+                    # 通知触发条件
                     if -timedelta(minutes=30) <= time_left <= timedelta(minutes=15):
-                        # 使用信号发送通知请求到主线程，替代有问题的QMetaObject.invokeMethod调用
+                        # 使用信号发送通知请求到主线程
                         self.notification_request.emit(
                             todo_id, task, deadline_str, category
                         )
-
+                        
                         # 安全地更新已通知集合
                         with self._lock:
                             self.notified_ids.add(todo_id)
-
+                        
                         self.logger.info(f"添加通知: {task}, 剩余时间: {time_left}")
-
-                except ValueError as e:
+                        
+                except Exception as e:
                     self.logger.error(f"解析截止时间错误: {deadline_str}, {e}")
                     continue
 

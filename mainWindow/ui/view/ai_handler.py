@@ -612,55 +612,53 @@ class AIHandler:
         )
 
     def extract_todos_from_memo(self, memo_content, user_id):
-        """从备忘录内容中提取待办事项
-
-        Args:
-            memo_content: 备忘录内容
-            user_id: 用户ID
-
-        Returns:
-            tuple: (添加的待办数量, 有效待办列表)
-        """
+        """从备忘录内容中提取待办事项"""
         try:
             # 构建提示词
-            system_prompt = """你是一个专业的待办事项提取助手。请从用户的备忘录内容中识别出所有可能的待办事项。
-待办事项通常包含需要完成的任务，可能有截止日期。对于每个识别出的待办事项，请提供以下信息：
-1. 任务内容
-2. 截止日期（如果有）
-3. 类别（如果有）
+            system_prompt = self.ai_service.AI_MODES["待办提取"]["system_prompt"]
+            
+            # 添加当前日期信息，帮助AI正确推断日期
+            from datetime import datetime
+            import locale
+            
+            # 设置中文环境
+            try:
+                locale.setlocale(locale.LC_TIME, 'zh_CN.UTF-8')
+            except:
+                try:
+                    locale.setlocale(locale.LC_TIME, 'zh_CN')
+                except:
+                    pass  # 如果设置失败，使用默认环境
+            
+            now = datetime.now()
+            current_date = now.strftime("%Y-%m-%d")
+            
+            # 获取星期几（中文）
+            weekday_names = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
+            weekday = weekday_names[now.weekday()]
+            
+            prompt = f"""当前日期：{current_date} ({weekday})
 
-请一定以JSON格式返回结果，格式如下：
-```json
-[
-  {
-    "task": "任务内容",
-    "deadline": "YYYY-MM-DD",
-    "category": "类别"
-  },
-  ...
-]
-```
-如果无法识别截止日期，请使用null。如果无法识别类别，请使用"未分类"。"""
+请从以下备忘录内容中提取所有待办事项，特别注意正确解析相对日期表达（如"下周三"、"下个月15日"等）：
 
-            prompt = f"请从以下备忘录内容中提取所有待办事项：\n\n{memo_content}"
-
+{memo_content}"""
+            
             # 使用AI服务生成内容
-            # 注意：这里使用generate_content方法而不是process_with_ai
             result = self.ai_service.generate_content(
                 system_prompt+prompt, mode="自定义"
             )
-
+            
             # 尝试解析JSON结果
             todos = self._parse_ai_todo_result(result)
-
+            
             # 处理有效的待办事项
             valid_todos = []
-
+            
             # 处理提取的待办事项
             for todo in todos:
                 if not isinstance(todo, dict):
                     continue
-
+                    
                 # 确保有任务内容
                 task = (
                     todo.get("task", "").strip()
@@ -669,28 +667,88 @@ class AIHandler:
                 )
                 if not task:
                     continue
-
+                    
                 # 处理截止日期
                 deadline = todo.get("deadline")
                 if not deadline or deadline == "null" or not isinstance(deadline, str):
-                    # 如果没有截止日期，设置为一周后
-                    from datetime import datetime, timedelta
-
-                    deadline = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
-
+                    # 如果没有截止日期，尝试从任务内容中提取时间信息
+                    time_match = re.search(r'(\d{1,2})[:.：](\d{2})', task)
+                    if time_match:
+                        # 如果任务内容中包含时间（如"18:00 晚餐"），使用当天日期加上这个时间
+                        hour, minute = int(time_match.group(1)), int(time_match.group(2))
+                        from datetime import datetime
+                        today = datetime.now().strftime("%Y-%m-%d")
+                        deadline = f"{today} {hour:02d}:{minute:02d}"
+                    else:
+                        # 如果没有时间信息，设置为一周后
+                        from datetime import datetime, timedelta
+                        deadline = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d %H:%M")
+                else:
+                    # 检查日期格式
+                    import re
+                    if re.match(r"^\d{4}-\d{2}-\d{2}$", deadline):
+                        # 如果只有日期部分，添加默认时间23:59
+                        deadline = f"{deadline} 23:59"
+                    elif not re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$", deadline):
+                        # 如果格式不正确，尝试解析
+                        try:
+                            # 尝试提取日期和时间
+                            date_match = re.search(r'(\d{4}-\d{2}-\d{2})', deadline)
+                            time_match = re.search(r'(\d{1,2})[:.：](\d{2})', deadline)
+                            
+                            if date_match and time_match:
+                                date_str = date_match.group(1)
+                                hour, minute = int(time_match.group(1)), int(time_match.group(2))
+                                deadline = f"{date_str} {hour:02d}:{minute:02d}"
+                            elif date_match:
+                                deadline = f"{date_match.group(1)} 23:59"
+                            else:
+                                # 如果无法解析，使用当前日期
+                                from datetime import datetime
+                                deadline = datetime.now().strftime("%Y-%m-%d %H:%M")
+                        except:
+                            from datetime import datetime
+                            deadline = datetime.now().strftime("%Y-%m-%d %H:%M")
+                
                 # 处理类别
-                category = todo.get("category", "未分类")
+                category = todo.get("category", "其他")
                 if not category or category == "null" or not isinstance(category, str):
-                    category = "未分类"
-
+                    category = "其他"
+                else:
+                    # 确保类别是系统支持的四个类别之一
+                    valid_categories = ["工作", "学习", "生活", "其他"]
+                    
+                    # 如果类别不在有效列表中，进行映射
+                    if category not in valid_categories:
+                        category_lower = category.lower()
+                        
+                        # 工作类别映射
+                        if any(keyword in category_lower for keyword in ["工作", "会议", "报告", "项目", "客户", "职场"]):
+                            category = "工作"
+                        
+                        # 学习类别映射
+                        elif any(keyword in category_lower for keyword in ["学习", "读书", "课程", "作业", "考试", "教育", "培训"]):
+                            category = "学习"
+                        
+                        # 生活类别映射
+                        elif any(keyword in category_lower for keyword in [
+                            "生活", "饮食", "吃", "餐", "食", "购物", "家务", 
+                            "运动", "健身", "锻炼", "跑步", "散步", "健康"
+                        ]):
+                            category = "生活"
+                        
+                        # 默认为其他
+                        else:
+                            category = "其他"
+                
                 valid_todos.append(
                     {"task": task, "deadline": deadline, "category": category}
                 )
-
+            
             # 添加到数据库
             db = DatabaseManager()
             added_count = 0
-
+            
             for todo in valid_todos:
                 print(f"添加待办: {todo}")
                 todo_id = db.add_todo(
@@ -698,11 +756,10 @@ class AIHandler:
                 )
                 if todo_id:
                     added_count += 1
-
+            
             return added_count, valid_todos
         except Exception as e:
             import traceback
-
             print(f"处理待办提取结果时出错: {str(e)}")
             print(traceback.format_exc())
             return 0, []
@@ -711,9 +768,9 @@ class AIHandler:
         """解析AI返回的文本，提取待办事项"""
         import json
         import re
-
+        
         print("AI返回结果:", result)
-
+        
         if not result or not result.strip():
             print("AI返回结果为空")
             return []
@@ -740,7 +797,7 @@ class AIHandler:
             # 查找JSON数组模式 [...]
             json_pattern = r"\[[\s\S]*\]"
             json_match = re.search(json_pattern, result)
-
+            
             if json_match:
                 # 提取JSON字符串
                 json_str = json_match.group(0)
@@ -774,15 +831,16 @@ class AIHandler:
                 return valid_todos
         except Exception as e:
             print(f"JSON解析错误: {str(e)}")
-
+        
         # 如果JSON解析失败，尝试手动解析文本
         print("尝试手动解析文本")
         todos = []
-
+        current_todo = None
+        
         # 分行处理文本
         lines = result.split("\n")
-        current_todo = None
-
+        
+        # 首先尝试从原始备忘录内容中提取格式化的待办事项
         for line in lines:
             line = line.strip()
             if not line:
