@@ -9,18 +9,10 @@ from qframelesswindow import FramelessWindow, StandardTitleBar
 from PyQt5.QtGui import QIcon
 
 
-
 class LoginWindow(FramelessWindow):
 
     def __init__(self):
         super().__init__()
-
-        # if cfg.get(cfg.themeMode) == Theme.DARK:
-        #     setTheme(Theme.DARK)
-        #     print("Dark")
-        # elif cfg.get(cfg.themeMode) == Theme.LIGHT:
-        #     setTheme(Theme.LIGHT)
-        #     print("Light")
         if cfg.get(cfg.themeMode) == Theme.DARK:
             with open(f"resource/dark.qss", encoding="utf-8") as f:
                 self.setStyleSheet(f.read())

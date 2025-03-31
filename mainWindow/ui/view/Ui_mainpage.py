@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Form implementation generated from reading ui file 'c:\Users\HP\Desktop\Smart-Memo-Manager\mainWindow\ui\resource\mainpage.ui'

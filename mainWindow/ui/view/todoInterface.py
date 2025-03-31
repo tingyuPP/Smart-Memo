@@ -1060,7 +1060,7 @@ class TodoNotifier(QObject):
                     # 尝试不同的日期格式
                     formats = ["%Y-%m-%d %H:%M", "%Y-%m-%d"]
                     deadline_dt = None
-                    
+
                     for date_format in formats:
                         try:
                             deadline_dt = datetime.strptime(deadline_str, date_format)
@@ -1070,42 +1070,51 @@ class TodoNotifier(QObject):
                             break
                         except ValueError:
                             continue
-                    
+
                     if not deadline_dt:
                         # 尝试更灵活的解析
                         try:
                             # 提取日期部分
-                            date_match = re.search(r'(\d{4}-\d{2}-\d{2})', deadline_str)
+                            date_match = re.search(r"(\d{4}-\d{2}-\d{2})", deadline_str)
                             # 提取时间部分
-                            time_match = re.search(r'(\d{1,2})[:.：](\d{2})', deadline_str)
-                            
+                            time_match = re.search(
+                                r"(\d{1,2})[:.：](\d{2})", deadline_str
+                            )
+
                             if date_match and time_match:
                                 date_str = date_match.group(1)
-                                hour, minute = int(time_match.group(1)), int(time_match.group(2))
-                                deadline_dt = datetime.strptime(f"{date_str} {hour:02d}:{minute:02d}", "%Y-%m-%d %H:%M")
+                                hour, minute = int(time_match.group(1)), int(
+                                    time_match.group(2)
+                                )
+                                deadline_dt = datetime.strptime(
+                                    f"{date_str} {hour:02d}:{minute:02d}",
+                                    "%Y-%m-%d %H:%M",
+                                )
                             elif date_match:
-                                deadline_dt = datetime.strptime(f"{date_match.group(1)} 23:59", "%Y-%m-%d %H:%M")
+                                deadline_dt = datetime.strptime(
+                                    f"{date_match.group(1)} 23:59", "%Y-%m-%d %H:%M"
+                                )
                             else:
                                 raise ValueError(f"无法解析日期: {deadline_str}")
                         except:
                             self.logger.error(f"无法解析截止时间: {deadline_str}")
                             continue
-                    
+
                     time_left = deadline_dt - now
-                    
+
                     # 通知触发条件
                     if -timedelta(minutes=30) <= time_left <= timedelta(minutes=15):
                         # 使用信号发送通知请求到主线程
                         self.notification_request.emit(
                             todo_id, task, deadline_str, category
                         )
-                        
+
                         # 安全地更新已通知集合
                         with self._lock:
                             self.notified_ids.add(todo_id)
-                        
+
                         self.logger.info(f"添加通知: {task}, 剩余时间: {time_left}")
-                        
+
                 except Exception as e:
                     self.logger.error(f"解析截止时间错误: {deadline_str}, {e}")
                     continue

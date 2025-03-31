@@ -30,7 +30,7 @@ from qfluentwidgets import (
     StateToolTip,
     SimpleCardWidget,
     StrongBodyLabel,
-    Dialog
+    Dialog,
 )
 from PyQt5.QtWidgets import (
     QWidget,
@@ -77,6 +77,7 @@ from PyQt5.QtCore import (
 from PyQt5.QtWidgets import QFrame, QDialog
 
 from mainWindow.ui.view.smart_text_edit import SmartTextEdit
+
 
 class memoInterface(Ui_memo, QWidget):
     def __init__(self, parent=None, user_id=None):
@@ -186,7 +187,11 @@ class memoInterface(Ui_memo, QWidget):
     def _update_memory_context(self):
         """定期更新AI记忆上下文"""
         try:
-            if self.user_id and hasattr(self, 'ai_handler') and hasattr(self.ai_handler, 'ai_service'):
+            if (
+                self.user_id
+                and hasattr(self, "ai_handler")
+                and hasattr(self.ai_handler, "ai_service")
+            ):
                 self.ai_handler.ai_service.build_memory_context(self.user_id, self.db)
         except Exception as e:
             print(f"更新记忆上下文时出错: {str(e)}")
@@ -209,12 +214,11 @@ class memoInterface(Ui_memo, QWidget):
             tags = self.db.get_user_tags(self.user_id)
 
             # 提取标签名称
-            tag_names = [tag['tag_name'] for tag in tags]
+            tag_names = [tag["tag_name"] for tag in tags]
             return tag_names
         except Exception as e:
             print(f"加载用户标签时出错: {str(e)}")
             return []
-
 
     def update_tag_combobox(self):
         """更新标签下拉框的选项"""
@@ -663,7 +667,9 @@ class memoInterface(Ui_memo, QWidget):
             draw.rectangle([(0, 0), (width, 60)], fill=(0, 120, 212))
 
             # 绘制标题
-            draw.text((20, 15), f"【备忘录】{title}", fill=(255, 255, 255), font=title_font)
+            draw.text(
+                (20, 15), f"【备忘录】{title}", fill=(255, 255, 255), font=title_font
+            )
 
             # 修改: 改进绘制内容行逻辑，正确处理空行
             y_pos = 80
@@ -1003,7 +1009,9 @@ class memoInterface(Ui_memo, QWidget):
 
         # 打开文件夹按钮
         open_folder_button = PrimaryPushButton("打开文件夹")
-        open_folder_button.clicked.connect(lambda: os.startfile(os.path.dirname(file_path)))
+        open_folder_button.clicked.connect(
+            lambda: os.startfile(os.path.dirname(file_path))
+        )
         button_layout.addWidget(open_folder_button)
 
         # 复制到剪贴板按钮
@@ -1062,32 +1070,24 @@ class memoInterface(Ui_memo, QWidget):
     def extract_todos(self):
         """从当前备忘录内容中提取待办事项"""
         if not self.user_id:
-            InfoBar.error(
-                title="错误",
-                content="请先登录",
-                parent=self
-            )
+            InfoBar.error(title="错误", content="请先登录", parent=self)
             return
 
         # 获取当前备忘录内容
         memo_content = self.textEdit.toPlainText()
         if not memo_content.strip():
             InfoBar.warning(
-                title="提示",
-                content="备忘录内容为空，无法提取待办事项",
-                parent=self
+                title="提示", content="备忘录内容为空，无法提取待办事项", parent=self
             )
             return
 
         # 显示加载状态提示
         self.state_tooltip = StateToolTip(
-            "正在处理", 
-            "AI正在分析备忘录内容，提取待办事项...", 
-            parent=self
+            "正在处理", "AI正在分析备忘录内容，提取待办事项...", parent=self
         )
         self.state_tooltip.move(
             (self.width() - self.state_tooltip.width()) // 2,
-            (self.height() - self.state_tooltip.height()) // 2
+            (self.height() - self.state_tooltip.height()) // 2,
         )
         self.state_tooltip.show()
         QApplication.processEvents()
@@ -1118,7 +1118,7 @@ class memoInterface(Ui_memo, QWidget):
     def _on_todos_extracted(self, count, todos):
         """待办提取完成后的回调"""
         # 关闭加载状态提示
-        if hasattr(self, 'state_tooltip') and self.state_tooltip:
+        if hasattr(self, "state_tooltip") and self.state_tooltip:
             self.state_tooltip.setState(True)
             self.state_tooltip.setContent("处理完成")
             QApplication.processEvents()
@@ -1129,16 +1129,14 @@ class memoInterface(Ui_memo, QWidget):
             InfoBar.success(
                 title="提取成功",
                 content=f"已成功提取并添加 {count} 个待办事项",
-                parent=self
+                parent=self,
             )
 
             # 显示提取结果对话框
             self._show_extracted_todos_dialog(todos)
         else:
             InfoBar.warning(
-                title="提示",
-                content="未能从备忘录中识别出待办事项",
-                parent=self
+                title="提示", content="未能从备忘录中识别出待办事项", parent=self
             )
 
     def _show_extracted_todos_dialog(self, todos):
@@ -1166,9 +1164,9 @@ class memoInterface(Ui_memo, QWidget):
 
         # 添加待办列表
         for i, todo in enumerate(todos):
-            task = todo.get('task', '')
-            deadline = todo.get('deadline', '无截止日期')
-            category = todo.get('category', '未分类')
+            task = todo.get("task", "")
+            deadline = todo.get("deadline", "无截止日期")
+            category = todo.get("category", "未分类")
 
             card = SimpleCardWidget()
             card_layout = QVBoxLayout(card)
@@ -1206,7 +1204,7 @@ class memoInterface(Ui_memo, QWidget):
     def safely_close_tooltip(self):
         """安全关闭提示框"""
         try:
-            if hasattr(self, 'state_tooltip') and self.state_tooltip:
+            if hasattr(self, "state_tooltip") and self.state_tooltip:
                 self.state_tooltip.close()
                 self.state_tooltip = None
         except Exception as e:

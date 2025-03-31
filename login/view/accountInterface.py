@@ -1,11 +1,26 @@
-from PyQt5.QtWidgets import (QFrame, QVBoxLayout, QHBoxLayout, 
-                            QSpacerItem, QSizePolicy, QStackedWidget)
+from PyQt5.QtWidgets import (
+    QFrame,
+    QVBoxLayout,
+    QHBoxLayout,
+    QSpacerItem,
+    QSizePolicy,
+    QStackedWidget,
+)
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
-from qfluentwidgets import (BodyLabel, LineEdit, PushButton, PrimaryPushButton, 
-                           PasswordLineEdit, ImageLabel, SubtitleLabel, InfoBar,
-                           InfoBarPosition)
+from qfluentwidgets import (
+    BodyLabel,
+    LineEdit,
+    PushButton,
+    PrimaryPushButton,
+    PasswordLineEdit,
+    ImageLabel,
+    SubtitleLabel,
+    InfoBar,
+    InfoBarPosition,
+)
 from Database import DatabaseManager
+
 
 class AccountInterface(QFrame):
     # 定义信号
@@ -107,8 +122,12 @@ class AccountInterface(QFrame):
         # 回车键处理
         self.username_input.returnPressed.connect(self.password_input.setFocus)
         self.password_input.returnPressed.connect(self.login)
-        self.register_username_input.returnPressed.connect(self.register_password_input.setFocus)
-        self.register_password_input.returnPressed.connect(self.confirm_password_input.setFocus)
+        self.register_username_input.returnPressed.connect(
+            self.register_password_input.setFocus
+        )
+        self.register_password_input.returnPressed.connect(
+            self.confirm_password_input.setFocus
+        )
         self.confirm_password_input.returnPressed.connect(self.register)
 
     def __initLayout(self):
@@ -118,7 +137,9 @@ class AccountInterface(QFrame):
         self.layout.setSpacing(15)
 
         # 添加顶部弹性空间
-        self.top_spacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.top_spacer = QSpacerItem(
+            20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding
+        )
         self.layout.addItem(self.top_spacer)
 
         # 添加Logo和标题
@@ -161,7 +182,9 @@ class AccountInterface(QFrame):
         self.layout.addWidget(self.error_label)
 
         # 添加底部空间
-        self.bottom_spacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.bottom_spacer = QSpacerItem(
+            20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding
+        )
         self.layout.addItem(self.bottom_spacer)
 
         # 默认显示登录表单
@@ -221,7 +244,7 @@ class AccountInterface(QFrame):
 
         if len(password) < 6:
             self.show_error("密码长度至少为6位")
-            return 
+            return
 
         # 使用with语句自动管理数据库连接
         db = None
@@ -233,13 +256,13 @@ class AccountInterface(QFrame):
                 return
 
             w = InfoBar.success(
-                title='注册成功！',
+                title="注册成功！",
                 content="",
                 orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.BOTTOM_RIGHT,
                 duration=2000,
-                parent=self.parent
+                parent=self.parent,
             )
             w.show()
             self.registerSuccess.emit(username)
