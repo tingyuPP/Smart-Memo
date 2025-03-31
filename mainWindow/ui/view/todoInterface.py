@@ -8,6 +8,7 @@ from PyQt5.QtCore import (
     QTime,
     QEvent,
     QDate,
+    pyqtSlot,
 )
 from PyQt5.QtWidgets import (
     QWidget,
@@ -16,6 +17,7 @@ from PyQt5.QtWidgets import (
     QGraphicsOpacityEffect,
     QTextEdit,
     QFrame,
+    QLabel,
 )
 from PyQt5.QtGui import QFont, QColor
 from qfluentwidgets import (
@@ -39,6 +41,8 @@ from qfluentwidgets import (
     CalendarPicker,
     TimePicker,
     Theme,
+    RoundMenu,
+    Action,
 )
 
 
@@ -176,33 +180,39 @@ class TodoInterface(ScrollArea):
         self.slidePanel.setProperty("rounded", True)
         self.slidePanel.setProperty("roundedRadius", 12)
 
-        self.slidePanel.setStyleSheet("""
+        self.slidePanel.setStyleSheet(
+            """
         #SlidePanel {
             background-color: palette(window);
             border-top-left-radius: 12px;
             border-top-right-radius: 12px;
             border: 1px solid palette(mid);
         }
-    """)
-        
+    """
+        )
+
         if cfg.get(cfg.themeMode) == Theme.DARK:
-            self.slidePanel.setStyleSheet("""
+            self.slidePanel.setStyleSheet(
+                """
             #SlidePanel {
                 background-color: rgb(39, 39, 39);
                 border-top-left-radius: 12px;
                 border-top-right-radius: 12px;
                 border: 1px solid palette(mid);
             }
-        """)
-        else :
-            self.slidePanel.setStyleSheet("""
+        """
+            )
+        else:
+            self.slidePanel.setStyleSheet(
+                """
             #SlidePanel {
                 background-color: rgb(255, 255, 255);
                 border-top-left-radius: 12px;
                 border-top-right-radius: 12px;
                 border: 1px solid palette(mid);
             }
-        """)
+        """
+            )
 
         # 初始位置在屏幕下方
         self.slidePanel.move(0, self.height())
@@ -312,23 +322,27 @@ class TodoInterface(ScrollArea):
         panel_height = min(int(self.height() * 0.8), 600)
         self.slidePanel.setFixedHeight(panel_height)
         if cfg.get(cfg.themeMode) == Theme.DARK:
-            self.slidePanel.setStyleSheet("""
+            self.slidePanel.setStyleSheet(
+                """
             #SlidePanel {
                 background-color: rgb(39, 39, 39);
                 border-top-left-radius: 12px;
                 border-top-right-radius: 12px;
                 border: 1px solid palette(mid);
             }
-        """)
-        else :
-            self.slidePanel.setStyleSheet("""
+        """
+            )
+        else:
+            self.slidePanel.setStyleSheet(
+                """
             #SlidePanel {
                 background-color: rgb(255, 255, 255);
                 border-top-left-radius: 12px;
                 border-top-right-radius: 12px;
                 border: 1px solid palette(mid);
             }
-        """)
+        """
+            )
 
         # 更新面板尺寸
         self.slidePanel.setFixedWidth(self.width())
@@ -457,20 +471,33 @@ class TodoInterface(ScrollArea):
             """
             )
         else:
-            task_label.setStyleSheet(
+            if cfg.get(cfg.themeMode) == Theme.DARK:
+                task_label.setStyleSheet(
+                    """
+                    BodyLabel {
+                        font-size: 14px;
+                        color: white;
+                        padding: 5px;
+                    }
                 """
-                BodyLabel {
-                    font-size: 14px;
-                    padding: 5px;
-                }
-            """
-            )
+                )
+            else:
+                task_label.setStyleSheet(
+                    """
+                    BodyLabel {
+                        font-size: 14px;
+                        color: black;
+                        padding: 5px;
+                    }
+                """
+                )
 
         # 状态切换按钮
         status_btn = ToggleToolButton()
         status_btn.setIcon(FluentIcon.CANCEL if is_done else FluentIcon.ACCEPT)
         status_btn.setFixedSize(28, 28)
         status_btn.setChecked(is_done)  # 设置初始状态
+
         # 添加音效
         def on_status_toggled(checked):
             # 播放相应的音效
@@ -509,6 +536,14 @@ class TodoInterface(ScrollArea):
         # 添加到列表
         self.todoLayout.addWidget(card)
 
+        # 安装事件过滤器以捕获右键点击事件
+        card.installEventFilter(self)
+
+        # 存储卡片属性，用于右键菜单
+        card.setProperty("todo_id", todo_id)
+        card.setProperty("task", task)
+        card.setProperty("is_done", is_done)
+
         return card
 
     def _update_todo_status(self, todo_id, is_done):
@@ -528,7 +563,6 @@ class TodoInterface(ScrollArea):
     def _refresh_list(self):
         """刷新待办列表"""
         # 清空现有列表
-        print("refresh")
         for i in reversed(range(self.todoLayout.count())):
             widget = self.todoLayout.itemAt(i).widget()
             if widget:
@@ -537,55 +571,158 @@ class TodoInterface(ScrollArea):
 
         # 从数据库加载
         try:
-            todos = self.db.get_todos(self.user_id, show_completed=True)
+            # 修改数据库查询，添加is_pinned字段
+            self.db.cursor.execute(
+                """
+                SELECT id, task, deadline, category, is_done, is_pinned
+                FROM todos 
+                WHERE user_id=?
+                ORDER BY is_pinned DESC, is_done ASC, deadline ASC
+                """,
+                (self.user_id,),
+            )
+            todos = self.db.cursor.fetchall()
+
+            # 分类待办事项
+            pinned_todos = []
+            regular_todos = []
             completed_todos = []
-            incomplete_todos = []
 
             for todo in todos:
-                if todo[4]:  # is_done
-                    completed_todos.append(todo)
-                else:
-                    incomplete_todos.append(todo)
+                todo_id, task, deadline, category, is_done, is_pinned = todo
 
-            # 先添加未完成的待办事项
-            for todo in incomplete_todos:
-                self._create_todo_card(
-                    todo_id=todo[0],
-                    task=todo[1],
-                    deadline=todo[2],
-                    category=todo[3] if len(todo) > 3 else "未分类",
-                    is_done=False,
+                if is_done:
+                    completed_todos.append(todo)
+                elif is_pinned:
+                    pinned_todos.append(todo)
+                else:
+                    regular_todos.append(todo)
+
+            # 添加置顶标签（如果有置顶项）
+            if pinned_todos:
+                pinned_label = BodyLabel("📌 置顶待办")
+                pinned_label.setStyleSheet(
+                    "color: #D32F2F; font-size: 14px; font-weight: bold; margin-bottom: 5px;"
                 )
-            print("未完成的待办事项", incomplete_todos)
-            # 添加分隔符
-            if completed_todos and incomplete_todos:
+                self.todoLayout.addWidget(pinned_label)
+
+            # 添加置顶待办事项
+            for todo in pinned_todos:
+                todo_id, task, deadline, category, is_done, is_pinned = todo
+                card = self._create_todo_card(
+                    todo_id=todo_id,
+                    task=task,
+                    deadline=deadline,
+                    category=category,
+                    is_done=is_done,
+                )
+
+                # 为置顶项添加醒目的样式
+                if cfg.get(cfg.themeMode) == Theme.DARK:
+                    card.setStyleSheet(
+                        """
+                        CardWidget {
+                            background-color: #3F2E00; 
+                            border-left: 4px solid #FFC107;
+                        }
+                    """
+                    )
+                else:
+                    card.setStyleSheet(
+                        """
+                        CardWidget {
+                            background-color: #FFF8E1; 
+                            border-left: 4px solid #FFC107;
+                        }
+                    """
+                    )
+
+                # 添加置顶图标
+                pin_icon = QLabel(card)
+                pin_icon.setPixmap(FluentIcon.PIN.icon().pixmap(16, 16))
+                pin_icon.setToolTip("已置顶")
+                pin_icon.move(card.width() - 25, 5)
+                pin_icon.show()
+
+                # 确保图标跟随卡片大小调整
+                card.resizeEvent = lambda e, label=pin_icon, c=card: label.move(
+                    c.width() - 25, 5
+                )
+
+            # 如果有置顶项和未完成项，添加分隔符
+            if pinned_todos and regular_todos:
                 separator = QFrame()
                 separator.setFrameShape(QFrame.HLine)
                 separator.setFrameShadow(QFrame.Sunken)
-                # 增强分隔符样式，使其更加明显
-                separator.setStyleSheet("""
+                separator.setStyleSheet(
+                    """
                     border: none;
                     background-color: palette(mid);
                     height: 2px;
                     margin: 15px 0;
-                """)
+                """
+                )
                 self.todoLayout.addWidget(separator)
 
-                # 可选：添加一个标签来表示已完成部分
-                completed_label = BodyLabel("已完成")
-                completed_label.setStyleSheet("color: gray; font-size: 13px; margin-top: 5px;")
+                # 添加未完成标签
+                regular_label = BodyLabel("📋 待办事项")
+                regular_label.setStyleSheet(
+                    "color: #2196F3; font-size: 14px; font-weight: bold; margin-top: 5px; margin-bottom: 5px;"
+                )
+                self.todoLayout.addWidget(regular_label)
+
+            # 添加普通未完成待办事项
+            for todo in regular_todos:
+                todo_id, task, deadline, category, is_done, is_pinned = todo
+                self._create_todo_card(
+                    todo_id=todo_id,
+                    task=task,
+                    deadline=deadline,
+                    category=category,
+                    is_done=is_done,
+                )
+
+            # 如果有未完成项和已完成项，添加分隔符
+            if (pinned_todos or regular_todos) and completed_todos:
+                separator = QFrame()
+                separator.setFrameShape(QFrame.HLine)
+                separator.setFrameShadow(QFrame.Sunken)
+                separator.setStyleSheet(
+                    """
+                    border: none;
+                    background-color: palette(mid);
+                    height: 2px;
+                    margin: 15px 0;
+                """
+                )
+                self.todoLayout.addWidget(separator)
+
+                # 添加已完成标签
+                completed_label = BodyLabel("✅ 已完成")
+                completed_label.setStyleSheet(
+                    "color: gray; font-size: 14px; font-weight: bold; margin-top: 5px; margin-bottom: 5px;"
+                )
                 self.todoLayout.addWidget(completed_label)
 
-            # 再添加已完成的待办事项
+            # 添加已完成待办事项
             for todo in completed_todos:
+                todo_id, task, deadline, category, is_done, is_pinned = todo
                 self._create_todo_card(
-                    todo_id=todo[0],
-                    task=todo[1],
-                    deadline=todo[2],
-                    category=todo[3] if len(todo) > 3 else "未分类",
+                    todo_id=todo_id,
+                    task=task,
+                    deadline=deadline,
+                    category=category,
                     is_done=True,  # 强制设为已完成状态
                 )
-            print("已完成的待办事项", completed_todos)
+
+            # 如果没有任何待办事项，显示空状态
+            if not todos:
+                empty_label = BodyLabel("暂无待办事项，点击右上角" + "添加")
+                empty_label.setAlignment(Qt.AlignCenter)
+                empty_label.setStyleSheet(
+                    "color: gray; font-size: 14px; margin: 30px 0;"
+                )
+                self.todoLayout.addWidget(empty_label)
 
         except Exception as e:
             InfoBar.error(
@@ -624,7 +761,8 @@ class TodoInterface(ScrollArea):
 
     def _update_notifier_todos(self, todos):
         """更新通知器的待办数据缓存"""
-        self.notifier.current_todos = todos
+        with self.notifier._lock:
+            self.notifier.current_todos = todos
 
     def _clear_all(self):
         """清空所有待办"""
@@ -640,6 +778,165 @@ class TodoInterface(ScrollArea):
         self.db.close()
         event.accept()
 
+    def eventFilter(self, obj, event):
+        """事件过滤器，处理右键菜单和滚动事件"""
+        # 处理滑动面板的滚动拦截
+        if obj == self.viewport() and self.slidePanel.isVisible():
+            if event.type() in {
+                QEvent.Wheel,  # 滚轮事件
+                QEvent.Gesture,  # 触控板手势
+                QEvent.TouchUpdate,  # 触摸屏滑动
+            }:
+                return True  # 直接拦截
+
+        # 处理卡片右键菜单
+        if isinstance(obj, CardWidget) and event.type() == QEvent.ContextMenu:
+            # 如果是右键点击事件，显示菜单
+            self._show_todo_context_menu(obj, event.globalPos())
+            return True
+
+        return super().eventFilter(obj, event)
+
+    def _is_todo_pinned(self, todo_id):
+        """检查待办是否已置顶"""
+        try:
+            self.db.cursor.execute("SELECT is_pinned FROM todos WHERE id=?", (todo_id,))
+            result = self.db.cursor.fetchone()
+            return bool(result[0]) if result else False
+        except Exception as e:
+            print(f"检查待办置顶状态失败: {e}")
+            return False
+
+    def _toggle_todo_pin(self, todo_id, pin_status):
+        """切换待办的置顶状态"""
+        try:
+            self.db.cursor.execute(
+                "UPDATE todos SET is_pinned=? WHERE id=?",
+                (1 if pin_status else 0, todo_id),
+            )
+            self.db.conn.commit()
+
+            # 刷新列表
+            self._refresh_list()
+
+            # 显示成功消息
+            action_text = "置顶" if pin_status else "取消置顶"
+            InfoBar.success(
+                title="成功",
+                content=f"已{action_text}该待办事项",
+                orient=Qt.Horizontal,
+                position=InfoBarPosition.TOP,
+                parent=self,
+            )
+        except Exception as e:
+            InfoBar.error(
+                title="错误",
+                content=f"更新置顶状态失败: {str(e)}",
+                orient=Qt.Horizontal,
+                position=InfoBarPosition.TOP,
+                parent=self,
+            )
+
+    def _show_todo_context_menu(self, card, pos):
+        """显示待办事项的右键菜单"""
+        # 获取卡片上存储的属性
+        todo_id = card.property("todo_id")
+        task = card.property("task")
+        is_done = card.property("is_done")
+
+        # 创建菜单
+        menu = RoundMenu(parent=self)
+
+        # 添加置顶选项
+        is_pinned = self._is_todo_pinned(todo_id)
+        pin_action = Action(
+            FluentIcon.PIN if not is_pinned else FluentIcon.UNPIN,
+            "取消置顶" if is_pinned else "置顶待办",
+            triggered=lambda: self._toggle_todo_pin(todo_id, not is_pinned),
+        )
+
+        # 添加删除选项
+        delete_action = Action(
+            FluentIcon.DELETE,
+            "删除待办",
+            triggered=lambda: self._delete_todo(todo_id, card),
+        )
+
+        # 根据状态添加选项
+        if is_done:
+            # 已完成状态下可以重新激活
+            restore_action = Action(
+                FluentIcon.CANCEL,
+                "重新激活",
+                triggered=lambda: self._update_todo_status_with_sound(todo_id, False),
+            )
+            menu.addAction(restore_action)
+        else:
+            # 未完成状态下可以标记为完成
+            complete_action = Action(
+                FluentIcon.ACCEPT,
+                "标记为完成",
+                triggered=lambda: self._update_todo_status_with_sound(todo_id, True),
+            )
+            menu.addAction(complete_action)
+            menu.addAction(pin_action)  # 只有未完成的待办才能置顶
+
+        menu.addSeparator()
+        menu.addAction(delete_action)
+
+        # 显示菜单
+        menu.exec_(pos)
+
+    def _update_todo_status_with_sound(self, todo_id, is_done):
+        """更新待办状态并播放声音"""
+        # 播放相应的音效
+        self.sound_manager.play("complete" if is_done else "undo")
+
+        # 更新数据库状态
+        self._update_todo_status(todo_id, is_done)
+
+    def update_all_todos(self):
+        """从数据库获取所有待办事项并更新界面列表"""
+        try:
+            # 显示同步中提示
+            InfoBar.info(
+                title="正在同步",
+                content="正在从数据库获取最新待办事项...",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=1000,
+                parent=self,
+            )
+
+            # 刷新列表
+            self._refresh_list()
+
+            # 重置通知状态
+            self.notifier.reset_notifications()
+
+            # 显示同步成功提示
+            InfoBar.success(
+                title="同步成功",
+                content="待办事项数据已更新",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=2000,
+                parent=self,
+            )
+        except Exception as e:
+            # 显示同步失败提示
+            InfoBar.error(
+                title="同步失败",
+                content=f"无法获取最新待办事项: {str(e)}",
+                orient=Qt.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP,
+                duration=3000,
+                parent=self,
+            )
+
 
 class TodoNotifier(QObject):
     """待办事项提醒系统"""
@@ -648,6 +945,10 @@ class TodoNotifier(QObject):
     status_changed = pyqtSignal(int, bool)  # 更新状态信号
     query_todos = pyqtSignal(int)  # 请求待办数据信号
     todos_result = pyqtSignal(list)  # 待办数据结果信号
+    # 新增用于触发通知发送的信号
+    notification_request = pyqtSignal(
+        int, str, str, str
+    )  # (todo_id, task, deadline, category)
 
     def __init__(self, user_id):
         super().__init__()
@@ -658,6 +959,19 @@ class TodoNotifier(QObject):
         self._thread = None
         self.notified_ids = set()  # 已通知的待办ID，避免重复通知
         self.current_todos = []  # 缓存待办数据
+        self._lock = threading.Lock()  # 添加线程锁保护共享数据
+
+        # 初始化日志
+        import logging
+
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        )
+        self.logger = logging.getLogger("TodoNotifier")
+
+        # 连接信号到槽函数
+        self.notification_request.connect(self.send_notification_in_main_thread)
 
     def start(self):
         """启动提醒系统"""
@@ -667,12 +981,20 @@ class TodoNotifier(QObject):
         self._running = True
         self._thread = threading.Thread(target=self._run_async_loop, daemon=True)
         self._thread.start()
+        self.logger.info("通知系统已启动")
 
     def stop(self):
         """停止提醒系统"""
         self._running = False
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=1)
+        self.logger.info("通知系统已停止")
+
+    def reset_notifications(self):
+        """重置已通知状态，允许重新发送通知"""
+        with self._lock:
+            self.notified_ids.clear()
+        self.logger.info("通知状态已重置")
 
     def handle_db_query(self, user_id):
         """处理数据库查询请求 - 在主线程中执行"""
@@ -681,15 +1003,22 @@ class TodoNotifier(QObject):
             todos = db.get_todos(user_id, show_completed=False)
             self.todos_result.emit(todos)
             db.close()
+            self.logger.debug(f"成功查询到 {len(todos)} 条待办事项")
         except Exception as e:
-            print(f"查询待办事项失败: {e}")
+            self.logger.error(f"查询待办事项失败: {e}")
             self.todos_result.emit([])
 
     def _run_async_loop(self):
         """运行异步事件循环"""
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(self._check_todos_loop())
+        try:
+            loop.run_until_complete(self._check_todos_loop())
+        except Exception as e:
+            self.logger.error(f"通知循环出错: {e}")
+        finally:
+            loop.close()
+            self.logger.info("通知循环已终止")
 
     async def _check_todos_loop(self):
         """定期检查待办事项"""
@@ -703,17 +1032,70 @@ class TodoNotifier(QObject):
             # 等待下一个检查周期
             await asyncio.sleep(self.check_interval)
 
+    async def _process_todos(self):
+        """处理待办数据"""
+        try:
+            now = datetime.now()
+
+            # 使用线程锁保护对共享数据的访问
+            todos_to_process = []
+            with self._lock:
+                todos_to_process = list(self.current_todos)
+
+            for todo in todos_to_process:
+                todo_id, task, deadline_str, category, is_done = todo[:5]
+
+                # 跳过已完成的待办
+                if is_done:
+                    continue
+
+                # 跳过已通知的待办
+                with self._lock:
+                    if todo_id in self.notified_ids:
+                        continue
+
+                # 解析截止时间
+                try:
+                    deadline = datetime.strptime(deadline_str, "%Y-%m-%d %H:%M")
+                    time_left = deadline - now
+
+                    # 改进通知触发条件：
+                    # 1. 当前时间已过截止时间不超过30分钟（逾期提醒）
+                    # 2. 当前时间距离截止时间不超过15分钟（临近提醒）
+                    if -timedelta(minutes=30) <= time_left <= timedelta(minutes=15):
+                        # 使用信号发送通知请求到主线程，替代有问题的QMetaObject.invokeMethod调用
+                        self.notification_request.emit(
+                            todo_id, task, deadline_str, category
+                        )
+
+                        # 安全地更新已通知集合
+                        with self._lock:
+                            self.notified_ids.add(todo_id)
+
+                        self.logger.info(f"添加通知: {task}, 剩余时间: {time_left}")
+
+                except ValueError as e:
+                    self.logger.error(f"解析截止时间错误: {deadline_str}, {e}")
+                    continue
+
+        except Exception as e:
+            self.logger.error(f"处理待办事项时出错: {e}")
+            import traceback
+
+            self.logger.error(traceback.format_exc())
+
+    @pyqtSlot(int, str, str, str)
     def send_notification_in_main_thread(self, todo_id, task, deadline, category):
-        """在主线程中发送通知"""
+        """在主线程中发送通知（通过信号调用）"""
         try:
             # 创建通知选项
             def mark_as_done():
                 # 只发送信号，让主线程处理数据库操作
                 self.status_changed.emit(todo_id, True)
-                print(f"请求标记待办为完成: {task}")
+                self.logger.info(f"用户通过通知将待办标记为完成: {task}")
 
             def dismiss():
-                print(f"用户已忽略提醒: {task}")
+                self.logger.info(f"用户已忽略提醒: {task}")
 
             buttons = [
                 Button(title="标记为完成", on_pressed=mark_as_done, identifier="done"),
@@ -722,61 +1104,43 @@ class TodoNotifier(QObject):
 
             time_str = deadline.split(" ")[1] if " " in deadline else deadline
 
-            # 直接在主线程中调用notifier.send，避免线程问题
-            asyncio.create_task(
-                self._async_send_notification(
-                    title=f"待办提醒: {category}",
-                    message=f"{task}\n截止时间: {time_str}",
-                    buttons=buttons,
-                    todo_id=todo_id,
+            # 检查是否已过期
+            try:
+                deadline_dt = datetime.strptime(deadline, "%Y-%m-%d %H:%M")
+                now = datetime.now()
+                is_overdue = now > deadline_dt
+                title = (
+                    f"⚠️ 待办已过期: {category}"
+                    if is_overdue
+                    else f"📌 待办提醒: {category}"
                 )
-            )
+            except:
+                title = f"📌 待办提醒: {category}"
+
+            # 创建一个新的事件循环来运行异步通知方法
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                # 在新的事件循环中运行异步方法
+                loop.run_until_complete(
+                    self.notifier.send(
+                        title=title,
+                        message=f"{task}\n截止时间: {time_str}",
+                        buttons=buttons,
+                        urgency=Urgency.Critical,
+                        timeout=30,
+                    )
+                )
+            finally:
+                loop.close()
+
+            self.logger.info(f"成功发送通知: {task}")
 
         except Exception as e:
-            print(f"发送通知时出错: {e}")
+            self.logger.error(f"发送通知时出错: {e}")
+            import traceback
 
-    async def _async_send_notification(self, title, message, buttons, todo_id):
-        """异步发送通知"""
-        try:
-            await self.notifier.send(
-                title=title,
-                message=message,
-                buttons=buttons,
-                urgency=Urgency.Critical,
-                timeout=30,
-            )
-        except Exception as e:
-            print(f"发送通知失败: {e}")
-
-    async def _process_todos(self):
-        """处理待办数据"""
-        try:
-            now = datetime.now()
-
-            for todo in self.current_todos:
-                todo_id, task, deadline_str, category, is_done = todo[:5]
-
-                # 跳过已通知的待办
-                if todo_id in self.notified_ids:
-                    continue
-
-                # 解析截止时间
-                try:
-                    deadline = datetime.strptime(deadline_str, "%Y-%m-%d %H:%M")
-                    time_left = deadline - now
-
-                    # 发送通知
-                    if timedelta(minutes=-1) <= time_left <= timedelta(minutes=1):
-                        # 直接调用主线程的发送通知方法
-                        self.send_notification_in_main_thread(
-                            todo_id, task, deadline_str, category
-                        )
-                        self.notified_ids.add(todo_id)
-
-                except ValueError:
-                    continue
-        except Exception as e:
-            print(f"处理待办事项时出错: {e}")
+            self.logger.error(traceback.format_exc())
 
 
 class SoundManager:
@@ -787,7 +1151,6 @@ class SoundManager:
         self.sounds = {
             "complete": "resource/complete.mp3",
             "undo": "resource/undo.mp3",
-            "notification": "resource/sounds/notification.wav",
         }
 
     def play(self, sound_name):

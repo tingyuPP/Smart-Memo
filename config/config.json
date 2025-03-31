@@ -1,11 +1,11 @@
 {
     "MainWindow": {
         "AIModel": "deepseek-chat",
-        "APIKey": "111",
+        "APIKey": "sk-321a37160770493da44d2fd53435c05d",
         "CompletionTime": 4,
         "CustomBaseUrl": "",
         "CustomModelId": "",
-        "EnableAutoCompletion": true,
+        "EnableAutoCompletion": false,
         "ExportDir": "D:/study/NIS3366/Smart-Memo-Manager"
     },
     "QFluentWidgets": {

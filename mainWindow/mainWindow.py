@@ -42,8 +42,8 @@ class MainWindow(FluentWindow):
 
     def __init__(self, user_id=None, username=None):
         super().__init__()
-        self.splashScreen = SplashScreen(QIcon(":/qfluentwidgets/images/logo.png"), self)
-        self.splashScreen.setIconSize(QSize(100, 100))
+        self.splashScreen = SplashScreen(QIcon("resource/logo.png"), self)
+        self.splashScreen.setIconSize(QSize(200, 200))
         self.splashScreen.show()
 
         QApplication.processEvents()
@@ -65,13 +65,10 @@ class MainWindow(FluentWindow):
 
     def initNavigation(self):
         self.addSubInterface(self.homeInterface, FIF.HOME, "主页")
-        self.addSubInterface(self.memoInterface, FIF.ADD, "新建备忘录")
+        self.addSubInterface(self.memoInterface, FIF.ADD, "编辑备忘录")
         self.addSubInterface(self.todoInterface, FIF.PIN, "待办")
 
-
         self.navigationInterface.addSeparator()
-
-
 
         # if self.user_data["avatar"]:
         #     self.addSubInterface(self.myInterface, self.create_round_icon(self.user_data["avatar"]), 'My Page', NavigationItemPosition.BOTTOM)
@@ -87,14 +84,51 @@ class MainWindow(FluentWindow):
     def initWindow(self):
         self.resize(900, 700)
         self.setMinimumWidth(600)
-        self.setWindowIcon(QIcon(":/qfluentwidgets/images/logo.png"))
-        self.setWindowTitle("PyQt-Fluent-Widgets")
+        self.setWindowIcon(QIcon("resource/logo.png"))
+        self.setWindowTitle("SmartMemo")
+
+        self.stackedWidget.currentChanged.connect(self.onInterfaceChanged)
+
+    def onInterfaceChanged(self, index):
+        # 获取上一个界面和当前界面
+        current_widget = self.stackedWidget.widget(index)
+
+        # 如果从备忘录编辑界面切换到其他界面，且内容不为空，则自动保存
+        if hasattr(self, "memoInterface") and self.memoInterface != current_widget:
+            # 检查是否有需要保存的内容
+            memo = self.memoInterface
+            if memo.memo_id or (
+                memo.lineEdit.text().strip() and memo.textEdit.toPlainText().strip()
+            ):
+                # 尝试静默保存（不显示成功消息）
+                memo.save_memo(silent=True)
+
+        # 如果切换到了备忘录编辑界面，清空内容以便新建
+        if hasattr(self, "memoInterface") and current_widget == self.memoInterface:
+            # 清空编辑界面
+            self.memoInterface.memo_id = None  # 重置 memo_id
+            self.memoInterface.lineEdit.clear()  # 清空标题
+            self.memoInterface.textEdit.clear()  # 清空内容
+            self.memoInterface.lineEdit_2.clear()  # 清空分类
+            self.memoInterface.update_word_count()  # 更新字数统计
+
+        # 如果切换到了主页，刷新备忘录列表
+        if hasattr(self, "homeInterface") and current_widget == self.homeInterface:
+            self.homeInterface.update_memo_list()
 
     def switch_to_newmemo_interface(self):
         # 切换到 memoInterface
         self.navigationInterface.setCurrentItem(self.memoInterface.objectName())
         # 直接设置内容区域的当前页面
         self.switchTo(self.memoInterface)
+
+        # 清空 memoInterface 的内容
+        if hasattr(self, "memoInterface"):
+            self.memoInterface.memo_id = None  # 重置 memo_id
+            self.memoInterface.lineEdit.clear()  # 清空标题
+            self.memoInterface.textEdit.clear()  # 清空内容
+            self.memoInterface.lineEdit_2.clear()  # 清空分类
+            self.memoInterface.update_word_count()  # 更新字数统计
 
     def create_round_icon(self, image_path):
         """创建圆形图标"""
@@ -152,7 +186,6 @@ class MainWindow(FluentWindow):
         # 创建并返回图标
         return QIcon(target_pixmap)
 
-
     def onCurrentInterfaceChanged(self, index):
         """处理界面切换事件"""
         # 获取当前显示的界面
@@ -164,6 +197,12 @@ class MainWindow(FluentWindow):
             if hasattr(self.homeInterface, "db") and self.homeInterface.db:
                 self.homeInterface.update_memo_list()
                 print("已切换到主页，更新备忘录列表")
+
+        elif current_widget == self.todoInterface:
+            # 确保待办事项界面已初始化数据库连接
+            if hasattr(self.todoInterface, "db") and self.todoInterface.db:
+                self.todoInterface._refresh_list()
+                print("已切换到待办事项界面，更新待办事项列表")
 
 
 if __name__ == "__main__":
