@@ -42,9 +42,7 @@ class MainWindow(FluentWindow):
 
     def __init__(self, user_id=None, username=None):
         super().__init__()
-        self.splashScreen = SplashScreen(
-            QIcon(":/qfluentwidgets/images/logo.png"), self
-        )
+        self.splashScreen = SplashScreen(QIcon("resource/logo.png"), self)
         self.splashScreen.setIconSize(QSize(100, 100))
         self.splashScreen.show()
 
@@ -86,7 +84,7 @@ class MainWindow(FluentWindow):
     def initWindow(self):
         self.resize(900, 700)
         self.setMinimumWidth(600)
-        self.setWindowIcon(QIcon(":/qfluentwidgets/images/logo.png"))
+        self.setWindowIcon(QIcon("resource/logo.png"))
         self.setWindowTitle("SmartMemo")
 
         self.stackedWidget.currentChanged.connect(self.onInterfaceChanged)

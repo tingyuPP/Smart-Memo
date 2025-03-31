@@ -8,6 +8,7 @@ from PyQt5.QtCore import (
     QTime,
     QEvent,
     QDate,
+    
 )
 from PyQt5.QtWidgets import (
     QWidget,
@@ -16,6 +17,7 @@ from PyQt5.QtWidgets import (
     QGraphicsOpacityEffect,
     QTextEdit,
     QFrame,
+    QLabel,
 )
 from PyQt5.QtGui import QFont, QColor
 from qfluentwidgets import (
@@ -39,6 +41,8 @@ from qfluentwidgets import (
     CalendarPicker,
     TimePicker,
     Theme,
+    RoundMenu,
+    Action,
 )
 
 
@@ -176,33 +180,39 @@ class TodoInterface(ScrollArea):
         self.slidePanel.setProperty("rounded", True)
         self.slidePanel.setProperty("roundedRadius", 12)
 
-        self.slidePanel.setStyleSheet("""
+        self.slidePanel.setStyleSheet(
+            """
         #SlidePanel {
             background-color: palette(window);
             border-top-left-radius: 12px;
             border-top-right-radius: 12px;
             border: 1px solid palette(mid);
         }
-    """)
+    """
+        )
 
         if cfg.get(cfg.themeMode) == Theme.DARK:
-            self.slidePanel.setStyleSheet("""
+            self.slidePanel.setStyleSheet(
+                """
             #SlidePanel {
                 background-color: rgb(39, 39, 39);
                 border-top-left-radius: 12px;
                 border-top-right-radius: 12px;
                 border: 1px solid palette(mid);
             }
-        """)
-        else :
-            self.slidePanel.setStyleSheet("""
+        """
+            )
+        else:
+            self.slidePanel.setStyleSheet(
+                """
             #SlidePanel {
                 background-color: rgb(255, 255, 255);
                 border-top-left-radius: 12px;
                 border-top-right-radius: 12px;
                 border: 1px solid palette(mid);
             }
-        """)
+        """
+            )
 
         # 初始位置在屏幕下方
         self.slidePanel.move(0, self.height())
@@ -312,23 +322,27 @@ class TodoInterface(ScrollArea):
         panel_height = min(int(self.height() * 0.8), 600)
         self.slidePanel.setFixedHeight(panel_height)
         if cfg.get(cfg.themeMode) == Theme.DARK:
-            self.slidePanel.setStyleSheet("""
+            self.slidePanel.setStyleSheet(
+                """
             #SlidePanel {
                 background-color: rgb(39, 39, 39);
                 border-top-left-radius: 12px;
                 border-top-right-radius: 12px;
                 border: 1px solid palette(mid);
             }
-        """)
-        else :
-            self.slidePanel.setStyleSheet("""
+        """
+            )
+        else:
+            self.slidePanel.setStyleSheet(
+                """
             #SlidePanel {
                 background-color: rgb(255, 255, 255);
                 border-top-left-radius: 12px;
                 border-top-right-radius: 12px;
                 border: 1px solid palette(mid);
             }
-        """)
+        """
+            )
 
         # 更新面板尺寸
         self.slidePanel.setFixedWidth(self.width())
@@ -483,6 +497,7 @@ class TodoInterface(ScrollArea):
         status_btn.setIcon(FluentIcon.CANCEL if is_done else FluentIcon.ACCEPT)
         status_btn.setFixedSize(28, 28)
         status_btn.setChecked(is_done)  # 设置初始状态
+
         # 添加音效
         def on_status_toggled(checked):
             # 播放相应的音效
@@ -521,6 +536,14 @@ class TodoInterface(ScrollArea):
         # 添加到列表
         self.todoLayout.addWidget(card)
 
+        # 安装事件过滤器以捕获右键点击事件
+        card.installEventFilter(self)
+
+        # 存储卡片属性，用于右键菜单
+        card.setProperty("todo_id", todo_id)
+        card.setProperty("task", task)
+        card.setProperty("is_done", is_done)
+
         return card
 
     def _update_todo_status(self, todo_id, is_done):
@@ -540,7 +563,6 @@ class TodoInterface(ScrollArea):
     def _refresh_list(self):
         """刷新待办列表"""
         # 清空现有列表
-        print("refresh")
         for i in reversed(range(self.todoLayout.count())):
             widget = self.todoLayout.itemAt(i).widget()
             if widget:
@@ -549,55 +571,156 @@ class TodoInterface(ScrollArea):
 
         # 从数据库加载
         try:
-            todos = self.db.get_todos(self.user_id, show_completed=True)
+            # 修改数据库查询，添加is_pinned字段
+            self.db.cursor.execute(
+                """
+                SELECT id, task, deadline, category, is_done, is_pinned
+                FROM todos 
+                WHERE user_id=?
+                ORDER BY is_pinned DESC, is_done ASC, deadline ASC
+                """,
+                (self.user_id,),
+            )
+            todos = self.db.cursor.fetchall()
+
+            # 分类待办事项
+            pinned_todos = []
+            regular_todos = []
             completed_todos = []
-            incomplete_todos = []
 
             for todo in todos:
-                if todo[4]:  # is_done
-                    completed_todos.append(todo)
-                else:
-                    incomplete_todos.append(todo)
+                todo_id, task, deadline, category, is_done, is_pinned = todo
 
-            # 先添加未完成的待办事项
-            for todo in incomplete_todos:
-                self._create_todo_card(
-                    todo_id=todo[0],
-                    task=todo[1],
-                    deadline=todo[2],
-                    category=todo[3] if len(todo) > 3 else "未分类",
-                    is_done=False,
+                if is_done:
+                    completed_todos.append(todo)
+                elif is_pinned:
+                    pinned_todos.append(todo)
+                else:
+                    regular_todos.append(todo)
+
+            # 添加置顶标签（如果有置顶项）
+            if pinned_todos:
+                pinned_label = BodyLabel("📌 置顶待办")
+                pinned_label.setStyleSheet(
+                    "color: #D32F2F; font-size: 14px; font-weight: bold; margin-bottom: 5px;"
                 )
-            print("未完成的待办事项", incomplete_todos)
-            # 添加分隔符
-            if completed_todos and incomplete_todos:
+                self.todoLayout.addWidget(pinned_label)
+
+            # 添加置顶待办事项
+            for todo in pinned_todos:
+                todo_id, task, deadline, category, is_done, is_pinned = todo
+                card = self._create_todo_card(
+                    todo_id=todo_id,
+                    task=task,
+                    deadline=deadline,
+                    category=category,
+                    is_done=is_done,
+                )
+
+                # 为置顶项添加醒目的样式
+                if cfg.get(cfg.themeMode) == Theme.DARK:
+                    card.setStyleSheet(
+                        """
+                        CardWidget {
+                            background-color: #3F2E00; 
+                            border-left: 4px solid #FFC107;
+                        }
+                    """
+                    )
+                else:
+                    card.setStyleSheet(
+                        """
+                        CardWidget {
+                            background-color: #FFF8E1; 
+                            border-left: 4px solid #FFC107;
+                        }
+                    """
+                    )
+
+                # 添加置顶图标
+                pin_icon = QLabel(card)
+                pin_icon.setPixmap(FluentIcon.PIN.icon().pixmap(16, 16))
+                pin_icon.setToolTip("已置顶")
+                pin_icon.move(card.width() - 25, 5)
+                pin_icon.show()
+
+                # 确保图标跟随卡片大小调整
+                card.resizeEvent = lambda e, label=pin_icon, c=card: label.move(
+                    c.width() - 25, 5
+                )
+
+            # 如果有置顶项和未完成项，添加分隔符
+            if pinned_todos and regular_todos:
                 separator = QFrame()
                 separator.setFrameShape(QFrame.HLine)
                 separator.setFrameShadow(QFrame.Sunken)
-                # 增强分隔符样式，使其更加明显
-                separator.setStyleSheet("""
+                separator.setStyleSheet(
+                    """
                     border: none;
                     background-color: palette(mid);
                     height: 2px;
                     margin: 15px 0;
-                """)
+                """
+                )
                 self.todoLayout.addWidget(separator)
 
-                # 可选：添加一个标签来表示已完成部分
-                completed_label = BodyLabel("已完成")
-                completed_label.setStyleSheet("color: gray; font-size: 13px; margin-top: 5px;")
+                # 添加未完成标签
+                regular_label = BodyLabel("📋 待办事项")
+                regular_label.setStyleSheet(
+                    "color: #2196F3; font-size: 14px; font-weight: bold; margin-top: 5px; margin-bottom: 5px;"
+                )
+                self.todoLayout.addWidget(regular_label)
+
+            # 添加普通未完成待办事项
+            for todo in regular_todos:
+                todo_id, task, deadline, category, is_done, is_pinned = todo
+                self._create_todo_card(
+                    todo_id=todo_id,
+                    task=task,
+                    deadline=deadline,
+                    category=category,
+                    is_done=is_done,
+                )
+
+            # 如果有未完成项和已完成项，添加分隔符
+            if (pinned_todos or regular_todos) and completed_todos:
+                separator = QFrame()
+                separator.setFrameShape(QFrame.HLine)
+                separator.setFrameShadow(QFrame.Sunken)
+                separator.setStyleSheet(
+                    """
+                    border: none;
+                    background-color: palette(mid);
+                    height: 2px;
+                    margin: 15px 0;
+                """
+                )
+                self.todoLayout.addWidget(separator)
+
+                # 添加已完成标签
+                completed_label = BodyLabel("✅ 已完成")
+                completed_label.setStyleSheet(
+                    "color: gray; font-size: 14px; font-weight: bold; margin-top: 5px; margin-bottom: 5px;"
+                )
                 self.todoLayout.addWidget(completed_label)
 
-            # 再添加已完成的待办事项
+            # 添加已完成待办事项
             for todo in completed_todos:
+                todo_id, task, deadline, category, is_done, is_pinned = todo
                 self._create_todo_card(
-                    todo_id=todo[0],
-                    task=todo[1],
-                    deadline=todo[2],
-                    category=todo[3] if len(todo) > 3 else "未分类",
+                    todo_id=todo_id,
+                    task=task,
+                    deadline=deadline,
+                    category=category,
                     is_done=True,  # 强制设为已完成状态
                 )
-            print("已完成的待办事项", completed_todos)
+
+            # 如果没有任何待办事项，显示空状态
+            if not todos:
+                empty_label = BodyLabel("暂无待办事项，点击右上角" + "添加")
+                empty_label.setAlignment(Qt.AlignCenter)
+                empty_label.setStyleSheet("color: gray; font-size: 14px; margin: 30px 0;")
+                self.todoLayout.addWidget(empty_label)
 
         except Exception as e:
             InfoBar.error(
@@ -651,6 +774,124 @@ class TodoInterface(ScrollArea):
         """关闭时清理资源"""
         self.db.close()
         event.accept()
+
+    def eventFilter(self, obj, event):
+        """事件过滤器，处理右键菜单和滚动事件"""
+        # 处理滑动面板的滚动拦截
+        if obj == self.viewport() and self.slidePanel.isVisible():
+            if event.type() in {
+                QEvent.Wheel,  # 滚轮事件
+                QEvent.Gesture,  # 触控板手势
+                QEvent.TouchUpdate,  # 触摸屏滑动
+            }:
+                return True  # 直接拦截
+
+        # 处理卡片右键菜单
+        if isinstance(obj, CardWidget) and event.type() == QEvent.ContextMenu:
+            # 如果是右键点击事件，显示菜单
+            self._show_todo_context_menu(obj, event.globalPos())
+            return True
+
+        return super().eventFilter(obj, event)
+
+    def _is_todo_pinned(self, todo_id):
+        """检查待办是否已置顶"""
+        try:
+            self.db.cursor.execute("SELECT is_pinned FROM todos WHERE id=?", (todo_id,))
+            result = self.db.cursor.fetchone()
+            return bool(result[0]) if result else False
+        except Exception as e:
+            print(f"检查待办置顶状态失败: {e}")
+            return False
+
+    def _toggle_todo_pin(self, todo_id, pin_status):
+        """切换待办的置顶状态"""
+        try:
+            self.db.cursor.execute(
+                "UPDATE todos SET is_pinned=? WHERE id=?",
+                (1 if pin_status else 0, todo_id),
+            )
+            self.db.conn.commit()
+
+            # 刷新列表
+            self._refresh_list()
+
+            # 显示成功消息
+            action_text = "置顶" if pin_status else "取消置顶"
+            InfoBar.success(
+                title="成功",
+                content=f"已{action_text}该待办事项",
+                orient=Qt.Horizontal,
+                position=InfoBarPosition.TOP,
+                parent=self,
+            )
+        except Exception as e:
+            InfoBar.error(
+                title="错误",
+                content=f"更新置顶状态失败: {str(e)}",
+                orient=Qt.Horizontal,
+                position=InfoBarPosition.TOP,
+                parent=self,
+            )
+
+
+    def _show_todo_context_menu(self, card, pos):
+        """显示待办事项的右键菜单"""
+        # 获取卡片上存储的属性
+        todo_id = card.property("todo_id")
+        task = card.property("task")
+        is_done = card.property("is_done")
+
+        # 创建菜单
+        menu = RoundMenu(parent=self)
+
+        # 添加置顶选项
+        is_pinned = self._is_todo_pinned(todo_id)
+        pin_action = Action(
+            FluentIcon.PIN if not is_pinned else FluentIcon.UNPIN,
+            "取消置顶" if is_pinned else "置顶待办",
+            triggered=lambda: self._toggle_todo_pin(todo_id, not is_pinned),
+        )
+
+        # 添加删除选项
+        delete_action = Action(
+            FluentIcon.DELETE,
+            "删除待办",
+            triggered=lambda: self._delete_todo(todo_id, card),
+        )
+
+        # 根据状态添加选项
+        if is_done:
+            # 已完成状态下可以重新激活
+            restore_action = Action(
+                FluentIcon.CANCEL,  
+                "重新激活",
+                triggered=lambda: self._update_todo_status_with_sound(todo_id, False),
+            )
+            menu.addAction(restore_action)
+        else:
+            # 未完成状态下可以标记为完成
+            complete_action = Action(
+                FluentIcon.ACCEPT,
+                "标记为完成",
+                triggered=lambda: self._update_todo_status_with_sound(todo_id, True),
+            )
+            menu.addAction(complete_action)
+            menu.addAction(pin_action)  # 只有未完成的待办才能置顶
+
+        menu.addSeparator()
+        menu.addAction(delete_action)
+
+        # 显示菜单
+        menu.exec_(pos)
+        
+    def _update_todo_status_with_sound(self, todo_id, is_done):
+        """更新待办状态并播放声音"""
+        # 播放相应的音效
+        self.sound_manager.play("complete" if is_done else "undo")
+        
+        # 更新数据库状态
+        self._update_todo_status(todo_id, is_done)
 
 
 class TodoNotifier(QObject):

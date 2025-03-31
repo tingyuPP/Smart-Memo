@@ -6,7 +6,8 @@ from mainWindow.mainWindow import MainWindow
 from login.view.faceInterface import FaceLoginInterface
 from config import cfg
 from qframelesswindow import FramelessWindow, StandardTitleBar
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QIcon
+
 
 
 class LoginWindow(FramelessWindow):
@@ -30,6 +31,7 @@ class LoginWindow(FramelessWindow):
         self.setTitleBar(StandardTitleBar(self))
         self.titleBar.setStyleSheet("background-color: #f0f0f0; ")
         self.setWindowTitle("SmartMemo")
+        self.setWindowIcon(QIcon("resource/logo.png"))
 
         self.accountInterface = AccountInterface(self)
         self.accountInterface.loginSuccess.connect(self.on_login_success)
