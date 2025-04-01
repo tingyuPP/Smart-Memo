@@ -60,6 +60,9 @@ import re
 
 
 class TodoInterface(ScrollArea):
+    
+    todo_count_changed = pyqtSignal(int)  # 信号，用于通知待办事项数量变化
+    
     def __init__(self, parent=None, user_id=None):
         super().__init__(parent)
         self.setObjectName("TodoInterface")
@@ -97,6 +100,7 @@ class TodoInterface(ScrollArea):
         self.notifier.status_changed.connect(self._update_todo_status)
         self.notifier.query_todos.connect(self.notifier.handle_db_query)
         self.notifier.todos_result.connect(self._update_notifier_todos)
+        
         # 启动提醒系统
         self.notifier.start()
 
@@ -438,6 +442,9 @@ class TodoInterface(ScrollArea):
             self._hide_slide_panel()
             self._refresh_list()
             InfoBar.success("成功", "待办已添加", parent=self)
+            
+            todo_count = self.db.get_todo_count(self.user_id)
+            self.todo_count_changed.emit(todo_count)
 
         except Exception as e:
             InfoBar.error("错误", f"添加失败: {str(e)}", parent=self)
@@ -552,6 +559,9 @@ class TodoInterface(ScrollArea):
         try:
             self.db.update_todo_status(todo_id, is_done)
             self._refresh_list()  # 刷新列表
+            
+            todo_count = self.db.get_todo_count(self.user_id)
+            self.todo_count_changed.emit(todo_count)
         except Exception as e:
             InfoBar.error(
                 title="错误",
@@ -743,6 +753,9 @@ class TodoInterface(ScrollArea):
             # 从界面移除
             card.setParent(None)
             card.deleteLater()
+            
+            todo_count = self.db.get_todo_count(self.user_id)
+            self.todo_count_changed.emit(todo_count)
 
             InfoBar.success(
                 title="成功",

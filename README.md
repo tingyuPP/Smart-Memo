@@ -40,3 +40,5 @@ TODO:
   ![sddfdsff](dark.png)
 - [ ] AI提取备忘录导入待办有些问题（时间等，时间或许可以搞些和当前时间的比对），也可以添加按钮让用户选择是否选择导入
   ![adasd](aibug.png)
+- [ ] AI消息框的暗黑模式异常
+![alt text](image-1.png)

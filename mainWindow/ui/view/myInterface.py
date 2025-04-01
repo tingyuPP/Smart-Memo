@@ -287,6 +287,20 @@ class InfoCard(ElevatedCardWidget):
     def _applyCustomStyles(self):
         self.memoCountLabel.setStyleSheet("color: #0078D4 !important;")
         self.todoCountLabel.setStyleSheet("color: #107C10 !important;")
+    
+    def update_todo_count(self, count):
+        """更新待办数量显示"""
+        self.todo_count = count
+        self.todoCountLabel.setText(str(count))
+        # 重新应用样式确保颜色正确
+        self._applyCustomStyles()
+        
+    def update_memo_count(self, count):
+        """更新备忘录数量显示"""
+        self.memo_count = count
+        self.memoCountLabel.setText(str(count))
+        # 重新应用样式确保颜色正确
+        self._applyCustomStyles()
 
 class AvatarCard(CardWidget):
     def __init__(self, icon, title, content, parent=None):

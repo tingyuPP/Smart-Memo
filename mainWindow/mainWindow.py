@@ -17,8 +17,8 @@ from PyQt5.QtWidgets import QApplication, QFrame, QHBoxLayout
 from PyQt5.QtGui import QIcon, QImage, QPainter, QColor, QBrush, QFont
 from PyQt5.QtCore import Qt, QRect, QSize, QTimer
 import sys
-from mainWindow.ui.view.mainpage import mainInterface
-from mainWindow.ui.view.memo import memoInterface
+from mainWindow.ui.view.mainpage import MainInterface
+from mainWindow.ui.view.memo import MemoInterface
 from mainWindow.ui.view.todoInterface import TodoInterface
 
 
@@ -62,8 +62,8 @@ class MainWindow(FluentWindow):
         self.user_id = user_id
 
         # 创建子界面，实际使用时将 Widget 换成自己的子界面
-        self.homeInterface = mainInterface(self, user_id)
-        self.memoInterface = memoInterface(self, user_id)
+        self.homeInterface = MainInterface(self, user_id)
+        self.memoInterface = MemoInterface(self, user_id)
         self.settingInterface = SettingInterface("设置", self)
         self.myInterface = MyInterface("My Interface", username, self)
         self.todoInterface = TodoInterface(self, user_id)
@@ -71,6 +71,8 @@ class MainWindow(FluentWindow):
 
         self.initNavigation()
         self.stackedWidget.currentChanged.connect(self.onCurrentInterfaceChanged)
+        self.todoInterface.todo_count_changed.connect(self.update_todo_count)
+        self.homeInterface.memo_count_changed.connect(self.update_memo_count)
 
         QTimer.singleShot(1600, self.splashScreen.close)
         self.initWindow()
@@ -215,6 +217,12 @@ class MainWindow(FluentWindow):
             if hasattr(self.todoInterface, "db") and self.todoInterface.db:
                 self.todoInterface._refresh_list()
                 print("已切换到待办事项界面，更新待办事项列表")
+    
+    def update_todo_count(self, count):
+        self.myInterface.infoCard.update_todo_count(count)
+        
+    def update_memo_count(self, count):
+        self.myInterface.infoCard.update_memo_count(count)
 
 
 if __name__ == "__main__":

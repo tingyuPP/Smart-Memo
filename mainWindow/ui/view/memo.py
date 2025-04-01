@@ -79,7 +79,7 @@ from PyQt5.QtWidgets import QFrame, QDialog
 from mainWindow.ui.view.smart_text_edit import SmartTextEdit
 
 
-class memoInterface(Ui_memo, QWidget):
+class MemoInterface(Ui_memo, QWidget):
     def __init__(self, parent=None, user_id=None):
         super().__init__(parent=parent)
         self.setupUi(self)
@@ -1216,6 +1216,6 @@ if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication
 
     app = QApplication(sys.argv)
-    w = memoInterface()
+    w = MemoInterface()
     w.show()
     sys.exit(app.exec_())

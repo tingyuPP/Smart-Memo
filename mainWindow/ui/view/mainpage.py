@@ -245,6 +245,12 @@ class AppCard(CardWidget):
 
                     # 刷新主界面的备忘录列表
                     main_window = self.window()
+                    if hasattr(main_window, 'homeInterface') and hasattr(main_window.homeInterface, 'memo_count_changed'):
+                        # 获取新的备忘录数量
+                        db = DatabaseManager()
+                        count = db.get_memo_count(main_window.homeInterface.user_id)
+                        db.close()
+                        main_window.homeInterface.memo_count_changed.emit(count)
                     if hasattr(main_window, "update_memo_list"):
                         main_window.update_memo_list()
                     elif hasattr(main_window, "homeInterface") and hasattr(
@@ -1226,7 +1232,10 @@ class AppCard(CardWidget):
             )
 
 
-class mainInterface(Ui_mainwindow, QWidget):
+class MainInterface(Ui_mainwindow, QWidget):
+    
+    memo_count_changed = pyqtSignal(int)  # 信号，用于通知备忘录数量变化
+    
     def __init__(self, parent=None, user_id=None):
         super().__init__(parent=parent)
         self.setupUi(self)
@@ -1358,6 +1367,8 @@ class mainInterface(Ui_mainwindow, QWidget):
                     timer=None,  # 传递 timer
                 )
             )  # 修改参数
+            
+            self.memo_count_changed.emit(len(memos))
 
     def sync_memos(self):
         """手动同步备忘录数据"""
@@ -1521,6 +1532,6 @@ if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication
 
     app = QApplication(sys.argv)
-    w = mainInterface()
+    w = MainInterface()
     w.show()
     sys.exit(app.exec_())
