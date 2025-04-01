@@ -25,6 +25,7 @@ from qfluentwidgets import (
     RoundMenu,
     Action,
     Dialog,
+    Theme
 )
 from faceRecognition.faceMessageBox import FaceRegistrationMessageBox
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QApplication, QMessageBox
@@ -32,6 +33,7 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
 from Database import DatabaseManager
 from obs import ObsClient
+from config import cfg
 import string
 import random
 import uuid
@@ -141,6 +143,8 @@ class InfoCard(ElevatedCardWidget):
         # 调整卡片宽度适应三部分布局
         self.setFixedWidth(450)  # 增加宽度以适应备忘录统计区域
         self.setFixedHeight(150)  # 保持高度不变
+        
+        cfg.themeChanged.connect(self.onThemeChanged)
 
     def __initWidget(self):
         """初始化组件"""
@@ -274,7 +278,15 @@ class InfoCard(ElevatedCardWidget):
 
         # 设置主布局
         self.setLayout(mainLayout)
-
+        
+    def onThemeChanged(self, theme: Theme):
+        print(1)
+        # 使用QTimer延迟执行，确保在组件样式重置后再应用我们的样式
+        QTimer.singleShot(10, self._applyCustomStyles)
+            
+    def _applyCustomStyles(self):
+        self.memoCountLabel.setStyleSheet("color: #0078D4 !important;")
+        self.todoCountLabel.setStyleSheet("color: #107C10 !important;")
 
 class AvatarCard(CardWidget):
     def __init__(self, icon, title, content, parent=None):
