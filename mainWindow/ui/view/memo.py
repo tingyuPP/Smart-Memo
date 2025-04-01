@@ -31,6 +31,11 @@ from qfluentwidgets import (
     SimpleCardWidget,
     StrongBodyLabel,
     Dialog,
+    CheckBox,
+    PushButton,
+    CalendarPicker,
+    TimePicker,
+    ComboBox
 )
 from PyQt5.QtWidgets import (
     QWidget,
@@ -1140,64 +1145,228 @@ class MemoInterface(Ui_memo, QWidget):
             )
 
     def _show_extracted_todos_dialog(self, todos):
-        """显示提取的待办事项对话框"""
+        """显示提取的待办事项对话框，支持筛选功能"""
         # 创建自定义对话框
         dialog = QDialog(self.window())
         dialog.setWindowTitle("提取的待办事项")
-        dialog.resize(400, 500)  # 设置合适的大小
-
+        dialog.resize(500, 600)
+        
+        # 设置对话框样式
+        dialog.setObjectName("ExtractedTodosDialog")
+        dialog.setStyleSheet("""
+            #ExtractedTodosDialog {
+                background-color: white;
+                border-radius: 8px;
+            }
+            QScrollArea {
+                border: none;
+                background: transparent;
+            }
+        """)
+        
         # 创建主布局
         main_layout = QVBoxLayout(dialog)
-
-        # 添加说明文本
-        label = BodyLabel("以下是从备忘录中提取的待办事项：")
-        main_layout.addWidget(label)
-
-        # 创建滚动区域以容纳多个待办事项
+        main_layout.setContentsMargins(20, 20, 20, 20)  # 增加边距
+        main_layout.setSpacing(15)  # 增加间距
+        
+        # 添加标题和说明文本
+        title = TitleLabel("待办事项提取结果")
+        title.setAlignment(Qt.AlignCenter)
+        description = BodyLabel("以下是从备忘录中提取的待办事项：")
+        
+        main_layout.addWidget(title)
+        main_layout.addWidget(description)
+        
+        # 添加分隔线
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShadow(QFrame.Sunken)
+        separator.setStyleSheet("background-color: #E0E0E0; height: 1px;")
+        main_layout.addWidget(separator)
+        
+        # 创建选择状态数组
+        selected_todos = [True] * len(todos)  # 默认全选
+        
+        # 添加全选/取消全选复选框
+        select_all_layout = QHBoxLayout()
+        select_all_checkbox = CheckBox("全选")
+        select_all_checkbox.setChecked(True)
+        select_all_layout.addWidget(select_all_checkbox)
+        select_all_layout.addStretch()
+        main_layout.addLayout(select_all_layout)
+        
+        # 创建滚动区域
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
-
+        
         # 创建内容容器
         content_widget = QWidget()
         content_layout = QVBoxLayout(content_widget)
-
+        content_layout.setSpacing(10)
+        
         # 添加待办列表
+        todo_checkboxes = []  # 存储所有复选框的引用
+        
         for i, todo in enumerate(todos):
-            task = todo.get("task", "")
-            deadline = todo.get("deadline", "无截止日期")
-            category = todo.get("category", "未分类")
-
-            card = SimpleCardWidget()
+            task = todo.get('task', '')
+            deadline = todo.get('deadline', '无截止日期')
+            category = todo.get('category', '未分类')
+            
+            # 创建卡片
+            card = CardWidget()
+            card.setBorderRadius(8)
+            card.setFixedHeight(120)  # 固定高度
+            
+            # 使用统一的样式
+            card.setStyleSheet("""
+                CardWidget {
+                    background-color: palette(window);
+                    border-left: 4px solid palette(highlight);
+                }
+            """)
+            
+            # 卡片内部布局
             card_layout = QVBoxLayout(card)
+            card_layout.setContentsMargins(15, 10, 15, 10)
+            
+            # 任务标题行，添加复选框
+            title_layout = QHBoxLayout()
+            checkbox = CheckBox()
+            checkbox.setChecked(True)
+            todo_checkboxes.append(checkbox)
+            
+            task_label = StrongBodyLabel(task)
+            task_label.setWordWrap(True)
+            
+            title_layout.addWidget(checkbox)
+            title_layout.addWidget(task_label, 1)
+            
+            # 编辑按钮
+            edit_button = TransparentToolButton(FluentIcon.EDIT)
+            edit_button.setFixedSize(24, 24)
+            edit_button.setToolTip("编辑待办事项")
+            title_layout.addWidget(edit_button)
+            
+            # 添加编辑功能
+            def create_edit_handler(index, current_todo):
+                def handle_edit():
+                    self._edit_todo_item(dialog, index, current_todo, todos)
+                    # 更新UI显示
+                    task_label.setText(todos[index].get('task', ''))
+                    deadline_label.setText(todos[index].get('deadline', '无截止日期'))
+                    category_label.setText(todos[index].get('category', '其他'))
+                return handle_edit
 
-            task_label = StrongBodyLabel(f"{i+1}. {task}")
-            deadline_label = BodyLabel(f"截止日期: {deadline if deadline else '无'}")
-            category_label = BodyLabel(f"类别: {category}")
-
-            card_layout.addWidget(task_label)
-            card_layout.addWidget(deadline_label)
-            card_layout.addWidget(category_label)
-
+            edit_button.clicked.connect(create_edit_handler(i, todo))
+            
+            # 详细信息行
+            details_layout = QHBoxLayout()
+            
+            # 截止日期
+            deadline_icon = IconWidget(FluentIcon.CALENDAR)
+            deadline_icon.setFixedSize(16, 16)
+            deadline_label = BodyLabel(deadline if deadline else '无截止日期')
+            deadline_layout = QHBoxLayout()
+            deadline_layout.setSpacing(5)
+            deadline_layout.addWidget(deadline_icon)
+            deadline_layout.addWidget(deadline_label)
+            
+            # 类别
+            category_icon = IconWidget(FluentIcon.TAG)
+            category_icon.setFixedSize(16, 16)
+            category_label = BodyLabel(category)
+            category_layout = QHBoxLayout()
+            category_layout.setSpacing(5)
+            category_layout.addWidget(category_icon)
+            category_layout.addWidget(category_label)
+            
+            details_layout.addLayout(deadline_layout)
+            details_layout.addStretch(1)
+            details_layout.addLayout(category_layout)
+            
+            # 复选框状态变更处理
+            def create_checkbox_handler(index):
+                def handle_checkbox_change(state):
+                    selected_todos[index] = (state == Qt.Checked)
+                    # 更新全选复选框状态，但不触发其信号
+                    select_all_checkbox.blockSignals(True)
+                    if all(selected_todos):
+                        select_all_checkbox.setChecked(True)
+                    elif not any(selected_todos):
+                        select_all_checkbox.setChecked(False)
+                    else:
+                        select_all_checkbox.setChecked(False)
+                    select_all_checkbox.blockSignals(False)
+                return handle_checkbox_change
+            
+            checkbox.stateChanged.connect(create_checkbox_handler(i))
+            
+            # 添加到卡片布局
+            card_layout.addLayout(title_layout)
+            card_layout.addStretch(1)
+            card_layout.addLayout(details_layout)
+            
             content_layout.addWidget(card)
+        
+        # 全选/取消全选功能
+        def on_select_all_changed(state):
+            is_checked = (state == Qt.Checked)
+            # 阻止复选框的信号触发，避免循环调用
+            for checkbox in todo_checkboxes:
+                checkbox.blockSignals(True)
+                checkbox.setChecked(is_checked)
+                checkbox.blockSignals(False)
+            
+            # 更新选择状态数组
+            for i in range(len(selected_todos)):
+                selected_todos[i] = is_checked
 
+        select_all_checkbox.stateChanged.connect(on_select_all_changed)
+        
         # 设置滚动区域的内容
         scroll.setWidget(content_widget)
-        main_layout.addWidget(scroll)
-
+        main_layout.addWidget(scroll, 1)  # 1表示可伸展比例
+        
         # 添加提示
-        tip = CaptionLabel("这些待办事项已自动添加到您的待办列表中")
-        main_layout.addWidget(tip)
-
+        tip_layout = QHBoxLayout()
+        tip_icon = IconWidget(FluentIcon.INFO)
+        tip_icon.setFixedSize(16, 16)
+        tip = CaptionLabel("勾选您想要添加的待办事项")
+        tip_layout.addWidget(tip_icon)
+        tip_layout.addWidget(tip)
+        tip_layout.addStretch()
+        main_layout.addLayout(tip_layout)
+        
         # 添加按钮
         button_layout = QHBoxLayout()
-        button = PrimaryPushButton("确定")
-        button.clicked.connect(dialog.accept)
+        confirm_button = PrimaryPushButton("确定")
+        confirm_button.setFixedWidth(120)
+        cancel_button = PushButton("取消")
+        cancel_button.setFixedWidth(120)
+        
         button_layout.addStretch()
-        button_layout.addWidget(button)
+        button_layout.addWidget(cancel_button)
+        button_layout.addWidget(confirm_button)
         button_layout.addStretch()
         main_layout.addLayout(button_layout)
-
+        
+        # 确定按钮处理
+        def on_confirm():
+            # 筛选选中的待办事项
+            filtered_todos = [todo for i, todo in enumerate(todos) if selected_todos[i]]
+            # 添加到数据库
+            added_count = self._add_todos_to_database(filtered_todos)
+            InfoBar.success(
+                title="添加成功",
+                content=f"已添加 {added_count} 个待办事项",
+                parent=self
+            )
+            dialog.accept()
+        
+        confirm_button.clicked.connect(on_confirm)
+        cancel_button.clicked.connect(dialog.reject)
+        
         # 显示对话框
         dialog.exec_()
 
@@ -1209,6 +1378,159 @@ class MemoInterface(Ui_memo, QWidget):
                 self.state_tooltip = None
         except Exception as e:
             print(f"关闭提示框时出错: {str(e)}")
+
+    def _add_todos_to_database(self, todos):
+        """将待办事项添加到数据库"""
+        from Database import DatabaseManager
+        db = DatabaseManager()
+        added_count = 0
+        
+        for todo in todos:
+            try:
+                task = todo.get("task", "")
+                deadline = todo.get("deadline", "")
+                category = todo.get("category", "其他")
+                
+                # 确保任务内容不为空
+                if not task:
+                    continue
+                    
+                # 添加到数据库
+                todo_id = db.add_todo(
+                    user_id=self.user_id,
+                    task=task,
+                    deadline=deadline,
+                    category=category
+                )
+                
+                if todo_id:
+                    added_count += 1
+                    
+            except Exception as e:
+                print(f"添加待办事项时出错: {str(e)}")
+        
+        return added_count
+
+    def _edit_todo_item(self, dialog, index, todo, todos):
+        """编辑待办事项"""
+        # 创建编辑对话框
+        edit_dialog = QDialog(dialog)
+        edit_dialog.setWindowTitle("编辑待办事项")
+        edit_dialog.resize(400, 300)
+        
+        # 设置对话框样式
+        edit_dialog.setObjectName("EditTodoDialog")
+        edit_dialog.setStyleSheet("""
+            #EditTodoDialog {
+                background-color: white;
+                border-radius: 8px;
+            }
+        """)
+        
+        # 设置布局
+        layout = QVBoxLayout(edit_dialog)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+        
+        # 任务内容
+        task_label = BodyLabel("任务内容:")
+        task_edit = TextEdit()
+        task_edit.setPlainText(todo.get('task', ''))
+        task_edit.setFixedHeight(80)
+        layout.addWidget(task_label)
+        layout.addWidget(task_edit)
+        
+        # 截止日期
+        date_label = BodyLabel("截止日期:")
+        date_time_layout = QHBoxLayout()
+        
+        # 解析当前日期和时间
+        from datetime import datetime
+        from PyQt5.QtCore import QDate, QTime
+        
+        current_datetime = datetime.now()
+        deadline_str = todo.get('deadline', '')
+        
+        try:
+            if deadline_str and deadline_str != '无截止日期':
+                deadline_datetime = datetime.strptime(deadline_str, "%Y-%m-%d %H:%M")
+            else:
+                deadline_datetime = current_datetime
+        except:
+            deadline_datetime = current_datetime
+        
+        # 日期选择器
+        date_picker = CalendarPicker()
+        date_picker.setDate(QDate(
+            deadline_datetime.year,
+            deadline_datetime.month,
+            deadline_datetime.day
+        ))
+        
+        # 时间选择器
+        time_picker = TimePicker()
+        time_picker.setTime(QTime(
+            deadline_datetime.hour,
+            deadline_datetime.minute
+        ))
+        
+        date_time_layout.addWidget(date_picker)
+        date_time_layout.addWidget(time_picker)
+        
+        layout.addWidget(date_label)
+        layout.addLayout(date_time_layout)
+        
+        # 类别
+        category_label = BodyLabel("类别:")
+        category_combo = ComboBox()
+        category_combo.addItems(["工作", "学习", "生活", "其他"])
+        category_combo.setCurrentText(todo.get('category', '其他'))
+        layout.addWidget(category_label)
+        layout.addWidget(category_combo)
+        
+        # 按钮
+        button_layout = QHBoxLayout()
+        save_button = PrimaryPushButton("保存")
+        cancel_button = PushButton("取消")
+        
+        button_layout.addStretch()
+        button_layout.addWidget(cancel_button)
+        button_layout.addWidget(save_button)
+        
+        layout.addStretch()
+        layout.addLayout(button_layout)
+        
+        # 保存编辑
+        def on_save():
+            # 获取编辑后的值
+            task = task_edit.toPlainText().strip()
+            if not task:
+                InfoBar.error(
+                    title="错误",
+                    content="任务内容不能为空",
+                    parent=edit_dialog
+                )
+                return
+            
+            # 获取日期时间
+            selected_date = date_picker.getDate().toString("yyyy-MM-dd")
+            selected_time = time_picker.getTime().toString("hh:mm")
+            deadline = f"{selected_date} {selected_time}"
+            
+            # 更新待办事项
+            todos[index] = {
+                'task': task,
+                'deadline': deadline,
+                'category': category_combo.currentText()
+            }
+            
+            edit_dialog.accept()
+        
+        save_button.clicked.connect(on_save)
+        cancel_button.clicked.connect(edit_dialog.reject)
+        
+        # 显示对话框
+        edit_dialog.exec_()
 
 
 if __name__ == "__main__":

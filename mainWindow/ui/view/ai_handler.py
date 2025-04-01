@@ -1,4 +1,4 @@
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer, pyqtSlot
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer, pyqtSlot, QSize
 from PyQt5.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -6,8 +6,11 @@ from PyQt5.QtWidgets import (
     QLabel,
     QApplication,
     QWidget,
+    QWIDGETSIZE_MAX,
+    QSizePolicy,
+    QSpacerItem
 )
-from PyQt5.QtGui import QCursor, QTextCursor
+from PyQt5.QtGui import QCursor, QTextCursor, QColor, QIcon, QFont, QPalette, QLinearGradient
 from qfluentwidgets import (
     TextEdit,
     PrimaryPushButton,
@@ -18,11 +21,18 @@ from qfluentwidgets import (
     Action,
     CheckBox,
     FluentIcon,
+    CardWidget,
+    BodyLabel,
+    MessageBoxBase,
+    Dialog,
+    TransparentToolButton,
+    IconWidget,
+    Theme,
+    isDarkTheme
 )
 from services.ai_service import AIService
 import os, re
 from Database import DatabaseManager
-
 
 class AIWorkerThread(QThread):
     finished = pyqtSignal(str)
@@ -92,103 +102,260 @@ class AIStreamWorkerThread(QThread):
         """请求停止流式响应处理"""
         self._stop_requested = True
 
-
-class AIDialog(QDialog):
+class AIDialog(Dialog):
     """AI 处理对话框"""
 
     def __init__(self, mode, text="", parent=None, ai_service=None):
-        super().__init__(parent)
+        # 初始化属性
         self.mode = mode
         self.input_text = text
         self.result_text = ""
         self.state_tooltip = None
-        self.worker_thread = None  # 添加工作线程属性
-
-        # 使用传入的AI服务实例，而不是创建新的
+        self.worker_thread = None
+        
+        # 使用传入的AI服务实例
         self.ai_service = ai_service
-
+        
+        # 获取模式的显示名称作为标题
+        title = self.get_mode_display_name()
+        content = ""
+        
+        # 调用父类构造函数
+        super().__init__(title, content, parent=parent)
+        
+        # 设置对话框属性
+        self.resize(650, 500)
+        self.setMaximumSize(16777215, 16777215)
+        self.setFixedSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX)
+        self.setResizeEnabled(True)
+        
+        # 显示标题栏
+        self.titleBar.show()
+        
+        # 设置标题栏按钮
+        if hasattr(self.titleBar, 'setDoubleClickEnabled'):
+            self.titleBar.setDoubleClickEnabled(True)
+        
+        # 显示标题栏上的按钮
+        if hasattr(self.titleBar, 'minBtn'):
+            self.titleBar.minBtn.show()
+        if hasattr(self.titleBar, 'maxBtn'):
+            self.titleBar.maxBtn.show()
+        if hasattr(self.titleBar, 'closeBtn'):
+            self.titleBar.closeBtn.show()
+        
+        # 设置标题栏标题
+        if hasattr(self.titleBar, 'setTitle'):
+            self.titleBar.setTitle(title)
+        
+        # 隐藏窗口标题标签
+        if hasattr(self, 'windowTitleLabel'):
+            self.windowTitleLabel.setVisible(False)
+        
+        # 设置UI
         self.setup_ui()
-
-        # 设置窗口标志
-        self.setWindowFlags(Qt.Dialog | Qt.WindowStaysOnTopHint)
+        
+        # 应用自定义样式
+        self.apply_custom_style()
 
     def setup_ui(self):
-        # 设置对话框基本属性
-        self.setWindowTitle(f"AI {self.get_mode_display_name()}")
-        self.resize(600, 400)
-
-        # 创建布局
-        layout = QVBoxLayout(self)
-
-        # 添加说明标签
+        # 移除底部按钮区域和内容标签
+        if hasattr(self, 'buttonGroup'):
+            self.buttonGroup.setParent(None)
+            self.buttonGroup.deleteLater()
+        
+        if hasattr(self, 'contentLabel'):
+            self.contentLabel.setVisible(False)
+        
+        # 创建头部区域 - 只添加图标和描述，删除重复的标题
+        header_layout = QHBoxLayout()
+        
+        # 添加模式图标
+        mode_icon = self.get_mode_icon()
+        self.icon_widget = IconWidget(mode_icon, self)
+        self.icon_widget.setFixedSize(32, 32)
+        header_layout.addWidget(self.icon_widget)
+        
+        # 添加描述（不添加标题）
         description = self.get_mode_description()
-        desc_label = QLabel(description)
+        desc_label = BodyLabel(description)
         desc_label.setWordWrap(True)
-        layout.addWidget(desc_label)
-
-        # 添加辅助输入区域（除了tab续写和自定义模式外都显示）
+        desc_label.setObjectName("aiDialogDescLabel")
+        
+        # 直接将描述添加到布局中，不添加标题标签
+        header_layout.addWidget(desc_label, 1)
+        
+        self.textLayout.addLayout(header_layout)
+        
+        # 添加分隔线
+        separator = QWidget()
+        separator.setFixedHeight(1)
+        separator.setObjectName("aiDialogSeparator")
+        self.textLayout.addWidget(separator)
+        self.textLayout.addSpacing(10)
+        
+        # 添加辅助输入区域
         if self.mode not in ["tab续写", "自定义"]:
             aux_layout = QHBoxLayout()
-            aux_label = QLabel("辅助提示词(可选):")
+            aux_label = BodyLabel("辅助提示词(可选):")
+            aux_label.setMinimumWidth(100)
             self.aux_edit = TextEdit()
             self.aux_edit.setPlaceholderText("在这里输入额外的提示或要求...")
             self.aux_edit.setMaximumHeight(60)
+            self.aux_edit.setObjectName("aiDialogAuxEdit")
             aux_layout.addWidget(aux_label)
             aux_layout.addWidget(self.aux_edit)
-            layout.addLayout(aux_layout)
-
+            self.textLayout.addLayout(aux_layout)
+            
         # 如果是自定义模式，添加提示输入框
         if self.mode == "自定义":
             prompt_layout = QHBoxLayout()
-            prompt_label = QLabel("提示词:")
+            prompt_label = BodyLabel("提示词:")
+            prompt_label.setMinimumWidth(100)
             self.prompt_edit = TextEdit()
             self.prompt_edit.setPlaceholderText("请输入 AI 提示词...")
             self.prompt_edit.setMaximumHeight(80)
+            self.prompt_edit.setObjectName("aiDialogPromptEdit")
             prompt_layout.addWidget(prompt_label)
             prompt_layout.addWidget(self.prompt_edit)
-            layout.addLayout(prompt_layout)
-
+            self.textLayout.addLayout(prompt_layout)
+            
         # 添加结果显示区域
-        result_label = QLabel("生成结果:")
-        layout.addWidget(result_label)
-
+        result_layout = QVBoxLayout()
+        result_header = QHBoxLayout()
+        
+        result_label = BodyLabel("生成结果:")
+        result_label.setObjectName("aiDialogResultLabel")
+        result_header.addWidget(result_label)
+        
+        result_header.addStretch(1)
+        result_layout.addLayout(result_header)
+        
         self.result_edit = TextEdit()
         self.result_edit.setReadOnly(True)
         self.result_edit.setPlaceholderText("AI 生成的内容将显示在这里...")
-        layout.addWidget(self.result_edit)
-
+        self.result_edit.setMinimumHeight(200)
+        self.result_edit.setObjectName("aiDialogResultEdit")
+        result_layout.addWidget(self.result_edit)
+        
+        self.textLayout.addLayout(result_layout)
+        
         # 添加按钮区域
         button_layout = QHBoxLayout()
-
+        button_layout.addStretch(1)
+        
         self.generate_button = PrimaryPushButton("生成")
+        self.generate_button.setIcon(FluentIcon.SEND)
         self.generate_button.setEnabled(True)
         self.generate_button.clicked.connect(self.generate_content)
-
+        
         self.use_button = PrimaryPushButton("使用结果")
+        self.use_button.setIcon(FluentIcon.ACCEPT)
         self.use_button.setEnabled(False)
         self.use_button.clicked.connect(self.accept)
-
+        
         self.cancel_button = PrimaryPushButton("取消")
+        self.cancel_button.setIcon(FluentIcon.CLOSE)
         self.cancel_button.clicked.connect(self.reject)
-
+        
         self.stop_button = PrimaryPushButton("停止生成")
+        self.stop_button.setIcon(FluentIcon.CANCEL)
         self.stop_button.setEnabled(False)
         self.stop_button.clicked.connect(self.stop_generation)
-
+        
         button_layout.addWidget(self.generate_button)
         button_layout.addWidget(self.use_button)
         button_layout.addWidget(self.cancel_button)
         button_layout.addWidget(self.stop_button)
-
-        layout.addLayout(button_layout)
-
+        
+        self.textLayout.addLayout(button_layout)
+        
         # 连接AI服务信号
         if self.ai_service:
             self.ai_service.resultReady.connect(self.handle_ai_result)
             self.ai_service.errorOccurred.connect(self.handle_ai_error)
-
+            
         # 添加流式响应选项
         self.use_streaming = True  # 默认启用流式响应
+
+    def apply_custom_style(self):
+        """应用自定义样式"""
+        # 设置样式表
+        self.setStyleSheet("""
+            #aiDialogTitleLabel {
+                color: #0078d4;
+                margin-bottom: 5px;
+            }
+            
+            #aiDialogDescLabel {
+                color: #666666;
+                margin-bottom: 10px;
+            }
+            
+            #aiDialogSeparator {
+                background-color: #e0e0e0;
+                margin: 5px 0;
+            }
+            
+            #aiDialogResultEdit, #aiDialogAuxEdit, #aiDialogPromptEdit {
+                border: 1px solid #d0d0d0;
+                border-radius: 5px;
+                padding: 8px;
+                background-color: #fafafa;
+            }
+            
+            #aiDialogResultLabel {
+                font-weight: bold;
+                color: #333333;
+            }
+        """)
+        
+        # 如果是深色主题，调整样式
+        if isDarkTheme():
+            self.setStyleSheet("""
+                #aiDialogTitleLabel {
+                    color: #60cdff;
+                    margin-bottom: 5px;
+                }
+                
+                #aiDialogDescLabel {
+                    color: #cccccc;
+                    margin-bottom: 10px;
+                }
+                
+                #aiDialogSeparator {
+                    background-color: #444444;
+                    margin: 5px 0;
+                }
+                
+                #aiDialogResultEdit, #aiDialogAuxEdit, #aiDialogPromptEdit {
+                    border: 1px solid #555555;
+                    border-radius: 5px;
+                    padding: 8px;
+                    background-color: #333333;
+                }
+                
+                #aiDialogResultLabel {
+                    font-weight: bold;
+                    color: #e0e0e0;
+                }
+            """)
+
+    def get_mode_icon(self):
+        """根据模式获取对应的图标"""
+        icon_map = {
+            "一句诗": FluentIcon.EDIT,
+            "摘要": FluentIcon.DOCUMENT,
+            "续写": FluentIcon.PENCIL_INK,
+            "tab续写": FluentIcon.PENCIL_INK,
+            "自定义": FluentIcon.ROBOT,
+            "提取待办": FluentIcon.CHECKBOX,
+            "润色": FluentIcon.BRUSH,
+            "翻译": FluentIcon.LANGUAGE,
+            "朋友圈文案": FluentIcon.GLOBE
+        }
+
+        return icon_map.get(self.mode, FluentIcon.ROBOT)
 
     def get_mode_display_name(self):
         """获取模式的显示名称"""
@@ -466,6 +633,17 @@ class AIDialog(QDialog):
 
         event.accept()
 
+    # 添加鼠标事件处理，以便可以拖动无边框窗口
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.dragPosition = event.globalPos() - self.frameGeometry().topLeft()
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        if event.buttons() == Qt.LeftButton:
+            self.move(event.globalPos() - self.dragPosition)
+            event.accept()
+
 
 class AIHandler:
     """AI 功能处理类"""
@@ -500,7 +678,7 @@ class AIHandler:
         handler.ai_service.client = None
         return handler
 
-    def __init__(self, parent: QWidget):
+    def __init__(self, parent: CardWidget):
         # 如果已经有实例，直接返回
         if AIHandler._instance is not None:
             return
