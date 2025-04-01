@@ -44,6 +44,18 @@ class MainWindow(FluentWindow):
         super().__init__()
         self.splashScreen = SplashScreen(QIcon("resource/logo.png"), self)
         self.splashScreen.setIconSize(QSize(200, 200))
+
+        # 为启动屏幕添加标题栏
+        try:
+            from qframelesswindow import StandardTitleBar
+
+            titleBar = StandardTitleBar(self.splashScreen)
+            titleBar.setIcon(QIcon("resource/logo.png"))
+            titleBar.setTitle("SmartMemo 启动中...")
+            self.splashScreen.setTitleBar(titleBar)
+        except ImportError:
+            print("qframelesswindow 库未安装，跳过标题栏添加")
+            
         self.splashScreen.show()
 
         QApplication.processEvents()
