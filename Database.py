@@ -8,9 +8,22 @@ import base64
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 import os
+import sys
 
 
 # TODO: 备忘录信息的类别还没有定义，需要添加一个枚举类别。
+
+
+def resource_path(relative_path):
+    """获取资源的绝对路径，适用于开发环境和PyInstaller打包后的环境"""
+    try:
+        # PyInstaller创建临时文件夹，将路径存储在_MEIPASS中
+        base_path = sys._MEIPASS
+    except Exception:
+        # 非打包环境，使用当前路径
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 
 class DatabaseManager:
@@ -109,7 +122,7 @@ class DatabaseManager:
         username,
         password,
         face_data=None,
-        avatar="resource/default_avatar.jpg",
+        avatar=resource_path("resource/default_avatar.jpg"),
     ):
         """创建用户（密码需要加密）
 
