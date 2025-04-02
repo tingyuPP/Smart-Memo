@@ -20,6 +20,18 @@ import sys
 from mainWindow.ui.view.mainpage import MainInterface
 from mainWindow.ui.view.memo import MemoInterface
 from mainWindow.ui.view.todoInterface import TodoInterface
+import os
+
+def resource_path(relative_path):
+    """获取资源的绝对路径，适用于开发环境和PyInstaller打包后的环境"""
+    try:
+        # PyInstaller创建临时文件夹，将路径存储在_MEIPASS中
+        base_path = sys._MEIPASS
+    except Exception:
+        # 非打包环境，使用当前路径
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 
 class Widget(QFrame):
@@ -42,7 +54,9 @@ class MainWindow(FluentWindow):
 
     def __init__(self, user_id=None, username=None):
         super().__init__()
-        self.splashScreen = SplashScreen(QIcon("resource/logo.png"), self)
+        self.splashScreen = SplashScreen(
+            QIcon(resource_path("resource/logo.png")), self
+        )
         self.splashScreen.setIconSize(QSize(200, 200))
 
         # 为启动屏幕添加标题栏
@@ -50,12 +64,12 @@ class MainWindow(FluentWindow):
             from qframelesswindow import StandardTitleBar
 
             titleBar = StandardTitleBar(self.splashScreen)
-            titleBar.setIcon(QIcon("resource/logo.png"))
+            titleBar.setIcon(QIcon(resource_path("resource/logo.png")))
             titleBar.setTitle("SmartMemo 启动中...")
             self.splashScreen.setTitleBar(titleBar)
         except ImportError:
             print("qframelesswindow 库未安装，跳过标题栏添加")
-            
+
         self.splashScreen.show()
 
         QApplication.processEvents()
@@ -98,7 +112,7 @@ class MainWindow(FluentWindow):
     def initWindow(self):
         self.resize(900, 700)
         self.setMinimumWidth(600)
-        self.setWindowIcon(QIcon("resource/logo.png"))
+        self.setWindowIcon(QIcon(resource_path("resource/logo.png")))
         self.setWindowTitle("SmartMemo")
 
         self.stackedWidget.currentChanged.connect(self.onInterfaceChanged)
@@ -217,10 +231,10 @@ class MainWindow(FluentWindow):
             if hasattr(self.todoInterface, "db") and self.todoInterface.db:
                 self.todoInterface._refresh_list()
                 print("已切换到待办事项界面，更新待办事项列表")
-    
+
     def update_todo_count(self, count):
         self.myInterface.infoCard.update_todo_count(count)
-        
+
     def update_memo_count(self, count):
         self.myInterface.infoCard.update_memo_count(count)
 

@@ -9,6 +9,7 @@ from PyQt5.QtCore import (
     QEvent,
     QDate,
     pyqtSlot,
+    
 )
 from PyQt5.QtWidgets import (
     QWidget,
@@ -1196,6 +1197,18 @@ class TodoNotifier(QObject):
 
             self.logger.error(traceback.format_exc())
 
+import sys
+def resource_path(relative_path):
+    """获取资源的绝对路径，适用于开发环境和PyInstaller打包后的环境"""
+    try:
+        # PyInstaller创建临时文件夹，将路径存储在_MEIPASS中
+        base_path = sys._MEIPASS
+    except Exception:
+        # 非打包环境，使用当前路径
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
 
 class SoundManager:
     """音效管理器"""
@@ -1203,8 +1216,8 @@ class SoundManager:
     def __init__(self):
         self.player = QMediaPlayer()
         self.sounds = {
-            "complete": "resource/complete.mp3",
-            "undo": "resource/undo.mp3",
+            "complete": resource_path("resource/complete.mp3"),
+            "undo": resource_path("resource/undo.mp3"),
         }
 
     def play(self, sound_name):

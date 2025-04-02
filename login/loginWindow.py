@@ -7,6 +7,19 @@ from login.view.faceInterface import FaceLoginInterface
 from config import cfg
 from qframelesswindow import FramelessWindow, StandardTitleBar
 from PyQt5.QtGui import QIcon
+import sys, os
+
+
+def resource_path(relative_path):
+    """获取资源的绝对路径，适用于开发环境和PyInstaller打包后的环境"""
+    try:
+        # PyInstaller创建临时文件夹，将路径存储在_MEIPASS中
+        base_path = sys._MEIPASS
+    except Exception:
+        # 非打包环境，使用当前路径
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 
 class LoginWindow(FramelessWindow):
@@ -14,7 +27,7 @@ class LoginWindow(FramelessWindow):
     def __init__(self):
         super().__init__()
         if cfg.get(cfg.themeMode) == Theme.DARK:
-            with open(f"resource/dark.qss", encoding="utf-8") as f:
+            with open(resource_path("resource/dark.qss"), encoding="utf-8") as f:
                 self.setStyleSheet(f.read())
 
         self.segmentedWidget = SegmentedWidget(self)
