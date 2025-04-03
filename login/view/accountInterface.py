@@ -74,7 +74,7 @@ class AccountInterface(QFrame):
 
         # 尝试加载Logo
         try:
-            self.logo_label.setPixmap(QPixmap("images/logo.png"))
+            self.logo_label.setPixmap(QPixmap("resource/logo.png"))
             self.logo_label.setFixedSize(120, 120)
             self.logo_label.setScaledContents(True)
         except Exception as e:

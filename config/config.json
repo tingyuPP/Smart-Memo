@@ -2,7 +2,7 @@
     "MainWindow": {
         "AIModel": "deepseek-chat",
         "APIKey": "sk-321a37160770493da44d2fd53435c05d",
-        "CompletionTime": 4,
+        "CompletionTime": 10,
         "CustomBaseUrl": "",
         "CustomModelId": "",
         "EnableAutoCompletion": false,
@@ -10,6 +10,6 @@
     },
     "QFluentWidgets": {
         "ThemeColor": "#ff10abf9",
-        "ThemeMode": "Light"
+        "ThemeMode": "Dark"
     }
 }
