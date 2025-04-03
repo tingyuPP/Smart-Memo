@@ -9,7 +9,6 @@ from PyQt5.QtCore import (
     QEvent,
     QDate,
     pyqtSlot,
-    
 )
 from PyQt5.QtWidgets import (
     QWidget,
@@ -61,9 +60,9 @@ import re
 
 
 class TodoInterface(ScrollArea):
-    
+
     todo_count_changed = pyqtSignal(int)  # 信号，用于通知待办事项数量变化
-    
+
     def __init__(self, parent=None, user_id=None):
         super().__init__(parent)
         self.setObjectName("TodoInterface")
@@ -101,7 +100,7 @@ class TodoInterface(ScrollArea):
         self.notifier.status_changed.connect(self._update_todo_status)
         self.notifier.query_todos.connect(self.notifier.handle_db_query)
         self.notifier.todos_result.connect(self._update_notifier_todos)
-        
+
         # 启动提醒系统
         self.notifier.start()
 
@@ -443,7 +442,7 @@ class TodoInterface(ScrollArea):
             self._hide_slide_panel()
             self._refresh_list()
             InfoBar.success("成功", "待办已添加", parent=self)
-            
+
             todo_count = self.db.get_todo_count(self.user_id)
             self.todo_count_changed.emit(todo_count)
 
@@ -560,7 +559,7 @@ class TodoInterface(ScrollArea):
         try:
             self.db.update_todo_status(todo_id, is_done)
             self._refresh_list()  # 刷新列表
-            
+
             todo_count = self.db.get_todo_count(self.user_id)
             self.todo_count_changed.emit(todo_count)
         except Exception as e:
@@ -648,18 +647,6 @@ class TodoInterface(ScrollArea):
                         }
                     """
                     )
-
-                # 添加置顶图标
-                pin_icon = QLabel(card)
-                pin_icon.setPixmap(FluentIcon.PIN.icon().pixmap(16, 16))
-                pin_icon.setToolTip("已置顶")
-                pin_icon.move(card.width() - 25, 5)
-                pin_icon.show()
-
-                # 确保图标跟随卡片大小调整
-                card.resizeEvent = lambda e, label=pin_icon, c=card: label.move(
-                    c.width() - 25, 5
-                )
 
             # 如果有置顶项和未完成项，添加分隔符
             if pinned_todos and regular_todos:
@@ -754,7 +741,7 @@ class TodoInterface(ScrollArea):
             # 从界面移除
             card.setParent(None)
             card.deleteLater()
-            
+
             todo_count = self.db.get_todo_count(self.user_id)
             self.todo_count_changed.emit(todo_count)
 
@@ -1197,7 +1184,10 @@ class TodoNotifier(QObject):
 
             self.logger.error(traceback.format_exc())
 
+
 import sys
+
+
 def resource_path(relative_path):
     """获取资源的绝对路径，适用于开发环境和PyInstaller打包后的环境"""
     try:
