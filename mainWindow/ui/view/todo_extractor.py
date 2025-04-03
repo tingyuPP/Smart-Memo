@@ -109,6 +109,8 @@ class TodoExtractorDialog(Dialog):
 
         super().changeEvent(event)
 
+
+
     def setup_ui(self):
         # 移除底部按钮区域和内容标签
         # 安全地处理buttonGroup
@@ -184,58 +186,24 @@ class TodoExtractorDialog(Dialog):
             task_layout.setSpacing(12)
 
             # 添加选择复选框
+            checkbox_container = QWidget()
+            checkbox_container.setFixedSize(24, 24)
+            # 设置容器完全透明
+            checkbox_container.setStyleSheet("background: transparent; border: none;")
+            
+            checkbox_layout = QVBoxLayout(checkbox_container)
+            checkbox_layout.setContentsMargins(0, 0, 0, 0)
+            checkbox_layout.setSpacing(0)
+            
             select_check = CheckBox()
             select_check.setFixedSize(24, 24)
-            select_check.setChecked(True)  # 默认选中
+            select_check.setChecked(True)
             select_check.stateChanged.connect(self._update_select_all_state)
-            self.todo_checkboxes.append(select_check)  # 添加到复选框列表
-
-            # 设置选择复选框的样式
-            if isDarkTheme():
-                select_check.setStyleSheet("""
-                    QCheckBox {
-                        background: transparent;
-                        border: none;
-                        spacing: 8px; /* 文本和指示器之间的间距 */
-                    }
-                    QCheckBox::indicator {
-                        width: 22px;
-                        height: 22px;
-                        border: 2px solid #666;
-                        border-radius: 4px;
-                        background-color: #2B2B2B;
-                    }
-                    QCheckBox::indicator:checked {
-                        background-color: #0078d4; /* 选中时的背景颜色 */
-                        border-color: #0078d4;
-                    }
-                    QCheckBox::indicator:hover {
-                        border-color: #0078d4;
-                    }
-                """)
-            else:
-                select_check.setStyleSheet("""
-                    QCheckBox {
-                        background: transparent;
-                        border: none;
-                        spacing: 8px; /* 文本和指示器之间的间距 */
-                    }
-                    QCheckBox::indicator {
-                        width: 22px;
-                        height: 22px;
-                        border: 2px solid #999;
-                        border-radius: 4px;
-                        background-color: white;
-                    }
-                    QCheckBox::indicator:checked {
-                        background-color: #0078d4; /* 选中时的背景颜色 */
-                        border-color: #0078d4;
-                    }
-                    QCheckBox::indicator:hover {
-                        border-color: #0078d4;
-                    }
-                """)
-
+            self.todo_checkboxes.append(select_check)
+            
+            checkbox_layout.addWidget(select_check)
+            task_layout.addWidget(checkbox_container)
+            
             # 任务标签
             task_label = BodyLabel(todo.get("task", ""))
             task_label.setWordWrap(True)
@@ -243,7 +211,6 @@ class TodoExtractorDialog(Dialog):
             task_label.setObjectName("TaskLabel")
             task_label.setStyleSheet("background: transparent;")
 
-            task_layout.addWidget(select_check)  # 选择复选框
             task_layout.addWidget(task_label, 1)
 
             # 编辑按钮
