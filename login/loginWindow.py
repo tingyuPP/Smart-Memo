@@ -16,7 +16,6 @@ def resource_path(relative_path):
         # PyInstaller创建临时文件夹，将路径存储在_MEIPASS中
         base_path = sys._MEIPASS
     except Exception:
-        # 非打包环境，使用当前路径
         base_path = os.path.abspath(".")
 
     return os.path.join(base_path, relative_path)
@@ -27,7 +26,8 @@ class LoginWindow(FramelessWindow):
     def __init__(self):
         super().__init__()
         if cfg.get(cfg.themeMode) == Theme.DARK:
-            with open(resource_path("resource/dark.qss"), encoding="utf-8") as f:
+            with open(resource_path("resource/dark.qss"),
+                      encoding="utf-8") as f:
                 self.setStyleSheet(f.read())
 
         self.segmentedWidget = SegmentedWidget(self)
@@ -44,13 +44,12 @@ class LoginWindow(FramelessWindow):
         self.faceInterface.loginSuccessful.connect(self.on_login_success)
         self.faceInterface.backClicked.connect(self.back_to_account)
 
-        # 添加标签页
-        # self.addSubInterface(self.accountInterface, 'songInterface', 'Song')
         self.accountInterface.setObjectName("accountInterface")
         self.segmentedWidget.addItem(
             routeKey="accountInterface",
             text="账密登录",
-            onClick=lambda: self.stackedWidget.setCurrentWidget(self.accountInterface),
+            onClick=lambda: self.stackedWidget.setCurrentWidget(
+                self.accountInterface),
         )
         self.stackedWidget.addWidget(self.accountInterface)
 
@@ -58,7 +57,8 @@ class LoginWindow(FramelessWindow):
         self.segmentedWidget.addItem(
             routeKey="faceInterface",
             text="人脸识别",
-            onClick=lambda: self.stackedWidget.setCurrentWidget(self.faceInterface),
+            onClick=lambda: self.stackedWidget.setCurrentWidget(self.
+                                                                faceInterface),
         )
         self.stackedWidget.addWidget(self.faceInterface)
 
@@ -71,12 +71,6 @@ class LoginWindow(FramelessWindow):
         self.vBoxLayout.addWidget(self.segmentedWidget, 0, Qt.AlignHCenter)
         self.vBoxLayout.addWidget(self.stackedWidget)
         self.resize(350, 600)
-
-        # if cfg.get(cfg.themeMode) == "Dark":
-        #     with open(f'resource/dark.qss', encoding='utf-8') as f:
-        #         self.setStyleSheet(f.read())
-        #         self.faceInterface.setStyleSheet(f.read())
-        #         self.accountInterface.setStyleSheet(f.read())
 
     def addSubInterface(self, widget: QLabel, objectName: str, text: str):
         widget.setObjectName(objectName)
@@ -97,12 +91,10 @@ class LoginWindow(FramelessWindow):
     def on_login_success(self, user_data):
         user_id = user_data["id"]
         username = user_data["username"]
-        print(f"登录成功：{user_id}, {username}")
+
         self.hide()
-        # from mainWindow.mainWindow import MainWindow
         self.mainWindow = MainWindow(user_id, username)
         self.mainWindow.show()
-        # print("这里应该打开主窗口")
 
     def back_to_account(self):
         self.stackedWidget.setCurrentWidget(self.accountInterface)
