@@ -20,6 +20,7 @@ from qfluentwidgets import (
     InfoBarPosition,
 )
 from Database import DatabaseManager
+import os
 
 
 def resource_path(relative_path):
