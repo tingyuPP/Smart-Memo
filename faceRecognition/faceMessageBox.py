@@ -51,7 +51,6 @@ class CameraThread(QThread):
         self.cap = None
 
     def start_capture(self):
-        """启动捕获"""
         self.mutex.lock()
         self.cap = cv2.VideoCapture(0)
         if not self.cap.isOpened():
@@ -67,13 +66,12 @@ class CameraThread(QThread):
     def stop_capture(self):
         """停止摄像头捕获"""
         self.running = False
-        time.sleep(0.5)  # 给线程一些时间来处理标志变更
+        time.sleep(0.5)
 
-        # 确保释放摄像头资源
         if hasattr(self, "cap") and self.cap is not None:
             self.cap.release()
             self.cap = None
-            cv2.destroyAllWindows()  # 关闭所有OpenCV窗口
+            cv2.destroyAllWindows()
 
         print("摄像头资源已释放")
 
@@ -87,11 +85,10 @@ class CameraThread(QThread):
 
             ret, frame = self.cap.read()
             if ret:
-                self.frameReady.emit(frame.copy())  # 发送帧到主线程
+                self.frameReady.emit(frame.copy())
 
             self.mutex.unlock()
-            # 控制帧率
-            self.msleep(20)  # 大约50FPS，适当调整可提高或降低帧率
+            self.msleep(20)
 
         # 清理资源
         self.mutex.lock()
@@ -104,37 +101,33 @@ class CameraThread(QThread):
 class FaceProcessThread(QThread):
     """人脸处理线程 - 负责检测和处理人脸"""
 
-    faceDetected = pyqtSignal(np.ndarray, tuple)  # 发送人脸区域和坐标
-    faceProcessed = pyqtSignal(int, int)  # 发送当前处理的人脸计数和总数
-    processingComplete = pyqtSignal()  # 处理完成信号
-    faceQualityFeedback = pyqtSignal(tuple, bool)  # 发送人脸坐标和质量反馈
+    faceDetected = pyqtSignal(np.ndarray, tuple)
+    faceProcessed = pyqtSignal(int, int)
+    processingComplete = pyqtSignal()
+    faceQualityFeedback = pyqtSignal(tuple, bool)
 
-    def __init__(self, cascade_path, threshold, required_faces, user_id, username):
+    def __init__(self, cascade_path, threshold, required_faces, user_id,
+                 username):
         super().__init__()
         self.cascade_path = cascade_path
 
-        # 修改级联分类器加载逻辑
         try:
-            # 尝试使用resource_path加载
             cascade_file = resource_path(cascade_path)
             self.face_cascade = cv2.CascadeClassifier(cascade_file)
 
-            # 检查级联分类器是否成功加载
             if self.face_cascade.empty():
                 # 尝试使用OpenCV内置路径
                 print(f"使用路径 {cascade_file} 加载级联分类器失败，尝试内置路径...")
                 cv2_path = os.path.join(os.path.dirname(cv2.__file__), "data")
                 backup_path = os.path.join(
-                    cv2_path, "haarcascade_frontalface_default.xml"
-                )
+                    cv2_path, "haarcascade_frontalface_default.xml")
                 self.face_cascade = cv2.CascadeClassifier(backup_path)
 
                 if self.face_cascade.empty():
                     print(f"内置路径 {backup_path} 加载失败，尝试打包后路径...")
                     # 尝试打包后的标准位置
                     pkg_path = resource_path(
-                        "cv2/data/haarcascade_frontalface_default.xml"
-                    )
+                        "cv2/data/haarcascade_frontalface_default.xml")
                     self.face_cascade = cv2.CascadeClassifier(pkg_path)
                     print(
                         f"打包路径 {pkg_path} 加载状态: {'成功' if not self.face_cascade.empty() else '失败'}"
@@ -160,7 +153,7 @@ class FaceProcessThread(QThread):
         self.mutex.lock()
         self.frame = frame.copy()
         self.new_frame_available = True
-        self.condition.wakeOne()  # 唤醒等待的线程
+        self.condition.wakeOne()
         self.mutex.unlock()
 
     def start_processing(self):
@@ -177,24 +170,22 @@ class FaceProcessThread(QThread):
         """停止处理"""
         self.mutex.lock()
         self.running = False
-        self.condition.wakeOne()  # 唤醒等待的线程
+        self.condition.wakeOne()
         self.mutex.unlock()
-        self.wait()  # 等待线程结束
+        self.wait()
 
     def run(self):
         """线程主循环"""
         while True:
             self.mutex.lock()
 
-            # 检查是否停止
             if not self.running:
                 self.mutex.unlock()
                 break
 
-            # 等待新帧
             if not self.new_frame_available:
                 self.condition.wait(self.mutex)
-                if not self.running:  # 再次检查，可能被唤醒是为了停止
+                if not self.running:
                     self.mutex.unlock()
                     break
 
@@ -204,49 +195,41 @@ class FaceProcessThread(QThread):
             current_count = self.face_count
             self.mutex.unlock()
 
-            # 执行人脸检测（耗时操作）
             gray = cv2.cvtColor(current_frame, cv2.COLOR_BGR2GRAY)
-            faces = self.face_cascade.detectMultiScale(
-                gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30)
-            )
+            faces = self.face_cascade.detectMultiScale(gray,
+                                                       scaleFactor=1.1,
+                                                       minNeighbors=5,
+                                                       minSize=(30, 30))
 
             # 处理检测到的人脸
             for x, y, w, h in faces:
                 face_area = w * h
 
-                # 发送人脸质量反馈
                 is_good_quality = face_area > self.threshold
                 self.faceQualityFeedback.emit((x, y, w, h), is_good_quality)
 
-                # 只处理高质量人脸
                 if is_good_quality and current_count < self.required_faces:
                     self.mutex.lock()
-                    if (
-                        self.face_count >= self.required_faces
-                    ):  # 可能其他人脸已经处理完成
+                    if (self.face_count >= self.required_faces):
                         self.mutex.unlock()
                         continue
 
                     # 提取人脸
-                    face_img = current_frame[y : y + h, x : x + w]
+                    face_img = current_frame[y:y + h, x:x + w]
 
                     self.face_images.append(face_img.copy())
 
-                    # 更新计数
                     self.face_count += 1
                     current_count = self.face_count
 
-                    # 发送人脸区域信号
                     self.faceDetected.emit(face_img, (x, y, w, h))
 
-                    # 发送进度更新
                     self.faceProcessed.emit(current_count, self.required_faces)
 
                     self.mutex.unlock()
 
-                    # 短暂暂停，避免快速连续捕获同一个人脸
                     self.msleep(500)
-                    break  # 每帧只处理一个最佳人脸
+                    break
 
             # 检查是否完成所需数量
             if current_count >= self.required_faces:
@@ -255,9 +238,6 @@ class FaceProcessThread(QThread):
 
 
 class FaceRegistrationMessageBox(MessageBoxBase):
-    """人脸注册消息框 - Fluent设计风格"""
-
-    # 定义注册成功信号
     registrationComplete = pyqtSignal(str)
 
     def __init__(self, user_id=None, username=None, parent=None):
@@ -265,18 +245,13 @@ class FaceRegistrationMessageBox(MessageBoxBase):
         self.user_id = user_id
         self.username = username
 
-        # 配置参数
         self.face_cascade_path = resource_path(
-            "cv2/data/haarcascade_frontalface_default.xml"
-        )
-        # self.face_folder = Path("face_data")
-        # self.face_folder.mkdir(exist_ok=True)
+            "cv2/data/haarcascade_frontalface_default.xml")
 
         # 面部捕获相关变量
-        self.required_faces = 5  # 需要捕获的人脸数量
-        self.face_quality_threshold = 2500  # 人脸质量阈值（面积）
+        self.required_faces = 5
+        self.face_quality_threshold = 2500
 
-        # 创建工作线程
         self.camera_thread = CameraThread()
         self.camera_thread.frameReady.connect(self.update_frame)
 
@@ -292,49 +267,40 @@ class FaceRegistrationMessageBox(MessageBoxBase):
         self.face_thread.processingComplete.connect(self.finish_registration)
         self.face_thread.faceQualityFeedback.connect(self.on_face_quality)
 
-        # 显示帧和标记临时存储
         self.display_frame = None
         self.faces_feedback = []
 
-        # 初始化UI
         self.initMessageBox()
 
-        # 定时更新UI的计时器(仅用于刷新显示，不做处理)
         self.ui_timer = QTimer()
         self.ui_timer.timeout.connect(self.refresh_ui)
         self.extraction_thread = None
 
-        # 添加人脸信息更新计时器
         self.face_update_timer = QTimer()
         self.face_update_timer.timeout.connect(self.update_face_feedback)
         self.face_update_timer.start(500)  # 每500毫秒更新一次
 
     def update_face_feedback(self):
         """定期更新人脸信息，清除过时的框"""
-        # 如果摄像头未运行，不需要清除
-        if not hasattr(self, "camera_thread") or not self.camera_thread.isRunning():
+        if not hasattr(self,
+                       "camera_thread") or not self.camera_thread.isRunning():
             return
 
-        # 仅保留最近的几个人脸信息
-        if len(self.faces_feedback) > 1:  # 保留最新的1个人脸信息
+        if len(self.faces_feedback) > 1:
             self.faces_feedback = self.faces_feedback[-1:]
 
     def initMessageBox(self):
         """初始化消息框UI"""
-        # 设置标题
         self.titleLabel = SubtitleLabel("人脸识别录入")
         self.viewLayout.addWidget(self.titleLabel)
 
-        # 添加说明文字
-        self.descriptionLabel = BodyLabel(
-            "请注视摄像头，系统将自动捕获多张人脸图像用于识别"
-        )
+        self.descriptionLabel = BodyLabel("请注视摄像头，系统将自动捕获多张人脸图像用于识别")
         self.viewLayout.addWidget(self.descriptionLabel)
         self.viewLayout.addSpacing(10)
 
         # 创建视频显示容器和标签
         self.imageContainer = QWidget()
-        self.imageContainer.setObjectName("faceImageContainer")  # 设置唯一的objectName
+        self.imageContainer.setObjectName("faceImageContainer")
         self.imageContainer.setMinimumSize(640, 400)
 
         imageLayout = QVBoxLayout(self.imageContainer)
@@ -347,19 +313,16 @@ class FaceRegistrationMessageBox(MessageBoxBase):
         self.image_label.setText("准备开始捕获人脸")
         imageLayout.addWidget(self.image_label)
         if cfg.get(cfg.themeMode) == Theme.DARK:
-            self.image_label.setStyleSheet(
-                """
+            self.image_label.setStyleSheet("""
                 background-color: #2b2b2b; 
                 color: #ffffff;
                 font-size: 16px;
                 border-radius: 6px;
-            """
-            )
+            """)
 
         self.viewLayout.addWidget(self.imageContainer)
         self.viewLayout.addSpacing(10)
 
-        # 添加进度条和标签
         progressLayout = QHBoxLayout()
         self.progress_label = BodyLabel("人脸捕获进度:")
         progressLayout.addWidget(self.progress_label)
@@ -372,7 +335,6 @@ class FaceRegistrationMessageBox(MessageBoxBase):
         self.viewLayout.addLayout(progressLayout)
         self.viewLayout.addSpacing(10)
 
-        # 创建按钮并设置
         self.start_button = PrimaryPushButton("开始人脸采集")
         self.start_button.setIcon(FluentIcon.CAMERA)
         self.start_button.clicked.connect(self.start_capture)
@@ -387,11 +349,9 @@ class FaceRegistrationMessageBox(MessageBoxBase):
 
     def start_capture(self):
         """开始捕获人脸"""
-        # 重置计数和进度条
         self.progress_bar.setValue(0)
         self.progress_label.setText("人脸捕获进度: 0/" + str(self.required_faces))
 
-        # 显示进度提示
         InfoBar.info(
             title="处理中",
             content="正在提取人脸特征，请稍候...",
@@ -402,7 +362,6 @@ class FaceRegistrationMessageBox(MessageBoxBase):
             parent=self,
         )
 
-        # 启动摄像头线程
         if not self.camera_thread.start_capture():
             InfoBar.error(
                 title="错误",
@@ -415,99 +374,78 @@ class FaceRegistrationMessageBox(MessageBoxBase):
             )
             return
 
-        # 更新按钮状态和文本
         self.start_button.setText("停止采集")
         self.start_button.setIcon(FluentIcon.PAUSE)
         self.start_button.clicked.disconnect()
         self.start_button.clicked.connect(self.stop_capture)
 
-        # 启动人脸处理线程
         self.face_thread.start_processing()
 
-        # 启动UI刷新定时器
-        self.ui_timer.start(33)  # 约30FPS的刷新率
+        self.ui_timer.start(33)
 
-        # 启动人脸信息更新计时器
         self.face_update_timer.start(500)
 
     def stop_capture(self):
         """停止捕获人脸"""
-        # 停止UI刷新定时器
         if self.ui_timer.isActive():
             self.ui_timer.stop()
 
-        # 停止人脸信息更新计时器
         if self.face_update_timer.isActive():
             self.face_update_timer.stop()
 
-        # 停止工作线程前先清除引用
         self.faces_feedback = []
 
         # 停止人脸处理线程
         if hasattr(self, "face_thread") and self.face_thread.isRunning():
             self.face_thread.stop_processing()
-            self.face_thread.wait(2000)  # 等待最多2秒
+            self.face_thread.wait(2000)
             if self.face_thread.isRunning():
-                self.face_thread.terminate()  # 强制终止
+                self.face_thread.terminate()
                 self.face_thread.wait()
 
         # 停止摄像头线程
         if hasattr(self, "camera_thread") and self.camera_thread.isRunning():
             self.camera_thread.stop_capture()
-            self.camera_thread.wait(2000)  # 等待最多2秒
+            self.camera_thread.wait(2000)
             if self.camera_thread.isRunning():
-                self.camera_thread.terminate()  # 强制终止
+                self.camera_thread.terminate()
                 self.camera_thread.wait()
 
-        # 其余代码...
-
-        # 恢复按钮状态
         self.start_button.setText("开始人脸采集")
         self.start_button.setIcon(FluentIcon.CAMERA)
         self.start_button.clicked.disconnect()
         self.start_button.clicked.connect(self.start_capture)
 
-        # 清除图像
         self.image_label.clear()
         self.image_label.setText("准备开始捕获人脸")
-        # 根据当前主题设置样式
 
         if cfg.get(cfg.themeMode) == Theme.DARK:
-            self.image_label.setStyleSheet(
-                """
+            self.image_label.setStyleSheet("""
                 background-color: #2b2b2b; 
                 color: #ffffff;
                 font-size: 16px;
                 border-radius: 6px;
-            """
-            )
+            """)
         else:
             self.image_label.setStyleSheet("font-size: 16px; color: #666;")
 
     def update_frame(self, frame):
         """接收摄像头帧并更新显示缓存"""
         self.display_frame = frame.copy()
-
-        # 将帧发送到人脸处理线程
         self.face_thread.process_frame(frame)
 
     def on_face_detected(self, face_img, coords):
-        """处理检测到的人脸"""
-        # 这里可以添加额外处理，如显示特写等
         pass
 
     def on_face_processed(self, current_count, total_count):
         """更新人脸处理进度"""
-        # 在主线程更新UI
         self.progress_bar.setValue(current_count)
         self.progress_label.setText(f"人脸捕获进度: {current_count}/{total_count}")
 
     def on_face_quality(self, coords, is_good_quality):
         """更新人脸质量反馈"""
         x, y, w, h = coords
-        # 存储人脸框信息和质量，用于UI刷新
         self.faces_feedback.append((coords, is_good_quality))
-        # 控制列表大小，防止无限增长
         if len(self.faces_feedback) > 10:
             self.faces_feedback = self.faces_feedback[-10:]
 
@@ -516,7 +454,6 @@ class FaceRegistrationMessageBox(MessageBoxBase):
         if self.display_frame is None:
             return
 
-        # 复制帧用于显示
         display_copy = self.display_frame.copy()
 
         # 绘制所有人脸框
@@ -536,10 +473,6 @@ class FaceRegistrationMessageBox(MessageBoxBase):
                     2,
                 )
 
-        # 不再清除人脸框信息
-        # self.faces_feedback = []  # 删除这一行
-
-        # 显示图像
         self.display_image(display_copy)
 
     def display_image(self, img):
@@ -548,7 +481,8 @@ class FaceRegistrationMessageBox(MessageBoxBase):
             rgb_image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             h, w, ch = rgb_image.shape
             bytes_per_line = ch * w
-            q_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
+            q_image = QImage(rgb_image.data, w, h, bytes_per_line,
+                             QImage.Format_RGB888)
             pixmap = QPixmap.fromImage(q_image)
 
             # 调整图像大小以适应标签
@@ -562,35 +496,30 @@ class FaceRegistrationMessageBox(MessageBoxBase):
         except Exception as e:
             print(f"显示图像时出错: {str(e)}")
 
-            # 根据主题设置适当的样式
             if cfg.get(cfg.themeMode) == Theme.DARK:
-                self.image_label.setStyleSheet(
-                    """
+                self.image_label.setStyleSheet("""
                     background-color: #2b2b2b; 
                     color: #ffffff;
                     font-size: 16px;
                     border-radius: 6px;
-                """
-                )
+                """)
             else:
                 self.image_label.setStyleSheet("font-size: 16px; color: #666;")
 
     def finish_registration(self):
         """完成人脸注册流程，使用OpenCV DNN提取特征"""
-        # 停止捕获
         self.stop_capture()
-
-        # 创建特征提取线程 - 传递内存中的图像而不是文件路径
         self.extraction_thread = FeatureExtractionThread(
-            face_images=self.face_thread.face_images,  # 传递图像列表
+            face_images=self.face_thread.face_images,
             user_id=self.user_id,
             username=self.username,
             face_count=self.face_thread.face_count,
         )
-        self.extraction_thread.extractionComplete.connect(self.on_extraction_complete)
-        self.extraction_thread.extractionFailed.connect(self.on_extraction_failed)
+        self.extraction_thread.extractionComplete.connect(
+            self.on_extraction_complete)
+        self.extraction_thread.extractionFailed.connect(
+            self.on_extraction_failed)
 
-        # 显示进度提示
         InfoBar.info(
             title="处理中",
             content="正在提取人脸特征，请稍候...",
@@ -601,12 +530,10 @@ class FaceRegistrationMessageBox(MessageBoxBase):
             parent=self,
         )
 
-        # 启动特征提取
         self.extraction_thread.start()
 
     def on_extraction_complete(self, feature_data):
         """特征提取完成回调"""
-        # 显示成功消息
         InfoBar.success(
             title="注册成功",
             content=f"已成功注册您的人脸数据，可用于后续登录",
@@ -617,7 +544,6 @@ class FaceRegistrationMessageBox(MessageBoxBase):
             parent=self,
         )
 
-        # 发出完成信号
         self.registrationComplete.emit(feature_data)
 
     def on_extraction_failed(self, error_message):
@@ -634,26 +560,23 @@ class FaceRegistrationMessageBox(MessageBoxBase):
 
     def closeEvent(self, event):
         """窗口关闭事件处理"""
-        # 确保停止所有线程和释放资源
         if hasattr(self, "camera_thread") and self.camera_thread.isRunning():
             self.stop_capture()
 
-        # 手动清理OpenCV相关资源
         cv2.destroyAllWindows()
 
-        # 调用父类方法
         super().closeEvent(event)
 
 
 class FeatureExtractionThread(QThread):
     """特征提取线程 - 处理提取的人脸特征"""
 
-    extractionComplete = pyqtSignal(str)  # 发送特征数据
-    extractionFailed = pyqtSignal(str)  # 发送错误信息
+    extractionComplete = pyqtSignal(str)
+    extractionFailed = pyqtSignal(str)
 
     def __init__(self, face_images, user_id, username, face_count):
         super().__init__()
-        self.face_images = face_images  # 直接使用图像列表
+        self.face_images = face_images
         self.user_id = user_id
         self.username = username
         self.face_count = face_count
@@ -667,26 +590,20 @@ class FeatureExtractionThread(QThread):
     def run(self):
         """线程主函数"""
         try:
-            # 准备人脸识别模型
-            model_file = resource_path("faceRecognition/models/openface_nn4.small2.v1.t7")
+            model_file = resource_path(
+                "faceRecognition/models/openface_nn4.small2.v1.t7")
 
-            # 如果模型文件不存在，下载
             if not os.path.exists(model_file):
                 model_dir = os.path.dirname(model_file)
                 if not os.path.exists(model_dir):
                     os.makedirs(model_dir)
-
-                # 下载模型文件
                 url = "https://github.com/pyannote/pyannote-data/raw/master/openface.nn4.small2.v1.t7"
                 urllib.request.urlretrieve(url, model_file)
 
-            # 加载DNN模型
             face_net = cv2.dnn.readNetFromTorch(model_file)
 
-            # 从内存中处理图像
             face_features = []
 
-            # 处理每张人脸图像
             for image in self.face_images:
                 if not self.running:
                     return
@@ -695,42 +612,29 @@ class FeatureExtractionThread(QThread):
                 if image is None or image.size == 0:
                     continue
 
-                # 预处理图像
-                blob = cv2.dnn.blobFromImage(
-                    image, 1.0 / 255, (96, 96), (0, 0, 0), swapRB=True, crop=False
-                )
+                blob = cv2.dnn.blobFromImage(image,
+                                             1.0 / 255, (96, 96), (0, 0, 0),
+                                             swapRB=True,
+                                             crop=False)
 
-                # 前向传播获取特征
                 face_net.setInput(blob)
                 feature_vector = face_net.forward()
 
                 # 添加到特征列表
                 face_features.append(feature_vector.flatten().tolist())
 
-            # 将特征列表转换为JSON字符串
             face_data_json = json.dumps(face_features)
 
             if not self.running:
                 return
 
-            # 将特征保存到数据库
             db = DatabaseManager()
             db.update_user(self.user_id, face_data=face_data_json)
             db.close()
 
-            # 清空内存中的图像数据
             self.face_images = []
 
-            # 发送成功信号
             self.extractionComplete.emit("face_features_stored")
 
         except Exception as e:
-            # 发送失败信号
             self.extractionFailed.emit(str(e))
-
-
-# 如果作为独立程序运行，则创建测试实例
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    dialog = FaceRegistrationMessageBox(user_id=1, username="测试用户")
-    dialog.exec()

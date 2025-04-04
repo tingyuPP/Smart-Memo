@@ -21,7 +21,7 @@ from qfluentwidgets import (
 )
 from Database import DatabaseManager
 import os
-
+import sys
 
 def resource_path(relative_path):
     """获取资源的绝对路径，适用于开发环境和PyInstaller打包后的环境"""
@@ -36,20 +36,16 @@ def resource_path(relative_path):
 
 
 class AccountInterface(QFrame):
-    # 定义信号
     loginSuccess = pyqtSignal(dict)
-    registerSuccess = pyqtSignal(str)  # 新增注册成功信号
+    registerSuccess = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__()
-
-        # 组件声明
         self.parent = parent
         self.layout = QVBoxLayout(self)
         self.title_label = SubtitleLabel()
         self.logo_label = ImageLabel()
 
-        # 创建一个堆叠部件来切换登录和注册表单
         self.stack_widget = QStackedWidget()
 
         # 登录表单
@@ -59,35 +55,33 @@ class AccountInterface(QFrame):
         self.password_input = PasswordLineEdit()
         self.login_button_layout = QHBoxLayout()
         self.login_button = PrimaryPushButton()
-        self.login_to_register_button = PushButton()  # 切换到注册的按钮
+        self.login_to_register_button = PushButton()  
 
         # 注册表单
         self.register_widget = QFrame()
         self.register_layout = QVBoxLayout(self.register_widget)
         self.register_username_input = LineEdit()
         self.register_password_input = PasswordLineEdit()
-        self.confirm_password_input = PasswordLineEdit()  # 确认密码
+        self.confirm_password_input = PasswordLineEdit() 
         self.register_button_layout = QHBoxLayout()
         self.register_button = PrimaryPushButton()
-        self.register_to_login_button = PushButton()  # 切换回登录的按钮
+        self.register_to_login_button = PushButton()  
 
         # 共用组件
         self.error_label = BodyLabel()
         self.error_timer = QTimer()
 
-        # 初始化组件和布局
         self.__initWidget()
         self.__initLayout()
 
     def __initWidget(self):
-        """初始化各个控件的属性和行为"""
-        # 设置标题和Logo
+
         self.title_label.setText("Smart Memo")
         self.title_label.setAlignment(Qt.AlignCenter)
 
-        # 尝试加载Logo
         try:
-            self.logo_label.setPixmap(QPixmap(resource_path("resource/logo.png")))
+            self.logo_label.setPixmap(
+                QPixmap(resource_path("resource/logo.png")))
             self.logo_label.setFixedSize(120, 120)
             self.logo_label.setScaledContents(True)
         except Exception as e:
@@ -115,13 +109,11 @@ class AccountInterface(QFrame):
         self.register_to_login_button.setText("返回登录")
         self.register_to_login_button.setFixedHeight(40)
 
-        # 设置错误提示标签
         self.error_label.setStyleSheet("color: red")
         self.error_label.setAlignment(Qt.AlignCenter)
-        self.error_label.setFixedHeight(30)  # 设置固定高度
+        self.error_label.setFixedHeight(30)
         self.error_label.setText("")
 
-        # 设置定时器
         self.error_timer.timeout.connect(self.hide_error)
         self.error_timer.setSingleShot(True)
         self.error_timer.setInterval(5000)
@@ -136,34 +128,26 @@ class AccountInterface(QFrame):
         self.username_input.returnPressed.connect(self.password_input.setFocus)
         self.password_input.returnPressed.connect(self.login)
         self.register_username_input.returnPressed.connect(
-            self.register_password_input.setFocus
-        )
+            self.register_password_input.setFocus)
         self.register_password_input.returnPressed.connect(
-            self.confirm_password_input.setFocus
-        )
+            self.confirm_password_input.setFocus)
         self.confirm_password_input.returnPressed.connect(self.register)
 
     def __initLayout(self):
-        """初始化布局"""
-        # 设置布局边距和间距
         self.layout.setContentsMargins(20, 30, 20, 30)
         self.layout.setSpacing(15)
 
-        # 添加顶部弹性空间
-        self.top_spacer = QSpacerItem(
-            20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding
-        )
+        self.top_spacer = QSpacerItem(20, 40, QSizePolicy.Minimum,
+                                      QSizePolicy.Expanding)
         self.layout.addItem(self.top_spacer)
 
-        # 添加Logo和标题
         self.layout.addWidget(self.logo_label, 0, Qt.AlignCenter)
         self.layout.addWidget(self.title_label)
 
-        # 在标题和输入框之间添加空间
-        self.title_space = QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.title_space = QSpacerItem(20, 20, QSizePolicy.Minimum,
+                                       QSizePolicy.Fixed)
         self.layout.addItem(self.title_space)
 
-        # 设置登录表单布局
         self.login_layout.setContentsMargins(0, 0, 0, 0)
         self.login_layout.setSpacing(15)
         self.login_layout.addWidget(self.username_input)
@@ -172,7 +156,6 @@ class AccountInterface(QFrame):
         self.login_button_layout.addWidget(self.login_to_register_button)
         self.login_layout.addLayout(self.login_button_layout)
 
-        # 设置注册表单布局
         self.register_layout.setContentsMargins(0, 0, 0, 0)
         self.register_layout.setSpacing(15)
         self.register_layout.addWidget(self.register_username_input)
@@ -182,41 +165,33 @@ class AccountInterface(QFrame):
         self.register_button_layout.addWidget(self.register_to_login_button)
         self.register_layout.addLayout(self.register_button_layout)
 
-        # 添加表单到堆叠部件
         self.stack_widget.addWidget(self.login_widget)
         self.stack_widget.addWidget(self.register_widget)
 
-        # 将堆叠部件添加到主布局
         self.layout.addWidget(self.stack_widget)
 
-        # 添加错误标签区域
-        self.error_space = QSpacerItem(20, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.error_space = QSpacerItem(20, 10, QSizePolicy.Minimum,
+                                       QSizePolicy.Fixed)
         self.layout.addItem(self.error_space)
         self.layout.addWidget(self.error_label)
 
-        # 添加底部空间
-        self.bottom_spacer = QSpacerItem(
-            20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding
-        )
+        self.bottom_spacer = QSpacerItem(20, 40, QSizePolicy.Minimum,
+                                         QSizePolicy.Expanding)
         self.layout.addItem(self.bottom_spacer)
 
-        # 默认显示登录表单
         self.stack_widget.setCurrentWidget(self.login_widget)
 
     def switch_to_register(self):
-        """切换到注册界面"""
         self.hide_error()
         self.stack_widget.setCurrentWidget(self.register_widget)
         self.register_username_input.setFocus()
 
     def switch_to_login(self):
-        """切换到登录界面"""
         self.hide_error()
         self.stack_widget.setCurrentWidget(self.login_widget)
         self.username_input.setFocus()
 
     def login(self):
-        """处理登录逻辑"""
         username = self.username_input.text()
         password = self.password_input.text()
 
@@ -233,7 +208,6 @@ class AccountInterface(QFrame):
                 self.error_timer.stop()
                 user_data = {"id": user["id"], "username": user["username"]}
                 self.loginSuccess.emit(user_data)
-                print("登录成功，需要显示主窗口")
             else:
                 self.show_error("用户名或密码错误")
                 self.error_timer.start()
@@ -242,7 +216,6 @@ class AccountInterface(QFrame):
                 db.close()
 
     def register(self):
-        """处理注册逻辑"""
         username = self.register_username_input.text()
         password = self.register_password_input.text()
         confirm_password = self.confirm_password_input.text()
@@ -259,7 +232,6 @@ class AccountInterface(QFrame):
             self.show_error("密码长度至少为6位")
             return
 
-        # 使用with语句自动管理数据库连接
         db = None
         try:
             db = DatabaseManager()
@@ -281,20 +253,18 @@ class AccountInterface(QFrame):
             self.registerSuccess.emit(username)
 
             # 延迟后自动切换到登录界面并填充注册的用户名
-            QTimer.singleShot(1000, lambda: self._register_success_action(username))
+            QTimer.singleShot(1000,
+                              lambda: self._register_success_action(username))
         finally:
-            # 确保数据库连接正确关闭
             if db:
                 db.close()
 
     def _register_success_action(self, username):
-        """注册成功后的操作"""
         self.switch_to_login()
         self.username_input.setText(username)
         self.password_input.setFocus()
 
     def show_error(self, message, error=True):
-        """显示错误或成功信息"""
         if error:
             self.error_label.setStyleSheet("color: red")
         else:
@@ -303,6 +273,5 @@ class AccountInterface(QFrame):
         self.error_label.setText(message)
 
     def hide_error(self):
-        """隐藏错误信息"""
         self.error_label.setText("")
         self.error_timer.stop()

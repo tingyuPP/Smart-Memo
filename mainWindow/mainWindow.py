@@ -22,6 +22,7 @@ from mainWindow.ui.view.memo import MemoInterface
 from mainWindow.ui.view.todoInterface import TodoInterface
 import os
 
+
 def resource_path(relative_path):
     """获取资源的绝对路径，适用于开发环境和PyInstaller打包后的环境"""
     try:
@@ -44,22 +45,17 @@ class Widget(QFrame):
         setFont(self.label, 24)
         self.label.setAlignment(Qt.AlignCenter)
         self.hBoxLayout.addWidget(self.label, 1, Qt.AlignCenter)
-
-        # 必须给子界面设置全局唯一的对象名
         self.setObjectName(text.replace(" ", "-"))
 
 
 class MainWindow(FluentWindow):
-    """主界面"""
 
     def __init__(self, user_id=None, username=None):
         super().__init__()
         self.splashScreen = SplashScreen(
-            QIcon(resource_path("resource/logo.png")), self
-        )
+            QIcon(resource_path("resource/logo.png")), self)
         self.splashScreen.setIconSize(QSize(200, 200))
 
-        # 为启动屏幕添加标题栏
         try:
             from qframelesswindow import StandardTitleBar
 
@@ -74,17 +70,15 @@ class MainWindow(FluentWindow):
 
         QApplication.processEvents()
         self.user_id = user_id
-
-        # 创建子界面，实际使用时将 Widget 换成自己的子界面
         self.homeInterface = MainInterface(self, user_id)
         self.memoInterface = MemoInterface(self, user_id)
         self.settingInterface = SettingInterface("设置", self)
         self.myInterface = MyInterface("My Interface", username, self)
         self.todoInterface = TodoInterface(self, user_id)
-        # print(self.myInterface.objectName())
 
         self.initNavigation()
-        self.stackedWidget.currentChanged.connect(self.onCurrentInterfaceChanged)
+        self.stackedWidget.currentChanged.connect(
+            self.onCurrentInterfaceChanged)
         self.todoInterface.todo_count_changed.connect(self.update_todo_count)
         self.homeInterface.memo_count_changed.connect(self.update_memo_count)
 
@@ -98,16 +92,10 @@ class MainWindow(FluentWindow):
 
         self.navigationInterface.addSeparator()
 
-        # if self.user_data["avatar"]:
-        #     self.addSubInterface(self.myInterface, self.create_round_icon(self.user_data["avatar"]), 'My Page', NavigationItemPosition.BOTTOM)
-        # else:
-        #     self.addSubInterface(self.myInterface, self.create_round_icon("resource/default_avatar.jpg"), 'My Page', NavigationItemPosition.BOTTOM)
-        self.addSubInterface(
-            self.myInterface, FIF.PEOPLE, "个性化", NavigationItemPosition.BOTTOM
-        )
-        self.addSubInterface(
-            self.settingInterface, FIF.SETTING, "设置", NavigationItemPosition.BOTTOM
-        )
+        self.addSubInterface(self.myInterface, FIF.PEOPLE, "个性化",
+                             NavigationItemPosition.BOTTOM)
+        self.addSubInterface(self.settingInterface, FIF.SETTING, "设置",
+                             NavigationItemPosition.BOTTOM)
 
     def initWindow(self):
         self.resize(900, 700)
@@ -118,129 +106,98 @@ class MainWindow(FluentWindow):
         self.stackedWidget.currentChanged.connect(self.onInterfaceChanged)
 
     def onInterfaceChanged(self, index):
-        # 获取上一个界面和当前界面
         current_widget = self.stackedWidget.widget(index)
 
         # 如果从备忘录编辑界面切换到其他界面，且内容不为空，则自动保存
-        if hasattr(self, "memoInterface") and self.memoInterface != current_widget:
-            # 检查是否有需要保存的内容
+        if hasattr(self,
+                   "memoInterface") and self.memoInterface != current_widget:
             memo = self.memoInterface
-            if memo.memo_id or (
-                memo.lineEdit.text().strip() and memo.textEdit.toPlainText().strip()
-            ):
-                # 尝试静默保存（不显示成功消息）
+            if memo.memo_id or (memo.lineEdit.text().strip()
+                                and memo.textEdit.toPlainText().strip()):
                 memo.save_memo(silent=True)
 
         # 如果切换到了备忘录编辑界面，清空内容以便新建
-        if hasattr(self, "memoInterface") and current_widget == self.memoInterface:
-            # 清空编辑界面
-            self.memoInterface.memo_id = None  # 重置 memo_id
-            self.memoInterface.lineEdit.clear()  # 清空标题
-            self.memoInterface.textEdit.clear()  # 清空内容
-            self.memoInterface.lineEdit_2.clear()  # 清空分类
-            self.memoInterface.update_word_count()  # 更新字数统计
+        if hasattr(self,
+                   "memoInterface") and current_widget == self.memoInterface:
+            self.memoInterface.memo_id = None
+            self.memoInterface.lineEdit.clear()
+            self.memoInterface.textEdit.clear()
+            self.memoInterface.lineEdit_2.clear()
+            self.memoInterface.update_word_count()
 
         # 如果切换到了主页，刷新备忘录列表
-        if hasattr(self, "homeInterface") and current_widget == self.homeInterface:
+        if hasattr(self,
+                   "homeInterface") and current_widget == self.homeInterface:
             self.homeInterface.update_memo_list()
 
     def switch_to_newmemo_interface(self):
-        # 切换到 memoInterface
-        self.navigationInterface.setCurrentItem(self.memoInterface.objectName())
-        # 直接设置内容区域的当前页面
+        self.navigationInterface.setCurrentItem(
+            self.memoInterface.objectName())
         self.switchTo(self.memoInterface)
 
-        # 清空 memoInterface 的内容
         if hasattr(self, "memoInterface"):
-            self.memoInterface.memo_id = None  # 重置 memo_id
-            self.memoInterface.lineEdit.clear()  # 清空标题
-            self.memoInterface.textEdit.clear()  # 清空内容
-            self.memoInterface.lineEdit_2.clear()  # 清空分类
-            self.memoInterface.update_word_count()  # 更新字数统计
+            self.memoInterface.memo_id = None
+            self.memoInterface.lineEdit.clear()
+            self.memoInterface.textEdit.clear()
+            self.memoInterface.lineEdit_2.clear()
+            self.memoInterface.update_word_count()
 
     def create_round_icon(self, image_path):
-        """创建圆形图标"""
         from PyQt5.QtGui import QPainter, QPainterPath, QPixmap, QColor, QPen
         from PyQt5.QtCore import QSize, Qt
 
-        # 加载原始图像
         original_pixmap = QPixmap(image_path)
         if original_pixmap.isNull():
             return QIcon()  # 如果无法加载图像，返回空图标
 
-        # 创建透明背景的目标pixmap
         size = min(original_pixmap.width(), original_pixmap.height())
         target_pixmap = QPixmap(size, size)
         target_pixmap.fill(Qt.transparent)
 
-        # 创建圆形裁剪路径
         path = QPainterPath()
         path.addEllipse(0, 0, size, size)
 
         # 开始绘制
         painter = QPainter(target_pixmap)
-        painter.setRenderHint(QPainter.Antialiasing)  # 抗锯齿
+        painter.setRenderHint(QPainter.Antialiasing)
         painter.setClipPath(path)
 
-        # 如果原图和目标大小不同，进行缩放
         if original_pixmap.width() != size or original_pixmap.height() != size:
             original_pixmap = original_pixmap.scaled(
-                size, size, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
-            )
-
-        # 居中绘制原始图像
-        x = (
-            (size - original_pixmap.width()) // 2
-            if original_pixmap.width() < size
-            else 0
-        )
-        y = (
-            (size - original_pixmap.height()) // 2
-            if original_pixmap.height() < size
-            else 0
-        )
+                size, size, Qt.KeepAspectRatioByExpanding,
+                Qt.SmoothTransformation)
+        x = ((size - original_pixmap.width()) //
+             2 if original_pixmap.width() < size else 0)
+        y = ((size - original_pixmap.height()) //
+             2 if original_pixmap.height() < size else 0)
 
         painter.drawPixmap(x, y, original_pixmap)
 
-        # 画一个圆形边框（可选）
-        painter.setClipping(False)  # 取消裁剪以便绘制边框
-        pen = QPen(QColor(200, 200, 200))  # 浅灰色边框
+        painter.setClipping(False)
+        pen = QPen(QColor(200, 200, 200))
         pen.setWidth(2)
         painter.setPen(pen)
         painter.drawEllipse(1, 1, size - 2, size - 2)
 
         painter.end()
 
-        # 创建并返回图标
         return QIcon(target_pixmap)
 
     def onCurrentInterfaceChanged(self, index):
-        """处理界面切换事件"""
-        # 获取当前显示的界面
         current_widget = self.stackedWidget.widget(index)
 
         # 如果切换到了主页，就刷新备忘录列表
         if current_widget == self.homeInterface:
-            # 确保主页已初始化数据库连接
             if hasattr(self.homeInterface, "db") and self.homeInterface.db:
                 self.homeInterface.update_memo_list()
-                print("已切换到主页，更新备忘录列表")
+
 
         elif current_widget == self.todoInterface:
-            # 确保待办事项界面已初始化数据库连接
             if hasattr(self.todoInterface, "db") and self.todoInterface.db:
                 self.todoInterface._refresh_list()
-                print("已切换到待办事项界面，更新待办事项列表")
 
     def update_todo_count(self, count):
         self.myInterface.infoCard.update_todo_count(count)
 
     def update_memo_count(self, count):
         self.myInterface.infoCard.update_memo_count(count)
-
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    w = MainWindow()
-    w.show()
-    app.exec()
