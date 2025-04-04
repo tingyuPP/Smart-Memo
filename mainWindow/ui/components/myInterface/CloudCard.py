@@ -7,11 +7,22 @@ import json
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
-from qfluentwidgets import (CardWidget, IconWidget, TitleLabel, BodyLabel,
-                            SettingCardGroup, TransparentDropDownToolButton,
-                            RoundMenu, Action, InfoBar, InfoBarPosition,
-                            FluentIcon, CaptionLabel, PrimaryPushSettingCard,
-                            Dialog)
+from qfluentwidgets import (
+    CardWidget,
+    IconWidget,
+    TitleLabel,
+    BodyLabel,
+    SettingCardGroup,
+    TransparentDropDownToolButton,
+    RoundMenu,
+    Action,
+    InfoBar,
+    InfoBarPosition,
+    FluentIcon,
+    CaptionLabel,
+    PrimaryPushSettingCard,
+    Dialog,
+)
 from obs import ObsClient
 from Database import DatabaseManager
 
@@ -28,13 +39,15 @@ class CloudCard(CardWidget):
         self.menuButton = TransparentDropDownToolButton(FluentIcon.MORE, self)
         self.menu = RoundMenu(parent=self.menuButton)
         self.menu.addAction(
-            Action(FluentIcon.SEND, "上传至云端", triggered=self.upload_to_cloud))
+            Action(FluentIcon.SEND, "上传至云端", triggered=self.upload_to_cloud)
+        )
         self.menu.addAction(
             Action(
                 FluentIcon.CLOUD_DOWNLOAD,
                 "下载至本地",
                 triggered=self.download_to_local,
-            ))
+            )
+        )
         self.menuButton.setMenu(self.menu)
         self.hBoxLayout = QHBoxLayout(self)
         self.vBoxLayout = QVBoxLayout()
@@ -154,9 +167,9 @@ class CloudCard(CardWidget):
             bucket_name = "mypicturebed"  # 使用同一个bucket
 
             # 创建OBS客户端
-            obs_client = ObsClient(access_key_id=ak,
-                                   secret_access_key=sk,
-                                   server=server)
+            obs_client = ObsClient(
+                access_key_id=ak, secret_access_key=sk, server=server
+            )
 
             try:
                 import json
@@ -167,15 +180,15 @@ class CloudCard(CardWidget):
                 timestamp = int(time.time())
                 user_id = self.user_id
                 register_time = str(self.parent.user_data["register_time"])
-                register_time = register_time.replace(" ",
-                                                      "_").replace(":", "-")
+                register_time = register_time.replace(" ", "_").replace(":", "-")
                 backup_filename = f"memo_backup_{computer_id}_{user_id}_{register_time}_{timestamp}.json"
 
                 memo_json = json.dumps(memo_list, ensure_ascii=False, indent=2)
 
                 object_key = f"memo_backups/{backup_filename}"
-                resp = obs_client.putObject(bucket_name, object_key,
-                                            memo_json.encode("utf-8"))
+                resp = obs_client.putObject(
+                    bucket_name, object_key, memo_json.encode("utf-8")
+                )
 
                 if resp.status < 300:
                     backup_url = f"https://{bucket_name}.{endpoint}/{object_key}"
@@ -273,9 +286,9 @@ class CloudCard(CardWidget):
             server = f"https://{endpoint}"
             bucket_name = "mypicturebed"
 
-            obs_client = ObsClient(access_key_id=ak,
-                                   secret_access_key=sk,
-                                   server=server)
+            obs_client = ObsClient(
+                access_key_id=ak, secret_access_key=sk, server=server
+            )
 
             if hasattr(self, "download_info_bar") and self.download_info_bar:
                 self.download_info_bar.close()
@@ -305,8 +318,7 @@ class CloudCard(CardWidget):
                     filename = os.path.basename(object_key)
                     parts = filename.split("_")
 
-                    if len(parts) >= 6 and parts[0] == "memo" and parts[
-                            1] == "backup":
+                    if len(parts) >= 6 and parts[0] == "memo" and parts[1] == "backup":
                         file_computer_id = parts[2]
                         file_user_id = parts[3]
 
@@ -317,27 +329,27 @@ class CloudCard(CardWidget):
                         file_register_time = "_".join(register_time_parts)
 
                         current_register_time = str(
-                            self.parent.user_data.get("register_time",
-                                                      "unknown"))
-                        current_register_time = (current_register_time.replace(
-                            " ", "_").replace(":", "-").replace("/", "-"))
+                            self.parent.user_data.get("register_time", "unknown")
+                        )
+                        current_register_time = (
+                            current_register_time.replace(" ", "_")
+                            .replace(":", "-")
+                            .replace("/", "-")
+                        )
 
-                        if (str(file_user_id) == str(user_id) and
-                                file_register_time == current_register_time):
+                        if (
+                            str(file_user_id) == str(user_id)
+                            and file_register_time == current_register_time
+                        ):
                             timestamp = int(timestamp_part.split(".")[0])
                             backup_info = {
-                                "key":
-                                object_key,
-                                "timestamp":
-                                timestamp,
-                                "last_modified":
-                                content.lastModified,
-                                "size":
-                                content.size,
-                                "computer_id":
-                                file_computer_id,
-                                "is_current_device":
-                                file_computer_id == current_computer_id,
+                                "key": object_key,
+                                "timestamp": timestamp,
+                                "last_modified": content.lastModified,
+                                "size": content.size,
+                                "computer_id": file_computer_id,
+                                "is_current_device": file_computer_id
+                                == current_computer_id,
                             }
 
                             if file_computer_id == current_computer_id:
@@ -348,8 +360,7 @@ class CloudCard(CardWidget):
                 all_backups = user_backups + other_device_backups
 
                 if not all_backups:
-                    if hasattr(self,
-                               "download_info_bar") and self.download_info_bar:
+                    if hasattr(self, "download_info_bar") and self.download_info_bar:
                         self.download_info_bar.close()
 
                     InfoBar.warning(
@@ -367,20 +378,19 @@ class CloudCard(CardWidget):
                 all_backups.sort(key=lambda x: x["timestamp"], reverse=True)
                 latest_backup = all_backups[0]
 
-                if hasattr(self,
-                           "download_info_bar") and self.download_info_bar:
+                if hasattr(self, "download_info_bar") and self.download_info_bar:
                     backup_time = time.strftime(
-                        "%Y-%m-%d %H:%M:%S",
-                        time.localtime(latest_backup["timestamp"]))
+                        "%Y-%m-%d %H:%M:%S", time.localtime(latest_backup["timestamp"])
+                    )
 
-                    device_info = ("当前设备" if latest_backup["is_current_device"]
-                                   else "其他设备")
+                    device_info = (
+                        "当前设备" if latest_backup["is_current_device"] else "其他设备"
+                    )
 
                     self.download_info_bar.close()
                     self.download_info_bar = InfoBar.info(
                         title="下载中",
-                        content=
-                        f"找到最新备份 ({backup_time}, {device_info})，正在下载...",
+                        content=f"找到最新备份 ({backup_time}, {device_info})，正在下载...",
                         orient=Qt.Horizontal,
                         isClosable=False,
                         position=InfoBarPosition.BOTTOM_RIGHT,
@@ -391,12 +401,12 @@ class CloudCard(CardWidget):
                 # 下载最新的备份文件
                 QTimer.singleShot(
                     500,
-                    lambda: self._download_backup_file(obs_client, bucket_name,
-                                                       latest_backup),
+                    lambda: self._download_backup_file(
+                        obs_client, bucket_name, latest_backup
+                    ),
                 )
             else:
-                raise Exception(
-                    f"查询失败: {resp.errorCode} - {resp.errorMessage}")
+                raise Exception(f"查询失败: {resp.errorCode} - {resp.errorMessage}")
 
         except Exception as e:
             import traceback
@@ -440,13 +450,10 @@ class CloudCard(CardWidget):
             temp_dir = tempfile.gettempdir()
             temp_file = os.path.join(temp_dir, os.path.basename(object_key))
 
-            resp = obs_client.getObject(bucket_name,
-                                        object_key,
-                                        downloadPath=temp_file)
+            resp = obs_client.getObject(bucket_name, object_key, downloadPath=temp_file)
 
             if resp.status < 300:
-                if hasattr(self,
-                           "download_info_bar") and self.download_info_bar:
+                if hasattr(self, "download_info_bar") and self.download_info_bar:
                     self.download_info_bar.close()
                     self.download_info_bar = InfoBar.info(
                         title="下载中",
@@ -460,11 +467,10 @@ class CloudCard(CardWidget):
 
                 # 解析下载的JSON文件
                 QTimer.singleShot(
-                    500,
-                    lambda: self._parse_backup_file(temp_file, backup_info))
+                    500, lambda: self._parse_backup_file(temp_file, backup_info)
+                )
             else:
-                raise Exception(
-                    f"下载失败: {resp.errorCode} - {resp.errorMessage}")
+                raise Exception(f"下载失败: {resp.errorCode} - {resp.errorMessage}")
 
         except Exception as e:
             import traceback
@@ -509,7 +515,8 @@ class CloudCard(CardWidget):
                 memo_list = json.load(f)
 
             backup_time = time.strftime(
-                "%Y-%m-%d %H:%M:%S", time.localtime(backup_info["timestamp"]))
+                "%Y-%m-%d %H:%M:%S", time.localtime(backup_info["timestamp"])
+            )
             memo_count = len(memo_list)
 
             backup_summary = {
@@ -703,8 +710,7 @@ class CloudCard(CardWidget):
             # 逐条导入备忘录
             for i, memo in enumerate(memo_list):
                 if i % (len(memo_list) // 5 or 1) == 0:
-                    if hasattr(self,
-                               "import_info_bar") and self.import_info_bar:
+                    if hasattr(self, "import_info_bar") and self.import_info_bar:
                         progress = int((i / len(memo_list)) * 100)
                         self.import_info_bar.close()
                         self.import_info_bar = InfoBar.info(
@@ -740,13 +746,14 @@ class CloudCard(CardWidget):
             )
 
             if hasattr(self.parent, "mainWindow") and hasattr(
-                    self.parent.mainWindow, "refresh_memo_list"):
+                self.parent.mainWindow, "refresh_memo_list"
+            ):
                 self.parent.mainWindow.refresh_memo_list()
 
             if hasattr(self.parent, "infoCard") and hasattr(
-                    self.parent.infoCard, "memoCountLabel"):
-                self.parent.infoCard.memoCountLabel.setText(
-                    str(imported_count))
+                self.parent.infoCard, "memoCountLabel"
+            ):
+                self.parent.infoCard.memoCountLabel.setText(str(imported_count))
 
         except Exception as e:
             import traceback

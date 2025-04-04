@@ -81,8 +81,7 @@ class AccountInterface(QFrame):
         self.title_label.setAlignment(Qt.AlignCenter)
 
         try:
-            self.logo_label.setPixmap(
-                QPixmap(resource_path("resource/logo.png")))
+            self.logo_label.setPixmap(QPixmap(resource_path("resource/logo.png")))
             self.logo_label.setFixedSize(120, 120)
             self.logo_label.setScaledContents(True)
         except Exception as e:
@@ -129,24 +128,26 @@ class AccountInterface(QFrame):
         self.username_input.returnPressed.connect(self.password_input.setFocus)
         self.password_input.returnPressed.connect(self.login)
         self.register_username_input.returnPressed.connect(
-            self.register_password_input.setFocus)
+            self.register_password_input.setFocus
+        )
         self.register_password_input.returnPressed.connect(
-            self.confirm_password_input.setFocus)
+            self.confirm_password_input.setFocus
+        )
         self.confirm_password_input.returnPressed.connect(self.register)
 
     def __initLayout(self):
         self.layout.setContentsMargins(20, 30, 20, 30)
         self.layout.setSpacing(15)
 
-        self.top_spacer = QSpacerItem(20, 40, QSizePolicy.Minimum,
-                                      QSizePolicy.Expanding)
+        self.top_spacer = QSpacerItem(
+            20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding
+        )
         self.layout.addItem(self.top_spacer)
 
         self.layout.addWidget(self.logo_label, 0, Qt.AlignCenter)
         self.layout.addWidget(self.title_label)
 
-        self.title_space = QSpacerItem(20, 20, QSizePolicy.Minimum,
-                                       QSizePolicy.Fixed)
+        self.title_space = QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Fixed)
         self.layout.addItem(self.title_space)
 
         self.login_layout.setContentsMargins(0, 0, 0, 0)
@@ -171,13 +172,13 @@ class AccountInterface(QFrame):
 
         self.layout.addWidget(self.stack_widget)
 
-        self.error_space = QSpacerItem(20, 10, QSizePolicy.Minimum,
-                                       QSizePolicy.Fixed)
+        self.error_space = QSpacerItem(20, 10, QSizePolicy.Minimum, QSizePolicy.Fixed)
         self.layout.addItem(self.error_space)
         self.layout.addWidget(self.error_label)
 
-        self.bottom_spacer = QSpacerItem(20, 40, QSizePolicy.Minimum,
-                                         QSizePolicy.Expanding)
+        self.bottom_spacer = QSpacerItem(
+            20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding
+        )
         self.layout.addItem(self.bottom_spacer)
 
         self.stack_widget.setCurrentWidget(self.login_widget)
@@ -254,8 +255,7 @@ class AccountInterface(QFrame):
             self.registerSuccess.emit(username)
 
             # 延迟后自动切换到登录界面并填充注册的用户名
-            QTimer.singleShot(1000,
-                              lambda: self._register_success_action(username))
+            QTimer.singleShot(1000, lambda: self._register_success_action(username))
         finally:
             if db:
                 db.close()

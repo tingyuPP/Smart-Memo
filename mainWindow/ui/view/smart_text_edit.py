@@ -28,8 +28,9 @@ class SuggestionThread(QThread):
 
             self.suggestionReady.emit(result)
         except Exception:
-            pass  
+            pass
             self.suggestionReady.emit("")
+
 
 class TabContinuationThread(QThread):
     """Tab键续写线程"""
@@ -46,8 +47,9 @@ class TabContinuationThread(QThread):
             result = self.ai_service.generate_content(self.context, "tab续写")
             self.resultReady.emit(result)
         except Exception:
-            pass  
+            pass
             self.resultReady.emit("")
+
 
 class SmartTextEdit(TextEdit):
     def __init__(self, parent=None):
@@ -63,12 +65,12 @@ class SmartTextEdit(TextEdit):
         self.is_showing_suggestion = False
 
         self.normal_color = self.palette().text().color()
-        self.suggestion_color = QColor(169, 169, 169)  
+        self.suggestion_color = QColor(169, 169, 169)
 
         self.suggestion_timer = QTimer(self)
         self.suggestion_timer.setSingleShot(True)
         self.suggestion_timer.timeout.connect(self._request_suggestion)
-        self._update_timer_interval(cfg.get(cfg.completionTime))  
+        self._update_timer_interval(cfg.get(cfg.completionTime))
 
         cfg.completionTime.valueChanged.connect(self._update_timer_interval)
 
@@ -94,7 +96,7 @@ class SmartTextEdit(TextEdit):
 
         if self.is_composing and self.suggestion_active:
             self._clear_suggestion()
-            self.suggestion_timer.stop() 
+            self.suggestion_timer.stop()
 
         super().inputMethodEvent(event)
 
@@ -149,7 +151,7 @@ class SmartTextEdit(TextEdit):
             self.suggestion_thread.suggestionReady.connect(self._handle_suggestion)
             self.suggestion_thread.start()
         except Exception:
-            pass 
+            pass
 
     def _get_context(self, cursor):
         """获取当前上下文"""
@@ -171,7 +173,7 @@ class SmartTextEdit(TextEdit):
         self.current_suggestion = suggestion
         self.suggestion_active = True
 
-        self.viewport().update() 
+        self.viewport().update()
 
     def _show_suggestion(self):
         """显示建议文本"""
@@ -196,17 +198,13 @@ class SmartTextEdit(TextEdit):
             viewport_width = self.viewport().width()
             document_margin = self.document().documentMargin()
 
-            first_line_x = int(rect.x())  
-            subsequent_line_x = int(document_margin) 
+            first_line_x = int(rect.x())
+            subsequent_line_x = int(document_margin)
             y = int(rect.y() + painter.fontMetrics().ascent())
 
             font_metrics = painter.fontMetrics()
-            first_line_max_width = (
-                viewport_width - first_line_x - 20
-            ) 
-            subsequent_line_max_width = (
-                viewport_width - subsequent_line_x - 20
-            )  
+            first_line_max_width = viewport_width - first_line_x - 20
+            subsequent_line_max_width = viewport_width - subsequent_line_x - 20
 
             suggestion_lines = []
             current_line = ""
@@ -289,7 +287,7 @@ class SmartTextEdit(TextEdit):
         cursor.mergeCharFormat(format)
 
         if event.key() not in (Qt.Key_Shift, Qt.Key_Control, Qt.Key_Alt, Qt.Key_Meta):
-            self.suggestion_timer.start() 
+            self.suggestion_timer.start()
         format = cursor.charFormat()
         format.setForeground(self.normal_color)
         cursor.mergeCharFormat(format)
@@ -366,5 +364,5 @@ class SmartTextEdit(TextEdit):
         更新计时器延迟时间
         @param seconds: 延迟秒数
         """
-        milliseconds = int(seconds * 1000)  
+        milliseconds = int(seconds * 1000)
         self.suggestion_timer.setInterval(milliseconds)

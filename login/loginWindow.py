@@ -26,8 +26,7 @@ class LoginWindow(FramelessWindow):
     def __init__(self):
         super().__init__()
         if cfg.get(cfg.themeMode) == Theme.DARK:
-            with open(resource_path("resource/dark.qss"),
-                      encoding="utf-8") as f:
+            with open(resource_path("resource/dark.qss"), encoding="utf-8") as f:
                 self.setStyleSheet(f.read())
 
         self.segmentedWidget = SegmentedWidget(self)
@@ -48,8 +47,7 @@ class LoginWindow(FramelessWindow):
         self.segmentedWidget.addItem(
             routeKey="accountInterface",
             text="账密登录",
-            onClick=lambda: self.stackedWidget.setCurrentWidget(
-                self.accountInterface),
+            onClick=lambda: self.stackedWidget.setCurrentWidget(self.accountInterface),
         )
         self.stackedWidget.addWidget(self.accountInterface)
 
@@ -57,8 +55,7 @@ class LoginWindow(FramelessWindow):
         self.segmentedWidget.addItem(
             routeKey="faceInterface",
             text="人脸识别",
-            onClick=lambda: self.stackedWidget.setCurrentWidget(self.
-                                                                faceInterface),
+            onClick=lambda: self.stackedWidget.setCurrentWidget(self.faceInterface),
         )
         self.stackedWidget.addWidget(self.faceInterface)
 

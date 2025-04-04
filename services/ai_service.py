@@ -28,7 +28,7 @@ class AIService(QObject):
         },
         "glm-4-flash": {
             "display_name": "GLM-4-Flash",
-            "base_url": "https://open.bigmodel.cn/api/paas/v4",  
+            "base_url": "https://open.bigmodel.cn/api/paas/v4",
             "max_tokens": 4096,
             "provider": "zhipuai",
             "description": "GLM-4-Flash，支持中英双语",
@@ -129,7 +129,7 @@ class AIService(QObject):
         self._max_memory_tokens = 2000
 
         self.api_key = cfg.get(cfg.apiKey)
-        
+
         self.client = None
         self._init_api_client()
 
@@ -137,7 +137,7 @@ class AIService(QObject):
         """初始化API客户端"""
         try:
             api_key = cfg.get(cfg.apiKey)
-            self.api_key = api_key 
+            self.api_key = api_key
             if not api_key:
                 self.client = None
                 return
@@ -171,6 +171,7 @@ class AIService(QObject):
 
         except Exception as e:
             import traceback
+
             traceback.print_exc()
             self.client = None
 
@@ -186,7 +187,7 @@ class AIService(QObject):
         config = self.MODEL_CONFIGS.get(model)
         if config:
             return config["max_tokens"]
-        return 4096  
+        return 4096
 
     def build_memory_context(self, user_id, db):
         """构建用户的记忆上下文"""
@@ -194,7 +195,7 @@ class AIService(QObject):
             memos = db.get_all_memos_by_user(user_id)
 
             if not memos:
-                self._memory_context = "" 
+                self._memory_context = ""
                 return
 
             context_parts = []
@@ -208,16 +209,16 @@ class AIService(QObject):
                 memo_context = f"标题: {title}\n分类: {category}\n内容: {content}\n"
                 context_parts.append(memo_context)
 
-            max_context_length = 4000 
+            max_context_length = 4000
             combined_context = "\n---\n".join(context_parts)
 
             if len(combined_context) > max_context_length:
                 truncated_parts = []
                 current_length = 0
 
-                for part in reversed(context_parts):  
+                for part in reversed(context_parts):
                     if current_length + len(part) <= max_context_length:
-                        truncated_parts.insert(0, part)  
+                        truncated_parts.insert(0, part)
                         current_length += len(part)
                     else:
                         break
@@ -226,8 +227,9 @@ class AIService(QObject):
 
         except Exception as e:
             import traceback
+
             print(traceback.format_exc())
-            self._memory_context = "" 
+            self._memory_context = ""
 
     def _get_enhanced_prompt(self, mode, user_prompt, aux_prompt=""):
         """获取增强的提示词，统一处理所有模式的记忆上下文"""
@@ -249,7 +251,7 @@ class AIService(QObject):
                 enhanced_prompt += f"\n\n额外要求：{aux_prompt}"
         elif mode == "tab续写":
             enhanced_prompt = f"{system_prompt}\n\n已有内容：\n{user_prompt}\n\n请续写（不要重复上面的内容）："
-        else:  
+        else:
             enhanced_prompt = f"{system_prompt}\n\n{user_prompt}"
 
         if hasattr(self, "_memory_context") and self._memory_context:
@@ -312,7 +314,7 @@ class AIService(QObject):
                 full_prompt = f"备忘录内容：{prompt}"
                 if aux_prompt:
                     full_prompt += f"\n\n额外要求：{aux_prompt}"
-            else:  
+            else:
                 full_prompt = prompt
 
             model = cfg.get(cfg.aiModel)
@@ -359,7 +361,7 @@ class AIService(QObject):
             model_id = model_config.get("model_id") if model_config else model
 
             response = self.client.chat.completions.create(
-                model=model_id, 
+                model=model_id,
                 messages=messages,
                 temperature=0.7,
                 max_tokens=self._get_max_tokens(model),
@@ -395,7 +397,7 @@ class AIService(QObject):
             model_id = model_config.get("model_id") if model_config else model
 
             stream = self.client.chat.completions.create(
-                model=model_id,  
+                model=model_id,
                 messages=messages,
                 temperature=0.7,
                 max_tokens=self._get_max_tokens(model),
@@ -436,7 +438,7 @@ class AIService(QObject):
                 full_prompt = f"备忘录内容：{prompt}"
                 if aux_prompt:
                     full_prompt += f"\n\n额外要求：{aux_prompt}"
-            else:  
+            else:
                 full_prompt = prompt
 
             if not self.client:
@@ -475,9 +477,9 @@ class AIService(QObject):
 class AIWorkerThread(QThread):
     """统一的AI工作线程"""
 
-    resultReady = pyqtSignal(str) 
-    chunkReceived = pyqtSignal(str)  
-    finished = pyqtSignal() 
+    resultReady = pyqtSignal(str)
+    chunkReceived = pyqtSignal(str)
+    finished = pyqtSignal()
     error = pyqtSignal(str)
 
     def __init__(self, ai_service, mode, text, streaming=False):

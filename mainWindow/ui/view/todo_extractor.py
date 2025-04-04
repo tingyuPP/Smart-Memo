@@ -1,21 +1,45 @@
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QScrollArea, QWidget,
-    QApplication, QFrame, QWIDGETSIZE_MAX
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QScrollArea,
+    QWidget,
+    QApplication,
+    QFrame,
+    QWIDGETSIZE_MAX,
 )
 from qfluentwidgets import (
-    StateToolTip, InfoBar, PrimaryPushButton, PushButton,
-    CheckBox, BodyLabel, CaptionLabel, IconWidget, FluentIcon,
-    CardWidget, TextEdit, ComboBox, CalendarPicker, TimePicker,
-    VBoxLayout, InfoBarPosition, ScrollArea, Dialog, isDarkTheme, Theme
+    StateToolTip,
+    InfoBar,
+    PrimaryPushButton,
+    PushButton,
+    CheckBox,
+    BodyLabel,
+    CaptionLabel,
+    IconWidget,
+    FluentIcon,
+    CardWidget,
+    TextEdit,
+    ComboBox,
+    CalendarPicker,
+    TimePicker,
+    VBoxLayout,
+    InfoBarPosition,
+    ScrollArea,
+    Dialog,
+    isDarkTheme,
+    Theme,
 )
 from PyQt5.QtCore import QDate, QTime, QEvent
 from datetime import datetime
 from Database import DatabaseManager
 from mainWindow.ui.view.ai_handler import AIHandler
 
+
 class TodoExtractThread(QThread):
     """提取待办事项的工作线程"""
+
     resultReady = pyqtSignal(int, list)
 
     def __init__(self, ai_handler, memo_content, user_id):
@@ -37,8 +61,8 @@ class TodoExtractorDialog(Dialog):
     def __init__(self, todos, user_id, parent=None):
         self.todos = todos
         self.user_id = user_id
-        self.todo_checkboxes = []  
-        self.select_all_checkbox = None  
+        self.todo_checkboxes = []
+        self.select_all_checkbox = None
 
         super().__init__("提取的待办事项", "", parent=parent)
 
@@ -48,30 +72,30 @@ class TodoExtractorDialog(Dialog):
         self.setResizeEnabled(True)
 
         self.setWindowFlags(
-            Qt.Dialog |
-            Qt.CustomizeWindowHint |  
-            Qt.WindowTitleHint |      
-            Qt.WindowSystemMenuHint | 
-            Qt.WindowMinMaxButtonsHint |
-            Qt.WindowCloseButtonHint   
+            Qt.Dialog
+            | Qt.CustomizeWindowHint
+            | Qt.WindowTitleHint
+            | Qt.WindowSystemMenuHint
+            | Qt.WindowMinMaxButtonsHint
+            | Qt.WindowCloseButtonHint
         )
 
-        self.setAttribute(Qt.WA_TranslucentBackground, False)  
-        self.setAttribute(Qt.WA_NoSystemBackground, False)     
+        self.setAttribute(Qt.WA_TranslucentBackground, False)
+        self.setAttribute(Qt.WA_NoSystemBackground, False)
 
         self.bgColor = "#1E1E1E" if isDarkTheme() else "#F5F5F5"
         self.setStyleSheet(f"background-color: {self.bgColor};")
 
-        if hasattr(self, 'titleBar'):
+        if hasattr(self, "titleBar"):
             self.titleBar.show()
-            if hasattr(self.titleBar, 'minBtn'):
+            if hasattr(self.titleBar, "minBtn"):
                 self.titleBar.minBtn.show()
-            if hasattr(self.titleBar, 'maxBtn'):
+            if hasattr(self.titleBar, "maxBtn"):
                 self.titleBar.maxBtn.show()
-            if hasattr(self.titleBar, 'closeBtn'):
+            if hasattr(self.titleBar, "closeBtn"):
                 self.titleBar.closeBtn.show()
 
-        if hasattr(self, 'windowTitleLabel'):
+        if hasattr(self, "windowTitleLabel"):
             self.windowTitleLabel.setVisible(False)
 
         self.setWindowTitle("提取的待办事项")
@@ -85,28 +109,30 @@ class TodoExtractorDialog(Dialog):
     def changeEvent(self, event):
         """处理窗口状态变化事件，如最大化/最小化"""
         if event.type() == QEvent.WindowStateChange:
-            if hasattr(self, 'titleBar'):
+            if hasattr(self, "titleBar"):
                 self.titleBar.show()
-                if hasattr(self.titleBar, 'minBtn'):
+                if hasattr(self.titleBar, "minBtn"):
                     self.titleBar.minBtn.show()
-                if hasattr(self.titleBar, 'maxBtn'):
+                if hasattr(self.titleBar, "maxBtn"):
                     self.titleBar.maxBtn.show()
-                if hasattr(self.titleBar, 'closeBtn'):
+                if hasattr(self.titleBar, "closeBtn"):
                     self.titleBar.closeBtn.show()
 
         super().changeEvent(event)
 
-
-
     def setup_ui(self):
-        if hasattr(self, 'buttonGroup') and self.buttonGroup:
+        if hasattr(self, "buttonGroup") and self.buttonGroup:
             try:
                 self.buttonGroup.setParent(None)
                 self.buttonGroup.deleteLater()
             except RuntimeError:
                 pass
 
-        if hasattr(self, 'contentLabel') and self.contentLabel and not self.contentLabel.isHidden():
+        if (
+            hasattr(self, "contentLabel")
+            and self.contentLabel
+            and not self.contentLabel.isHidden()
+        ):
             try:
                 self.contentLabel.setVisible(False)
             except RuntimeError:
@@ -123,7 +149,7 @@ class TodoExtractorDialog(Dialog):
         title_layout.addStretch(1)
 
         self.select_all_checkbox = CheckBox("全选")
-        self.select_all_checkbox.setChecked(True) 
+        self.select_all_checkbox.setChecked(True)
         self.select_all_checkbox.stateChanged.connect(self._on_select_all_changed)
 
         title_layout.addWidget(self.select_all_checkbox)
@@ -161,17 +187,17 @@ class TodoExtractorDialog(Dialog):
             checkbox_container = QWidget()
             checkbox_container.setFixedSize(24, 24)
             checkbox_container.setStyleSheet("background: transparent; border: none;")
-            
+
             checkbox_layout = QVBoxLayout(checkbox_container)
             checkbox_layout.setContentsMargins(0, 0, 0, 0)
             checkbox_layout.setSpacing(0)
-            
+
             select_check = CheckBox()
             select_check.setFixedSize(24, 24)
             select_check.setChecked(True)
             select_check.stateChanged.connect(self._update_select_all_state)
             self.todo_checkboxes.append(select_check)
-            
+
             checkbox_layout.addWidget(select_check)
             task_layout.addWidget(checkbox_container)
 
@@ -230,13 +256,15 @@ class TodoExtractorDialog(Dialog):
 
             card_bg_color = "#2B2B2B" if isDarkTheme() else "#FFFFFF"
             card_border_color = "#3D3D3D" if isDarkTheme() else "#E0E0E0"
-            card.setStyleSheet(f"""
+            card.setStyleSheet(
+                f"""
                 CardWidget {{
                     background-color: {card_bg_color};
                     border: 1px solid {card_border_color};
                     border-radius: 6px;
                 }}
-            """)
+            """
+            )
 
             content_layout.addWidget(card)
 
@@ -273,7 +301,9 @@ class TodoExtractorDialog(Dialog):
                 checkbox_states.append(checkbox.isChecked())
 
             try:
-                new_dialog = TodoExtractorDialog(self.todos, self.user_id, self.parent())
+                new_dialog = TodoExtractorDialog(
+                    self.todos, self.user_id, self.parent()
+                )
 
                 if len(checkbox_states) == len(new_dialog.todo_checkboxes):
                     for i, state in enumerate(checkbox_states):
@@ -282,16 +312,16 @@ class TodoExtractorDialog(Dialog):
                         new_dialog.todo_checkboxes[i].blockSignals(False)
                     new_dialog._update_select_all_state()
 
-                self.accept()  
-                new_dialog.exec_()  
+                self.accept()
+                new_dialog.exec_()
             except Exception as e:
-                QApplication.processEvents() 
+                QApplication.processEvents()
                 self._refresh_ui()
 
     def _refresh_ui(self):
         """刷新UI显示"""
         try:
-            if hasattr(self, 'textLayout') and self.textLayout:
+            if hasattr(self, "textLayout") and self.textLayout:
                 while self.textLayout.count():
                     item = self.textLayout.takeAt(0)
                     if item and item.widget():
@@ -316,7 +346,7 @@ class TodoExtractorDialog(Dialog):
                     elif item and item.layout():
                         self._clear_layout(item.layout())
         except RuntimeError:
-            pass 
+            pass
 
     def _on_select_all_changed(self, state):
         """全选/取消全选复选框状态改变时的处理"""
@@ -356,11 +386,13 @@ class TodoExtractorDialog(Dialog):
                 content="请至少选择一个待办事项",
                 parent=self,
                 position=InfoBarPosition.TOP,
-                duration=3000
+                duration=3000,
             )
             return
 
-        added_count = todo_extractor._add_todos_to_database(selected_todos, self.user_id)
+        added_count = todo_extractor._add_todos_to_database(
+            selected_todos, self.user_id
+        )
 
         if added_count > 0:
             InfoBar.success(
@@ -368,7 +400,7 @@ class TodoExtractorDialog(Dialog):
                 content=f"已成功添加 {added_count} 个待办事项",
                 parent=self.parent(),
                 position=InfoBarPosition.TOP,
-                duration=3000
+                duration=3000,
             )
         else:
             InfoBar.warning(
@@ -376,7 +408,7 @@ class TodoExtractorDialog(Dialog):
                 content="未能添加任何待办事项",
                 parent=self.parent(),
                 position=InfoBarPosition.TOP,
-                duration=3000
+                duration=3000,
             )
         self.accept()
 
@@ -398,11 +430,11 @@ class TodoEditDialog(Dialog):
         super().showEvent(event)
 
     def setup_ui(self):
-        if hasattr(self, 'buttonGroup'):
+        if hasattr(self, "buttonGroup"):
             self.buttonGroup.setParent(None)
             self.buttonGroup.deleteLater()
 
-        if hasattr(self, 'contentLabel'):
+        if hasattr(self, "contentLabel"):
             self.contentLabel.setVisible(False)
 
         title_layout = QHBoxLayout()
@@ -491,7 +523,7 @@ class TodoEditDialog(Dialog):
                 content="任务内容不能为空",
                 parent=self,
                 position=InfoBarPosition.TOP,
-                duration=2000
+                duration=2000,
             )
             return
 
@@ -500,9 +532,9 @@ class TodoEditDialog(Dialog):
         deadline = f"{selected_date} {selected_time}"
 
         self.todo = {
-            'task': task,
-            'deadline': deadline,
-            'category': self.category_combo.currentText()
+            "task": task,
+            "deadline": deadline,
+            "category": self.category_combo.currentText(),
         }
 
         self.accept()
@@ -528,7 +560,9 @@ class TodoExtractor:
 
         if not memo_content.strip():
             InfoBar.warning(
-                title="提示", content="备忘录内容为空，无法提取待办事项", parent=self.parent
+                title="提示",
+                content="备忘录内容为空，无法提取待办事项",
+                parent=self.parent,
             )
             return
 
@@ -542,9 +576,7 @@ class TodoExtractor:
         self.state_tooltip.show()
         QApplication.processEvents()
 
-        self.todo_thread = TodoExtractThread(
-            ai_handler, memo_content, user_id
-        )
+        self.todo_thread = TodoExtractThread(ai_handler, memo_content, user_id)
         self.todo_thread.resultReady.connect(
             lambda count, todos: self._on_todos_extracted(count, todos, user_id)
         )
@@ -560,7 +592,7 @@ class TodoExtractor:
                 content="未能从备忘录中提取到待办事项",
                 parent=self.parent,
                 position=InfoBarPosition.TOP,
-                duration=3000
+                duration=3000,
             )
             return
 
@@ -574,7 +606,7 @@ class TodoExtractor:
                 self.state_tooltip.close()
                 self.state_tooltip = None
         except Exception:
-            pass 
+            pass
 
     def _add_todos_to_database(self, todos, user_id):
         """将待办事项添加到数据库"""
@@ -591,16 +623,13 @@ class TodoExtractor:
                     continue
 
                 todo_id = db.add_todo(
-                    user_id=user_id,
-                    task=task,
-                    deadline=deadline,
-                    category=category
+                    user_id=user_id, task=task, deadline=deadline, category=category
                 )
 
                 if todo_id:
                     added_count += 1
 
             except Exception:
-                pass  
+                pass
 
         return added_count

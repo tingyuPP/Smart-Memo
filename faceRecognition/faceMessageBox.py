@@ -106,8 +106,7 @@ class FaceProcessThread(QThread):
     processingComplete = pyqtSignal()
     faceQualityFeedback = pyqtSignal(tuple, bool)
 
-    def __init__(self, cascade_path, threshold, required_faces, user_id,
-                 username):
+    def __init__(self, cascade_path, threshold, required_faces, user_id, username):
         super().__init__()
         self.cascade_path = cascade_path
 
@@ -120,14 +119,16 @@ class FaceProcessThread(QThread):
                 print(f"使用路径 {cascade_file} 加载级联分类器失败，尝试内置路径...")
                 cv2_path = os.path.join(os.path.dirname(cv2.__file__), "data")
                 backup_path = os.path.join(
-                    cv2_path, "haarcascade_frontalface_default.xml")
+                    cv2_path, "haarcascade_frontalface_default.xml"
+                )
                 self.face_cascade = cv2.CascadeClassifier(backup_path)
 
                 if self.face_cascade.empty():
                     print(f"内置路径 {backup_path} 加载失败，尝试打包后路径...")
                     # 尝试打包后的标准位置
                     pkg_path = resource_path(
-                        "cv2/data/haarcascade_frontalface_default.xml")
+                        "cv2/data/haarcascade_frontalface_default.xml"
+                    )
                     self.face_cascade = cv2.CascadeClassifier(pkg_path)
                     print(
                         f"打包路径 {pkg_path} 加载状态: {'成功' if not self.face_cascade.empty() else '失败'}"
@@ -196,10 +197,9 @@ class FaceProcessThread(QThread):
             self.mutex.unlock()
 
             gray = cv2.cvtColor(current_frame, cv2.COLOR_BGR2GRAY)
-            faces = self.face_cascade.detectMultiScale(gray,
-                                                       scaleFactor=1.1,
-                                                       minNeighbors=5,
-                                                       minSize=(30, 30))
+            faces = self.face_cascade.detectMultiScale(
+                gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30)
+            )
 
             # 处理检测到的人脸
             for x, y, w, h in faces:
@@ -210,12 +210,12 @@ class FaceProcessThread(QThread):
 
                 if is_good_quality and current_count < self.required_faces:
                     self.mutex.lock()
-                    if (self.face_count >= self.required_faces):
+                    if self.face_count >= self.required_faces:
                         self.mutex.unlock()
                         continue
 
                     # 提取人脸
-                    face_img = current_frame[y:y + h, x:x + w]
+                    face_img = current_frame[y : y + h, x : x + w]
 
                     self.face_images.append(face_img.copy())
 
@@ -246,7 +246,8 @@ class FaceRegistrationMessageBox(MessageBoxBase):
         self.username = username
 
         self.face_cascade_path = resource_path(
-            "cv2/data/haarcascade_frontalface_default.xml")
+            "cv2/data/haarcascade_frontalface_default.xml"
+        )
 
         # 面部捕获相关变量
         self.required_faces = 5
@@ -282,8 +283,7 @@ class FaceRegistrationMessageBox(MessageBoxBase):
 
     def update_face_feedback(self):
         """定期更新人脸信息，清除过时的框"""
-        if not hasattr(self,
-                       "camera_thread") or not self.camera_thread.isRunning():
+        if not hasattr(self, "camera_thread") or not self.camera_thread.isRunning():
             return
 
         if len(self.faces_feedback) > 1:
@@ -294,7 +294,9 @@ class FaceRegistrationMessageBox(MessageBoxBase):
         self.titleLabel = SubtitleLabel("人脸识别录入")
         self.viewLayout.addWidget(self.titleLabel)
 
-        self.descriptionLabel = BodyLabel("请注视摄像头，系统将自动捕获多张人脸图像用于识别")
+        self.descriptionLabel = BodyLabel(
+            "请注视摄像头，系统将自动捕获多张人脸图像用于识别"
+        )
         self.viewLayout.addWidget(self.descriptionLabel)
         self.viewLayout.addSpacing(10)
 
@@ -313,12 +315,14 @@ class FaceRegistrationMessageBox(MessageBoxBase):
         self.image_label.setText("准备开始捕获人脸")
         imageLayout.addWidget(self.image_label)
         if cfg.get(cfg.themeMode) == Theme.DARK:
-            self.image_label.setStyleSheet("""
+            self.image_label.setStyleSheet(
+                """
                 background-color: #2b2b2b; 
                 color: #ffffff;
                 font-size: 16px;
                 border-radius: 6px;
-            """)
+            """
+            )
 
         self.viewLayout.addWidget(self.imageContainer)
         self.viewLayout.addSpacing(10)
@@ -420,12 +424,14 @@ class FaceRegistrationMessageBox(MessageBoxBase):
         self.image_label.setText("准备开始捕获人脸")
 
         if cfg.get(cfg.themeMode) == Theme.DARK:
-            self.image_label.setStyleSheet("""
+            self.image_label.setStyleSheet(
+                """
                 background-color: #2b2b2b; 
                 color: #ffffff;
                 font-size: 16px;
                 border-radius: 6px;
-            """)
+            """
+            )
         else:
             self.image_label.setStyleSheet("font-size: 16px; color: #666;")
 
@@ -481,8 +487,7 @@ class FaceRegistrationMessageBox(MessageBoxBase):
             rgb_image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             h, w, ch = rgb_image.shape
             bytes_per_line = ch * w
-            q_image = QImage(rgb_image.data, w, h, bytes_per_line,
-                             QImage.Format_RGB888)
+            q_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
             pixmap = QPixmap.fromImage(q_image)
 
             # 调整图像大小以适应标签
@@ -497,12 +502,14 @@ class FaceRegistrationMessageBox(MessageBoxBase):
             print(f"显示图像时出错: {str(e)}")
 
             if cfg.get(cfg.themeMode) == Theme.DARK:
-                self.image_label.setStyleSheet("""
+                self.image_label.setStyleSheet(
+                    """
                     background-color: #2b2b2b; 
                     color: #ffffff;
                     font-size: 16px;
                     border-radius: 6px;
-                """)
+                """
+                )
             else:
                 self.image_label.setStyleSheet("font-size: 16px; color: #666;")
 
@@ -515,10 +522,8 @@ class FaceRegistrationMessageBox(MessageBoxBase):
             username=self.username,
             face_count=self.face_thread.face_count,
         )
-        self.extraction_thread.extractionComplete.connect(
-            self.on_extraction_complete)
-        self.extraction_thread.extractionFailed.connect(
-            self.on_extraction_failed)
+        self.extraction_thread.extractionComplete.connect(self.on_extraction_complete)
+        self.extraction_thread.extractionFailed.connect(self.on_extraction_failed)
 
         InfoBar.info(
             title="处理中",
@@ -591,7 +596,8 @@ class FeatureExtractionThread(QThread):
         """线程主函数"""
         try:
             model_file = resource_path(
-                "faceRecognition/models/openface_nn4.small2.v1.t7")
+                "faceRecognition/models/openface_nn4.small2.v1.t7"
+            )
 
             if not os.path.exists(model_file):
                 model_dir = os.path.dirname(model_file)
@@ -612,10 +618,9 @@ class FeatureExtractionThread(QThread):
                 if image is None or image.size == 0:
                     continue
 
-                blob = cv2.dnn.blobFromImage(image,
-                                             1.0 / 255, (96, 96), (0, 0, 0),
-                                             swapRB=True,
-                                             crop=False)
+                blob = cv2.dnn.blobFromImage(
+                    image, 1.0 / 255, (96, 96), (0, 0, 0), swapRB=True, crop=False
+                )
 
                 face_net.setInput(blob)
                 feature_vector = face_net.forward()

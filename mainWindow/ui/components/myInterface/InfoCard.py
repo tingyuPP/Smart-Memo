@@ -1,5 +1,10 @@
-from qfluentwidgets import (ElevatedCardWidget, AvatarWidget, TitleLabel,
-                            BodyLabel, Theme)
+from qfluentwidgets import (
+    ElevatedCardWidget,
+    AvatarWidget,
+    TitleLabel,
+    BodyLabel,
+    Theme,
+)
 from PyQt5.QtCore import Qt, QSize, QRect, QTimer
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
@@ -8,11 +13,7 @@ from config import cfg
 
 class InfoCard(ElevatedCardWidget):
 
-    def __init__(self,
-                 user_data: dict,
-                 memo_count: int,
-                 todo_count: int,
-                 parent=None):
+    def __init__(self, user_data: dict, memo_count: int, todo_count: int, parent=None):
         super().__init__(parent=parent)
         self.user_data = user_data
         self.id = user_data["id"]
@@ -51,14 +52,12 @@ class InfoCard(ElevatedCardWidget):
         self.verticalSeparator = QWidget(self)
         self.verticalSeparator.setFixedWidth(1)
         self.verticalSeparator.setMinimumHeight(100)
-        self.verticalSeparator.setStyleSheet(
-            "background-color: rgba(0, 0, 0, 0.1);")
+        self.verticalSeparator.setStyleSheet("background-color: rgba(0, 0, 0, 0.1);")
 
         self.verticalSeparator2 = QWidget(self)
         self.verticalSeparator2.setFixedWidth(1)
         self.verticalSeparator2.setMinimumHeight(100)
-        self.verticalSeparator2.setStyleSheet(
-            "background-color: rgba(0, 0, 0, 0.1);")
+        self.verticalSeparator2.setStyleSheet("background-color: rgba(0, 0, 0, 0.1);")
 
         self.memoTitleLabel = BodyLabel("备忘录数量", self)
         self.memoTitleLabel.setAlignment(Qt.AlignCenter)

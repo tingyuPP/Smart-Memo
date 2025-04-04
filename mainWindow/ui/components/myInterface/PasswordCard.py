@@ -1,8 +1,17 @@
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QApplication
-from qfluentwidgets import (FluentIcon, ExpandGroupSettingCard, BodyLabel,
-                            PasswordLineEdit, PrimaryPushButton, InfoBar,
-                            InfoBarPosition, ToolButton, ToolTipFilter,
-                            ToolTipPosition, LineEdit)
+from qfluentwidgets import (
+    FluentIcon,
+    ExpandGroupSettingCard,
+    BodyLabel,
+    PasswordLineEdit,
+    PrimaryPushButton,
+    InfoBar,
+    InfoBarPosition,
+    ToolButton,
+    ToolTipFilter,
+    ToolTipPosition,
+    LineEdit,
+)
 from PyQt5.QtCore import Qt
 import string
 import random
@@ -24,9 +33,10 @@ class PasswordCard(ExpandGroupSettingCard):
         self.generateButton.setToolTip("随机生成密码，请妥善保存")
         self.generateButton.setToolTipDuration(1000)
         self.generateButton.installEventFilter(
-            ToolTipFilter(self.generateButton,
-                          showDelay=300,
-                          position=ToolTipPosition.TOP))
+            ToolTipFilter(
+                self.generateButton, showDelay=300, position=ToolTipPosition.TOP
+            )
+        )
         self.newPassEdit = PasswordLineEdit()
         self.newPassEdit.setClearButtonEnabled(True)
         self.newPassEdit.setFixedWidth(200)
@@ -84,8 +94,7 @@ class PasswordCard(ExpandGroupSettingCard):
 
         remaining_length = length - len(password)
         all_chars = lowercase + uppercase + digits + symbols
-        password.extend(
-            random.choice(all_chars) for _ in range(remaining_length))
+        password.extend(random.choice(all_chars) for _ in range(remaining_length))
 
         random.shuffle(password)
         password = "".join(password)

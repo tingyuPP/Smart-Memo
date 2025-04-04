@@ -1,8 +1,26 @@
-from PyQt5.QtWidgets import QHBoxLayout, QWidget, QVBoxLayout, QComboBox, QLineEdit, QPushButton
-from qfluentwidgets import (FluentIcon, ExpandGroupSettingCard, BodyLabel,
-                            PasswordLineEdit, PrimaryPushButton, InfoBar,
-                            InfoBarPosition, setThemeColor, setTheme, Theme,
-                            ComboBox, setFont, LineEdit)
+from PyQt5.QtWidgets import (
+    QHBoxLayout,
+    QWidget,
+    QVBoxLayout,
+    QComboBox,
+    QLineEdit,
+    QPushButton,
+)
+from qfluentwidgets import (
+    FluentIcon,
+    ExpandGroupSettingCard,
+    BodyLabel,
+    PasswordLineEdit,
+    PrimaryPushButton,
+    InfoBar,
+    InfoBarPosition,
+    setThemeColor,
+    setTheme,
+    Theme,
+    ComboBox,
+    setFont,
+    LineEdit,
+)
 from PyQt5.QtCore import Qt
 from config import cfg
 import os
@@ -19,14 +37,14 @@ class AISettingCard(ExpandGroupSettingCard):
 
         # 使用 AIService 中的模型配置
         model_display_names = [
-            config["display_name"]
-            for config in AIService.MODEL_CONFIGS.values()
+            config["display_name"] for config in AIService.MODEL_CONFIGS.values()
         ]
         self.modelComboBox.addItems(model_display_names)
 
         current_model = cfg.get(cfg.aiModel)
-        current_display_name = AIService.MODEL_CONFIGS.get(
-            current_model, {}).get("display_name", "")
+        current_display_name = AIService.MODEL_CONFIGS.get(current_model, {}).get(
+            "display_name", ""
+        )
         if current_display_name:
             self.modelComboBox.setCurrentText(current_display_name)
 
@@ -64,9 +82,11 @@ class AISettingCard(ExpandGroupSettingCard):
         self.add(self.apiLabel, self.apiKeyEdit)
 
         self.customUrlWidget = self._create_setting_widget(
-            self.baseUrlLabel, self.baseUrlEdit)
+            self.baseUrlLabel, self.baseUrlEdit
+        )
         self.customModelWidget = self._create_setting_widget(
-            self.modelIdLabel, self.modelIdEdit)
+            self.modelIdLabel, self.modelIdEdit
+        )
         self.addGroupWidget(self.customUrlWidget)
         self.addGroupWidget(self.customModelWidget)
 
@@ -86,12 +106,10 @@ class AISettingCard(ExpandGroupSettingCard):
 
     def add(self, label, widget):
         """添加普通设置项"""
-        self.addGroupWidget(
-            self._create_setting_widget(label, widget, indent=False))
+        self.addGroupWidget(self._create_setting_widget(label, widget, indent=False))
 
     def _update_custom_settings_visibility(self):
-        is_custom = self._get_model_id(
-            self.modelComboBox.currentText()) == "custom"
+        is_custom = self._get_model_id(self.modelComboBox.currentText()) == "custom"
 
         was_expanded = self.isExpand
 
@@ -105,10 +123,8 @@ class AISettingCard(ExpandGroupSettingCard):
         if is_custom:
             self.baseUrlEdit.setText(cfg.get(cfg.customBaseUrl))
             self.modelIdEdit.setText(cfg.get(cfg.customModelId))
-            self.baseUrlEdit.textChanged.connect(
-                self._on_custom_settings_changed)
-            self.modelIdEdit.textChanged.connect(
-                self._on_custom_settings_changed)
+            self.baseUrlEdit.textChanged.connect(self._on_custom_settings_changed)
+            self.modelIdEdit.textChanged.connect(self._on_custom_settings_changed)
         else:
             try:
                 self.baseUrlEdit.textChanged.disconnect()
@@ -124,12 +140,12 @@ class AISettingCard(ExpandGroupSettingCard):
         cfg.set(cfg.customBaseUrl, self.baseUrlEdit.text().strip())
         cfg.set(cfg.customModelId, self.modelIdEdit.text().strip())
 
-        AIService.MODEL_CONFIGS["custom"].update({
-            "base_url":
-            self.baseUrlEdit.text().strip(),
-            "model_id":
-            self.modelIdEdit.text().strip(),
-        })
+        AIService.MODEL_CONFIGS["custom"].update(
+            {
+                "base_url": self.baseUrlEdit.text().strip(),
+                "model_id": self.modelIdEdit.text().strip(),
+            }
+        )
 
     def _get_model_id(self, display_name):
         """将显示名称转换为模型ID"""
@@ -145,7 +161,7 @@ class AISettingCard(ExpandGroupSettingCard):
 
     def _on_api_key_changed(self, text):
         cfg.set(cfg.apiKey, text.strip())
-        os.environ["OPENAI_API_KEY"] = (text.strip())
+        os.environ["OPENAI_API_KEY"] = text.strip()
 
     def apply_settings(self):
         try:
@@ -162,12 +178,9 @@ class AISettingCard(ExpandGroupSettingCard):
                 cfg.set(cfg.customBaseUrl, base_url)
                 cfg.set(cfg.customModelId, custom_model_id)
 
-                AIService.MODEL_CONFIGS["custom"].update({
-                    "base_url":
-                    base_url,
-                    "model_id":
-                    custom_model_id
-                })
+                AIService.MODEL_CONFIGS["custom"].update(
+                    {"base_url": base_url, "model_id": custom_model_id}
+                )
 
             os.environ["OPENAI_API_KEY"] = api_key
 
@@ -175,12 +188,14 @@ class AISettingCard(ExpandGroupSettingCard):
 
             # 重新初始化所有使用AI服务的组件
             if hasattr(main_window, "memoInterface") and hasattr(
-                    main_window.memoInterface, "ai_handler"):
+                main_window.memoInterface, "ai_handler"
+            ):
                 new_ai_service = AIService()
                 main_window.memoInterface.ai_handler.ai_service = new_ai_service
 
             if hasattr(main_window, "todoInterface") and hasattr(
-                    main_window.todoInterface, "ai_handler"):
+                main_window.todoInterface, "ai_handler"
+            ):
                 new_ai_service = AIService()
                 main_window.todoInterface.ai_handler.ai_service = new_ai_service
 

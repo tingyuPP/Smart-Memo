@@ -50,20 +50,20 @@ class MyInterface(ScrollArea):
         self.vBoxLayout = QVBoxLayout(self.scrollWidget)
         font = QFont("黑体", 20)
         font.setBold(True)
-        self.infoCard = InfoCard(self.user_data, self.memo_count,
-                                 self.todo_count, self)
+        self.infoCard = InfoCard(self.user_data, self.memo_count, self.todo_count, self)
         self.titleLabel = TitleLabel("个人中心", self)
         self.titleLabel.setFont(font)
-        self.personalGroup = SettingCardGroup(self.tr("个人资料"),
-                                              self.scrollWidget)
-        self.avatarCard = AvatarCard(FluentIcon.PEOPLE, "修改头像", "更改您的头像", self)
-        self.securityGroup = SettingCardGroup(self.tr("安全与密码"),
-                                              self.scrollWidget)
+        self.personalGroup = SettingCardGroup(self.tr("个人资料"), self.scrollWidget)
+        self.avatarCard = AvatarCard(
+            FluentIcon.PEOPLE, "修改头像", "更改您的头像", self
+        )
+        self.securityGroup = SettingCardGroup(self.tr("安全与密码"), self.scrollWidget)
         self.passwordCard = PasswordCard(self)
         self.faceCard = FaceCard(self)
         self.cloudGroup = SettingCardGroup(self.tr("数据同步"), self.scrollWidget)
-        self.cloudCard = CloudCard(FluentIcon.CLOUD, "云端同步", "同步您的备忘录数据到云端",
-                                   self)
+        self.cloudCard = CloudCard(
+            FluentIcon.CLOUD, "云端同步", "同步您的备忘录数据到云端", self
+        )
 
         self.__initWidget()
         self.__initLayout()

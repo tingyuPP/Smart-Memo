@@ -29,8 +29,7 @@ from qfluentwidgets import (
     Theme,
 )
 
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from Database import DatabaseManager
 
 
@@ -95,8 +94,9 @@ class FaceVerificationThread(QThread):
 
     def __init__(self):
         super().__init__()
-        self.cascade_path = (cv2.data.haarcascades +
-                             "haarcascade_frontalface_default.xml")
+        self.cascade_path = (
+            cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+        )
         self.face_cascade = cv2.CascadeClassifier(self.cascade_path)
         self.threshold = 2500
         self.match_threshold = 0.5
@@ -158,10 +158,9 @@ class FaceVerificationThread(QThread):
         """验证人脸是否匹配数据库中的用户"""
         face_net = cv2.dnn.readNetFromTorch(self.model_file)
 
-        blob = cv2.dnn.blobFromImage(face_image,
-                                     1.0 / 255, (96, 96), (0, 0, 0),
-                                     swapRB=True,
-                                     crop=False)
+        blob = cv2.dnn.blobFromImage(
+            face_image, 1.0 / 255, (96, 96), (0, 0, 0), swapRB=True, crop=False
+        )
 
         face_net.setInput(blob)
         current_feature = face_net.forward().flatten()
@@ -178,8 +177,7 @@ class FaceVerificationThread(QThread):
                 stored_features = json.loads(face_data)
 
                 for feature in stored_features:
-                    distance = np.linalg.norm(current_feature -
-                                              np.array(feature))
+                    distance = np.linalg.norm(current_feature - np.array(feature))
                     if distance < min_distance:
                         min_distance = distance
                         best_match = (user_id, username)
@@ -210,10 +208,9 @@ class FaceVerificationThread(QThread):
             self.mutex.unlock()
 
             gray = cv2.cvtColor(current_frame, cv2.COLOR_BGR2GRAY)
-            faces = self.face_cascade.detectMultiScale(gray,
-                                                       scaleFactor=1.1,
-                                                       minNeighbors=5,
-                                                       minSize=(30, 30))
+            faces = self.face_cascade.detectMultiScale(
+                gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30)
+            )
 
             for x, y, w, h in faces:
                 face_area = w * h
@@ -222,10 +219,9 @@ class FaceVerificationThread(QThread):
                 self.faceQualityFeedback.emit((x, y, w, h), is_good_quality)
 
                 if is_good_quality:
-                    face_img = current_frame[y:y + h, x:x + w]
+                    face_img = current_frame[y : y + h, x : x + w]
                     self.faceDetected.emit(face_img, (x, y, w, h))
-                    is_match, user_id, username, distance = self.verify_face(
-                        face_img)
+                    is_match, user_id, username, distance = self.verify_face(face_img)
 
                     if is_match:
                         self.verificationResult.emit(True, user_id, username)
@@ -249,10 +245,8 @@ class FaceLoginInterface(QWidget):
         # 人脸验证线程
         self.verification_thread = FaceVerificationThread()
         self.verification_thread.faceDetected.connect(self.on_face_detected)
-        self.verification_thread.faceQualityFeedback.connect(
-            self.on_face_quality)
-        self.verification_thread.verificationResult.connect(
-            self.on_verification_result)
+        self.verification_thread.faceQualityFeedback.connect(self.on_face_quality)
+        self.verification_thread.verificationResult.connect(self.on_verification_result)
 
         self.display_frame = None
         self.faces_feedback = []
@@ -285,13 +279,15 @@ class FaceLoginInterface(QWidget):
 
         self.camera_container = QFrame()
         self.camera_container.setObjectName("cameraContainer")
-        self.camera_container.setStyleSheet("""
+        self.camera_container.setStyleSheet(
+            """
             #cameraContainer {
                 background-color: #F5F5F5;
                 border-radius: 8px;
                 border: 1px solid #E0E0E0;
             }
-        """)
+        """
+        )
         self.camera_container.setMinimumSize(480, 360)
 
         camera_layout = QVBoxLayout(self.camera_container)
@@ -352,10 +348,11 @@ class FaceLoginInterface(QWidget):
 
         self.face_update_timer.start(500)
 
-        self.state_tooltip = StateToolTip("识别中", "正在进行人脸识别，请注视摄像头...", self)
+        self.state_tooltip = StateToolTip(
+            "识别中", "正在进行人脸识别，请注视摄像头...", self
+        )
 
-        self.state_tooltip.move(self.width() - self.state_tooltip.width() - 20,
-                                20)
+        self.state_tooltip.move(self.width() - self.state_tooltip.width() - 20, 20)
         self.state_tooltip.show()
 
     def stop_capture(self):
@@ -368,8 +365,10 @@ class FaceLoginInterface(QWidget):
         if hasattr(self, "camera_thread") and self.camera_thread.isRunning():
             self.camera_thread.stop_capture()
 
-        if (hasattr(self, "verification_thread")
-                and self.verification_thread.isRunning()):
+        if (
+            hasattr(self, "verification_thread")
+            and self.verification_thread.isRunning()
+        ):
             self.verification_thread.stop_verification()
 
         self.start_button.setText("开始人脸识别")
@@ -397,8 +396,7 @@ class FaceLoginInterface(QWidget):
         self.faces_feedback.append((coords, is_good_quality))
 
     def update_face_feedback(self):
-        if not hasattr(self,
-                       "camera_thread") or not self.camera_thread.isRunning():
+        if not hasattr(self, "camera_thread") or not self.camera_thread.isRunning():
             return
 
         if len(self.faces_feedback) > 1:
@@ -433,8 +431,7 @@ class FaceLoginInterface(QWidget):
             rgb_image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             h, w, ch = rgb_image.shape
             bytes_per_line = ch * w
-            q_image = QImage(rgb_image.data, w, h, bytes_per_line,
-                             QImage.Format_RGB888)
+            q_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
             pixmap = QPixmap.fromImage(q_image)
 
             pixmap = pixmap.scaled(
@@ -480,10 +477,7 @@ class FaceLoginInterface(QWidget):
             )
 
     def emit_login_signal(self):
-        user_data = {
-            "id": self.verified_user_id,
-            "username": self.verified_username
-        }
+        user_data = {"id": self.verified_user_id, "username": self.verified_username}
         self.loginSuccessful.emit(user_data)
 
     def on_back_clicked(self):

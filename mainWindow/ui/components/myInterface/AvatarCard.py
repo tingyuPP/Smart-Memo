@@ -1,7 +1,14 @@
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout
-from qfluentwidgets import (CardWidget, IconWidget, BodyLabel, CaptionLabel,
-                            TransparentToolButton, FluentIcon, AvatarWidget)
+from qfluentwidgets import (
+    CardWidget,
+    IconWidget,
+    BodyLabel,
+    CaptionLabel,
+    TransparentToolButton,
+    FluentIcon,
+    AvatarWidget,
+)
 from Database import DatabaseManager
 
 

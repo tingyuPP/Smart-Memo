@@ -66,16 +66,17 @@ class SettingInterface(ScrollArea):
             texts=[self.tr("明亮"), self.tr("暗黑")],
         )
         self.backgroundCard.setSizePolicy(
-            QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed))
+            QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        )
         self.backgroundCard.optionChanged.connect(self.theme_option_changed)
 
         self.colorCard = ColorCard(self.scrollWidget, self.mainWindow)
         self.colorCard.setSizePolicy(
-            QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed))
+            QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        )
 
         # 个性化相关
-        self.customizationGroup = SettingCardGroup(self.tr("个性化"),
-                                                   self.scrollWidget)
+        self.customizationGroup = SettingCardGroup(self.tr("个性化"), self.scrollWidget)
         self.directoryCard = PushSettingCard(
             text="选择文件夹",
             icon=FIF.DOWNLOAD,
@@ -83,7 +84,8 @@ class SettingInterface(ScrollArea):
             content=cfg.get(cfg.exportDir),
         )
         self.directoryCard.setSizePolicy(
-            QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed))
+            QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        )
         self.directoryCard.clicked.connect(self.open_file_dialog)
 
         self.aiSettingCard = AISettingCard()
@@ -95,7 +97,8 @@ class SettingInterface(ScrollArea):
             configItem=cfg.enableAutoCompletion,
         )
         self.completionCard.setSizePolicy(
-            QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed))
+            QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        )
         self.completionTimeCard = RangeSettingCard(
             configItem=cfg.completionTime,
             icon=FluentIcon.STOP_WATCH,
@@ -103,13 +106,13 @@ class SettingInterface(ScrollArea):
             content="光标停留后多少秒开始自动补全",
         )
         self.completionTimeCard.setSizePolicy(
-            QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed))
+            QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        )
 
         # 关于相关
         self.aboutGroup = SettingCardGroup(self.tr("关于"), self.scrollWidget)
         self.helpCard = HyperlinkCard(
-            url=
-            "https://github.com/tingyuPP/Smart-Memo-Manager/blob/main/README.md",
+            url="https://github.com/tingyuPP/Smart-Memo-Manager/blob/main/README.md",
             text="打开帮助页面",
             icon=FluentIcon.HELP,
             title="帮助",
@@ -121,8 +124,11 @@ class SettingInterface(ScrollArea):
             title="关于",
             content="© 版权所有 2025, 当前版本0.1.0",
         )
-        self.aboutCard.button.clicked.connect(lambda: QDesktopServices.openUrl(
-            QUrl("https://github.com/tingyuPP/Smart-Memo-Manager")))
+        self.aboutCard.button.clicked.connect(
+            lambda: QDesktopServices.openUrl(
+                QUrl("https://github.com/tingyuPP/Smart-Memo-Manager")
+            )
+        )
 
     def __initLayout(self, text):
         # 设置整体布局，将各个控件添加到布局中
@@ -171,14 +177,17 @@ class SettingInterface(ScrollArea):
             if api_key:
                 cfg.set(cfg.apiKey, api_key)
             from services.ai_service import AIService
+
             main_window = self.window()
 
             if hasattr(main_window, "memo_interface") and hasattr(
-                    main_window.memo_interface, "ai_handler"):
+                main_window.memo_interface, "ai_handler"
+            ):
                 main_window.memo_interface.ai_handler.ai_service = AIService()
 
             if hasattr(main_window, "todo_interface") and hasattr(
-                    main_window.todo_interface, "ai_handler"):
+                main_window.todo_interface, "ai_handler"
+            ):
                 main_window.todo_interface.ai_handler.ai_service = AIService()
 
             InfoBar.success(

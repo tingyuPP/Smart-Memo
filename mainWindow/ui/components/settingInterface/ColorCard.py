@@ -1,8 +1,15 @@
 # -*- coding: utf-8 -*-
 from PyQt5.QtWidgets import QHBoxLayout, QWidget
-from qfluentwidgets import (FluentIcon, ExpandGroupSettingCard, PushButton,
-                            BodyLabel, ColorDialog, setThemeColor, setTheme,
-                            Theme)
+from qfluentwidgets import (
+    FluentIcon,
+    ExpandGroupSettingCard,
+    PushButton,
+    BodyLabel,
+    ColorDialog,
+    setThemeColor,
+    setTheme,
+    Theme,
+)
 from config import cfg
 
 
@@ -40,10 +47,9 @@ class ColorCard(ExpandGroupSettingCard):
         setThemeColor("#ff10abf9", save=True)
 
     def set_custom_color(self):
-        w = ColorDialog(cfg.get(cfg.themeColor),
-                        "选择主题颜色",
-                        self.mainWindow,
-                        enableAlpha=False)
+        w = ColorDialog(
+            cfg.get(cfg.themeColor), "选择主题颜色", self.mainWindow, enableAlpha=False
+        )
         w.yesButton.setText("确认")
         w.cancelButton.setText("取消")
         w.editLabel.setText("编辑颜色")
