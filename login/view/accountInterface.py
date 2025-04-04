@@ -23,6 +23,7 @@ from Database import DatabaseManager
 import os
 import sys
 
+
 def resource_path(relative_path):
     """获取资源的绝对路径，适用于开发环境和PyInstaller打包后的环境"""
     try:
@@ -55,17 +56,17 @@ class AccountInterface(QFrame):
         self.password_input = PasswordLineEdit()
         self.login_button_layout = QHBoxLayout()
         self.login_button = PrimaryPushButton()
-        self.login_to_register_button = PushButton()  
+        self.login_to_register_button = PushButton()
 
         # 注册表单
         self.register_widget = QFrame()
         self.register_layout = QVBoxLayout(self.register_widget)
         self.register_username_input = LineEdit()
         self.register_password_input = PasswordLineEdit()
-        self.confirm_password_input = PasswordLineEdit() 
+        self.confirm_password_input = PasswordLineEdit()
         self.register_button_layout = QHBoxLayout()
         self.register_button = PrimaryPushButton()
-        self.register_to_login_button = PushButton()  
+        self.register_to_login_button = PushButton()
 
         # 共用组件
         self.error_label = BodyLabel()
