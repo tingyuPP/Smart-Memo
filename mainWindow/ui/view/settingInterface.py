@@ -434,11 +434,7 @@ class AISettingCard(ExpandGroupSettingCard):
                 parent=self.window(),
             )
         except Exception as e:
-            import traceback
-
-            print(f"应用设置失败: {str(e)}")
-            traceback.print_exc()
-
+            # 显示错误消息
             InfoBar.error(
                 title="应用设置失败",
                 content=f"错误: {str(e)}",

@@ -204,8 +204,8 @@ class MemoInterface(Ui_memo, QWidget):
                 and hasattr(self.ai_handler, "ai_service")
             ):
                 self.ai_handler.ai_service.build_memory_context(self.user_id, self.db)
-        except Exception as e:
-            print(f"更新记忆上下文时出错: {str(e)}")
+        except Exception:
+            pass  # 移除错误打印
 
     def showEvent(self, event):
         """当窗口显示时调用"""

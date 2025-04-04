@@ -404,23 +404,13 @@ class AIDialog(Dialog):
             QApplication.processEvents()
 
         except Exception as e:
-            print(f"显示加载状态时出错: {str(e)}")
+            pass  # 移除错误打印
             self.state_tooltip = None
 
     def generate_content(self):
         """生成内容"""
         self.disable_all_inputs()
         self.show_loading_state()
-
-        # 添加调试代码，检查记忆上下文
-        if hasattr(self.ai_service, "_memory_context"):
-            context = self.ai_service._memory_context
-            if context:
-                print(f"AIDialog - 记忆上下文长度: {len(context)} 字符")
-            else:
-                print("AIDialog - 记忆上下文为空")
-        else:
-            print("AIDialog - 记忆上下文属性不存在")
 
         # 获取辅助提示词（如果有）
         aux_prompt = self.aux_edit.toPlainText() if hasattr(self, "aux_edit") else ""
@@ -516,8 +506,8 @@ class AIDialog(Dialog):
             cursor.movePosition(QTextCursor.End)
             self.result_edit.setTextCursor(cursor)
 
-        except Exception as e:
-            print(f"处理流式响应块时出错: {str(e)}")
+        except Exception:
+            pass  # 移除错误打印
 
     @pyqtSlot()
     def handle_stream_finished(self):
@@ -540,8 +530,8 @@ class AIDialog(Dialog):
                 finally:
                     QTimer.singleShot(1000, lambda: self.safely_close_tooltip())
 
-        except Exception as e:
-            print(f"处理流式响应完成时出错: {str(e)}")
+        except Exception:
+            pass  # 移除错误打印
 
     def disable_all_inputs(self):
         """禁用所有输入控件"""
@@ -584,7 +574,7 @@ class AIDialog(Dialog):
                     QTimer.singleShot(1000, lambda: self.safely_close_tooltip())
 
         except Exception as e:
-            print(f"处理AI错误时出错: {str(e)}")
+            pass  # 移除错误打印
 
     @pyqtSlot(str)
     def handle_ai_result(self, result):
@@ -611,7 +601,7 @@ class AIDialog(Dialog):
                     QTimer.singleShot(1000, lambda: self.safely_close_tooltip())
 
         except Exception as e:
-            print(f"处理AI结果时出错: {str(e)}")
+            pass  # 移除错误打印
 
     def closeEvent(self, event):
         """关闭对话框时清理资源"""
@@ -656,8 +646,7 @@ class AIHandler:
         if cls._instance is None:
             try:
                 cls._instance = AIHandler(parent)
-            except Exception as e:
-                print(f"创建AIHandler实例时出错: {str(e)}")
+            except Exception:
                 import traceback
 
                 traceback.print_exc()
@@ -874,7 +863,6 @@ class AIHandler:
             
             return len(todos), todos
         except Exception as e:
-            print(f"解析AI待办结果出错: {str(e)}")
             return 0, []
 
     def extract_todos_from_memo(self, memo_content, user_id):
@@ -927,6 +915,6 @@ class AIHandler:
 
             # 解析JSON结果
             return self._parse_ai_todo_result(result)
-        except Exception as e:
-            print(f"提取待办事项时出错: {str(e)}")
+        except Exception:
+            pass  # 移除错误打印
             return 0, []
