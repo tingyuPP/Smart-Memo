@@ -36,7 +36,7 @@ class LoginWindow(FramelessWindow):
         self.setTitleBar(StandardTitleBar(self))
         self.titleBar.setStyleSheet("background-color: #f0f0f0; ")
         self.setWindowTitle("SmartMemo")
-        self.setWindowIcon(QIcon("resource/logo.png"))
+        self.setWindowIcon(QIcon(resource_path("resource/logo.png")))
 
         self.accountInterface = AccountInterface(self)
         self.accountInterface.loginSuccess.connect(self.on_login_success)
