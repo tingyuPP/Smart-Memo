@@ -10,16 +10,14 @@ class AIService(QObject):
 
     # 模型配置
     MODEL_CONFIGS = {
-        # DeepSeek 系列
         "deepseek-chat": {
             "display_name": "DeepSeek-V3",
             "base_url": "https://api.deepseek.com/v1",
             "max_tokens": 4096,
             "provider": "deepseek",
             "description": "DeepSeek 通用对话模型，支持中英双语",
-            "model_id": "deepseek-chat",  # 修改这里，使用正确的模型ID
+            "model_id": "deepseek-chat",
         },
-        # OpenAI 系列
         "gpt-4o": {
             "display_name": "GPT-4o",
             "base_url": "https://api.openai.com/v1",
@@ -28,16 +26,14 @@ class AIService(QObject):
             "description": "OpenAI最强大的模型",
             "model_id": "gpt-4o",
         },
-        # 智谱 AI 系列
         "glm-4-flash": {
             "display_name": "GLM-4-Flash",
-            "base_url": "https://open.bigmodel.cn/api/paas/v4",  # 修改这里，移除多余的路径
+            "base_url": "https://open.bigmodel.cn/api/paas/v4",  
             "max_tokens": 4096,
             "provider": "zhipuai",
             "description": "GLM-4-Flash，支持中英双语",
             "model_id": "glm-4-flash",
         },
-        # 自定义模型配置
         "custom": {
             "display_name": "自定义模型",
             "base_url": "",  # 用户自定义
@@ -48,7 +44,7 @@ class AIService(QObject):
         },
     }
 
-    # 定义 AI 模式配置（保持不变）
+    # 定义 AI 模式配置
     AI_MODES = {
         "润色": {
             "display_name": "润色笔记",
@@ -129,34 +125,25 @@ class AIService(QObject):
     def __init__(self):
         super().__init__()
 
-        # 初始化记忆上下文
         self._memory_context = ""
         self._max_memory_tokens = 2000
 
-        # 从配置中获取API密钥 - 确保每次都是最新的
         self.api_key = cfg.get(cfg.apiKey)
         
-        # 初始化API客户端
         self.client = None
         self._init_api_client()
-
-        # 其他初始化...
 
     def _init_api_client(self):
         """初始化API客户端"""
         try:
-            # 从配置中获取API密钥 - 每次都重新获取最新值
             api_key = cfg.get(cfg.apiKey)
-            self.api_key = api_key  # 更新实例变量
-
+            self.api_key = api_key 
             if not api_key:
                 self.client = None
                 return
 
-            # 获取当前选择的模型
             model = cfg.get(cfg.aiModel)
 
-            # 根据不同模型初始化不同的客户端
             if model == "deepseek-chat":
                 from openai import OpenAI
 
@@ -172,7 +159,6 @@ class AIService(QObject):
 
                 self.client = ZhipuAI(api_key=api_key)
             elif model == "custom":
-                # 自定义模型
                 from openai import OpenAI
 
                 base_url = cfg.get(cfg.customBaseUrl)
@@ -193,26 +179,24 @@ class AIService(QObject):
         config = self.MODEL_CONFIGS.get(model)
         if config:
             return config["base_url"]
-        return "https://api.deepseek.com/v1"  # 默认使用 DeepSeek
+        return "https://api.deepseek.com/v1"
 
     def _get_max_tokens(self, model):
         """获取模型的最大 token 限制"""
         config = self.MODEL_CONFIGS.get(model)
         if config:
             return config["max_tokens"]
-        return 4096  # 默认值
+        return 4096  
 
     def build_memory_context(self, user_id, db):
         """构建用户的记忆上下文"""
         try:
-            # 从数据库获取用户的所有备忘录
             memos = db.get_all_memos_by_user(user_id)
 
             if not memos:
-                self._memory_context = ""  # 使用统一的属性名
+                self._memory_context = "" 
                 return
 
-            # 构建记忆上下文
             context_parts = []
 
             for memo in memos:
@@ -221,22 +205,19 @@ class AIService(QObject):
                 content = memo["content"]
                 category = memo["category"]
 
-                # 将备忘录信息添加到上下文
                 memo_context = f"标题: {title}\n分类: {category}\n内容: {content}\n"
                 context_parts.append(memo_context)
 
-            # 限制上下文长度，避免过大
-            max_context_length = 4000  # 设置最大上下文长度
+            max_context_length = 4000 
             combined_context = "\n---\n".join(context_parts)
 
             if len(combined_context) > max_context_length:
-                # 如果上下文过长，只保留最近的几条备忘录
                 truncated_parts = []
                 current_length = 0
 
-                for part in reversed(context_parts):  # 从最新的备忘录开始
+                for part in reversed(context_parts):  
                     if current_length + len(part) <= max_context_length:
-                        truncated_parts.insert(0, part)  # 插入到列表开头
+                        truncated_parts.insert(0, part)  
                         current_length += len(part)
                     else:
                         break
@@ -246,15 +227,13 @@ class AIService(QObject):
         except Exception as e:
             import traceback
             print(traceback.format_exc())
-            self._memory_context = ""  # 使用统一的属性名
+            self._memory_context = "" 
 
     def _get_enhanced_prompt(self, mode, user_prompt, aux_prompt=""):
         """获取增强的提示词，统一处理所有模式的记忆上下文"""
-        # 获取模式配置
         mode_config = self.AI_MODES.get(mode, self.AI_MODES.get("自定义"))
         system_prompt = mode_config["system_prompt"]
 
-        # 构建基本提示词
         if mode == "续写":
             enhanced_prompt = f"{system_prompt}\n\n已有内容：\n{user_prompt}"
             if aux_prompt:
@@ -270,10 +249,9 @@ class AIService(QObject):
                 enhanced_prompt += f"\n\n额外要求：{aux_prompt}"
         elif mode == "tab续写":
             enhanced_prompt = f"{system_prompt}\n\n已有内容：\n{user_prompt}\n\n请续写（不要重复上面的内容）："
-        else:  # 自定义模式
+        else:  
             enhanced_prompt = f"{system_prompt}\n\n{user_prompt}"
 
-        # 添加记忆上下文（如果有）
         if hasattr(self, "_memory_context") and self._memory_context:
             memory_prompt = f"""
             以下是用户之前创建的备忘录内容，你可以参考这些内容来更好地理解用户的需求和风格:
@@ -283,7 +261,6 @@ class AIService(QObject):
             请基于以上内容，更好地理解用户的风格和偏好。在大多数情况下，不要直接引用这些内容。
 但如果用户明确要求引用或者上下文高度相关时，可以适当引用，但需要明确指出这是来自用户之前的笔记。
             """
-            # 将记忆上下文添加到系统提示词中
             enhanced_prompt = f"{memory_prompt}\n\n{enhanced_prompt}"
 
         return enhanced_prompt
@@ -291,7 +268,6 @@ class AIService(QObject):
     def process_with_ai(self, mode, prompt):
         """处理AI请求"""
         try:
-            # 使用增强的提示词
             full_prompt = self._get_enhanced_prompt(mode, prompt)
             response = self._call_deepseek_api(full_prompt)
             return response
@@ -302,21 +278,16 @@ class AIService(QObject):
     def generate_content(self, prompt, mode="generate", aux_prompt=""):
         """生成内容"""
         try:
-            # 每次生成内容前都重新初始化客户端，确保使用最新的API密钥
             self._init_api_client()
 
-            # 检查API客户端是否初始化
             if not self.client:
-                # 如果无法初始化，返回错误信息
                 error_msg = "AI服务未初始化，请在设置中配置有效的API密钥"
                 self.errorOccurred.emit(error_msg)
                 return error_msg
 
-            # 获取模式配置
             mode_config = self.AI_MODES.get(mode, self.AI_MODES.get("自定义"))
             system_prompt = mode_config["system_prompt"]
 
-            # 检查记忆上下文
             if hasattr(self, "_memory_context"):
                 if self._memory_context:
                     memory_prompt = f"""
@@ -329,7 +300,6 @@ class AIService(QObject):
 """
                     system_prompt = f"{memory_prompt}\n\n{system_prompt}"
 
-            # 构建完整提示词
             if mode == "续写":
                 full_prompt = f"{prompt}"
                 if aux_prompt:
@@ -342,27 +312,21 @@ class AIService(QObject):
                 full_prompt = f"备忘录内容：{prompt}"
                 if aux_prompt:
                     full_prompt += f"\n\n额外要求：{aux_prompt}"
-            else:  # 自定义模式
+            else:  
                 full_prompt = prompt
 
-            # 调用API
             model = cfg.get(cfg.aiModel)
             model_config = self.MODEL_CONFIGS.get(model, {})
 
-            # 构建消息列表
             messages = []
 
-            # 添加系统消息（如果有）
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
 
-            # 添加用户消息
             messages.append({"role": "user", "content": full_prompt})
 
-            # 获取模型ID
             model_id = model_config.get("model_id") if model_config else model
 
-            # 调用API
             response = self.client.chat.completions.create(
                 model=model_id,
                 messages=messages,
@@ -370,7 +334,6 @@ class AIService(QObject):
                 max_tokens=self._get_max_tokens(model),
             )
 
-            # 提取生成的内容
             generated_content = response.choices[0].message.content
 
             return generated_content
@@ -390,15 +353,13 @@ class AIService(QObject):
                 {"role": "user", "content": prompt},
             ]
 
-            # 获取选择的模型配置
             model = cfg.get(cfg.aiModel)
             model_config = self.MODEL_CONFIGS.get(model)
 
-            # 使用实际的模型ID进行API调用
             model_id = model_config.get("model_id") if model_config else model
 
             response = self.client.chat.completions.create(
-                model=model_id,  # 使用实际的模型ID
+                model=model_id, 
                 messages=messages,
                 temperature=0.7,
                 max_tokens=self._get_max_tokens(model),
@@ -421,25 +382,20 @@ class AIService(QObject):
             流式响应对象
         """
         try:
-            # 获取当前选择的模型
             model = cfg.get(cfg.aiModel)
             model_config = self.MODEL_CONFIGS.get(model, {})
 
-            # 构建消息列表
             messages = []
 
-            # 添加系统消息（如果有）
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
 
-            # 添加用户消息
             messages.append({"role": "user", "content": prompt})
 
-            # 获取模型ID
             model_id = model_config.get("model_id") if model_config else model
 
             stream = self.client.chat.completions.create(
-                model=model_id,  # 使用实际的模型ID
+                model=model_id,  
                 messages=messages,
                 temperature=0.7,
                 max_tokens=self._get_max_tokens(model),
@@ -452,23 +408,11 @@ class AIService(QObject):
             raise Exception(f"API 流式调用出错: {str(e)}")
 
     def generate_content_stream(self, prompt, mode="generate", aux_prompt=""):
-        """
-        使用流式响应生成内容
-
-        参数:
-        - prompt: 用户输入的提示或要处理的文本
-        - mode: 处理模式
-        - aux_prompt: 用户输入的辅助提示词（可选）
-
-        返回:
-        - 流式响应对象
-        """
+        """使用流式响应生成内容，适用于实时显示生成过程"""
         try:
-            # 获取模式配置
             mode_config = self.AI_MODES.get(mode, self.AI_MODES.get("自定义"))
             system_prompt = mode_config["system_prompt"]
 
-            # 添加记忆上下文到系统提示词
             if hasattr(self, "_memory_context") and self._memory_context:
                 memory_prompt = f"""
 以下是用户之前创建的备忘录内容，你可以参考这些内容来更好地理解用户的需求和风格:
@@ -480,7 +424,6 @@ class AIService(QObject):
 """
                 system_prompt = f"{memory_prompt}\n\n{system_prompt}"
 
-            # 构建完整提示词
             if mode == "续写":
                 full_prompt = f"{prompt}"
                 if aux_prompt:
@@ -493,32 +436,26 @@ class AIService(QObject):
                 full_prompt = f"备忘录内容：{prompt}"
                 if aux_prompt:
                     full_prompt += f"\n\n额外要求：{aux_prompt}"
-            else:  # 自定义模式
+            else:  
                 full_prompt = prompt
 
-            # 初始化API客户端（如果尚未初始化）
             if not self.client:
                 self._init_api_client()
 
             if not self.client:
                 raise Exception("API 客户端未初始化，请检查API密钥配置")
 
-            # 构建消息列表
             messages = []
 
-            # 添加系统消息（如果有）
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
 
-            # 添加用户消息
             messages.append({"role": "user", "content": full_prompt})
 
-            # 获取模型ID
             model = cfg.get(cfg.aiModel)
             model_config = self.MODEL_CONFIGS.get(model, {})
             model_id = model_config.get("model_id") if model_config else model
 
-            # 调用API
             stream = self.client.chat.completions.create(
                 model=model_id,
                 messages=messages,
@@ -538,9 +475,9 @@ class AIService(QObject):
 class AIWorkerThread(QThread):
     """统一的AI工作线程"""
 
-    resultReady = pyqtSignal(str)  # 用于普通响应
-    chunkReceived = pyqtSignal(str)  # 用于流式响应
-    finished = pyqtSignal()  # 流式响应完成信号
+    resultReady = pyqtSignal(str) 
+    chunkReceived = pyqtSignal(str)  
+    finished = pyqtSignal() 
     error = pyqtSignal(str)
 
     def __init__(self, ai_service, mode, text, streaming=False):

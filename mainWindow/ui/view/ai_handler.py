@@ -58,9 +58,9 @@ class AIWorkerThread(QThread):
 class AIStreamWorkerThread(QThread):
     """处理流式响应的工作线程"""
 
-    chunkReceived = pyqtSignal(str)  # 接收到新的文本块
-    finished = pyqtSignal()  # 流式响应完成
-    error = pyqtSignal(str)  # 发生错误
+    chunkReceived = pyqtSignal(str)  
+    finished = pyqtSignal()  
+    error = pyqtSignal(str) 
 
     def __init__(self, ai_service, mode, text, aux_prompt=""):
         super().__init__()
@@ -72,20 +72,16 @@ class AIStreamWorkerThread(QThread):
 
     def run(self):
         try:
-            # 获取流式响应
             stream = self.ai_service.generate_content_stream(
                 self.text, self.mode, self.aux_prompt
             )
 
-            # 累积的完整响应
             full_response = ""
 
-            # 处理流式响应
             for chunk in stream:
                 if self._stop_requested:
                     break
 
-                # 从响应块中提取文本
                 if hasattr(chunk.choices[0].delta, "content"):
                     content = chunk.choices[0].delta.content
                     if content:
@@ -106,60 +102,47 @@ class AIDialog(Dialog):
     """AI 处理对话框"""
 
     def __init__(self, mode, text="", parent=None, ai_service=None):
-        # 初始化属性
         self.mode = mode
         self.input_text = text
         self.result_text = ""
         self.state_tooltip = None
         self.worker_thread = None
         
-        # 使用传入的AI服务实例
         self.ai_service = ai_service
         
-        # 获取模式的显示名称作为标题
         title = self.get_mode_display_name()
         content = ""
-        
-        # 调用父类构造函数
+
         super().__init__(title, content, parent=parent)
         
-        # 设置对话框属性
         self.resize(650, 500)
         self.setMaximumSize(16777215, 16777215)
         self.setFixedSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX)
         self.setResizeEnabled(True)
         
-        # 显示标题栏
         self.titleBar.show()
         
-        # 设置标题栏按钮
         if hasattr(self.titleBar, 'setDoubleClickEnabled'):
             self.titleBar.setDoubleClickEnabled(True)
-        
-        # 显示标题栏上的按钮
+
         if hasattr(self.titleBar, 'minBtn'):
             self.titleBar.minBtn.show()
         if hasattr(self.titleBar, 'maxBtn'):
             self.titleBar.maxBtn.show()
         if hasattr(self.titleBar, 'closeBtn'):
             self.titleBar.closeBtn.show()
-        
-        # 设置标题栏标题
+
         if hasattr(self.titleBar, 'setTitle'):
             self.titleBar.setTitle(title)
-        
-        # 隐藏窗口标题标签
+
         if hasattr(self, 'windowTitleLabel'):
             self.windowTitleLabel.setVisible(False)
-        
-        # 设置UI
+
         self.setup_ui()
-        
-        # 应用自定义样式
+
         self.apply_custom_style()
 
     def setup_ui(self):
-        # 移除底部按钮区域和内容标签
         if hasattr(self, 'buttonGroup'):
             self.buttonGroup.setParent(None)
             self.buttonGroup.deleteLater()
@@ -167,34 +150,28 @@ class AIDialog(Dialog):
         if hasattr(self, 'contentLabel'):
             self.contentLabel.setVisible(False)
         
-        # 创建头部区域 - 只添加图标和描述，删除重复的标题
         header_layout = QHBoxLayout()
-        
-        # 添加模式图标
+
         mode_icon = self.get_mode_icon()
         self.icon_widget = IconWidget(mode_icon, self)
         self.icon_widget.setFixedSize(32, 32)
         header_layout.addWidget(self.icon_widget)
         
-        # 添加描述（不添加标题）
         description = self.get_mode_description()
         desc_label = BodyLabel(description)
         desc_label.setWordWrap(True)
         desc_label.setObjectName("aiDialogDescLabel")
-        
-        # 直接将描述添加到布局中，不添加标题标签
+         
         header_layout.addWidget(desc_label, 1)
         
         self.textLayout.addLayout(header_layout)
         
-        # 添加分隔线
         separator = QWidget()
         separator.setFixedHeight(1)
         separator.setObjectName("aiDialogSeparator")
         self.textLayout.addWidget(separator)
         self.textLayout.addSpacing(10)
         
-        # 添加辅助输入区域
         if self.mode not in ["tab续写", "自定义"]:
             aux_layout = QHBoxLayout()
             aux_label = BodyLabel("辅助提示词(可选):")
@@ -207,7 +184,6 @@ class AIDialog(Dialog):
             aux_layout.addWidget(self.aux_edit)
             self.textLayout.addLayout(aux_layout)
             
-        # 如果是自定义模式，添加提示输入框
         if self.mode == "自定义":
             prompt_layout = QHBoxLayout()
             prompt_label = BodyLabel("提示词:")
@@ -219,8 +195,7 @@ class AIDialog(Dialog):
             prompt_layout.addWidget(prompt_label)
             prompt_layout.addWidget(self.prompt_edit)
             self.textLayout.addLayout(prompt_layout)
-            
-        # 添加结果显示区域
+
         result_layout = QVBoxLayout()
         result_header = QHBoxLayout()
         
@@ -239,8 +214,7 @@ class AIDialog(Dialog):
         result_layout.addWidget(self.result_edit)
         
         self.textLayout.addLayout(result_layout)
-        
-        # 添加按钮区域
+
         button_layout = QHBoxLayout()
         button_layout.addStretch(1)
         
@@ -269,18 +243,15 @@ class AIDialog(Dialog):
         button_layout.addWidget(self.stop_button)
         
         self.textLayout.addLayout(button_layout)
-        
-        # 连接AI服务信号
+
         if self.ai_service:
             self.ai_service.resultReady.connect(self.handle_ai_result)
             self.ai_service.errorOccurred.connect(self.handle_ai_error)
-            
-        # 添加流式响应选项
-        self.use_streaming = True  # 默认启用流式响应
+
+        self.use_streaming = True  
 
     def apply_custom_style(self):
         """应用自定义样式"""
-        # 设置样式表
         self.setStyleSheet("""
             #aiDialogTitleLabel {
                 color: #0078d4;
@@ -310,7 +281,6 @@ class AIDialog(Dialog):
             }
         """)
         
-        # 如果是深色主题，调整样式
         if isDarkTheme():
             self.setStyleSheet("""
                 #aiDialogTitleLabel {
@@ -404,7 +374,7 @@ class AIDialog(Dialog):
             QApplication.processEvents()
 
         except Exception as e:
-            pass  # 移除错误打印
+            pass  
             self.state_tooltip = None
 
     def generate_content(self):
@@ -412,7 +382,6 @@ class AIDialog(Dialog):
         self.disable_all_inputs()
         self.show_loading_state()
 
-        # 获取辅助提示词（如果有）
         aux_prompt = self.aux_edit.toPlainText() if hasattr(self, "aux_edit") else ""
 
         if self.mode == "自定义":
@@ -428,20 +397,17 @@ class AIDialog(Dialog):
         else:
             text = ""
 
-        # 清空结果区域
         self.result_edit.clear()
         self.result_text = ""
 
-        # 停止任何正在运行的线程
         self.stop_any_running_threads()
 
-        # 根据是否使用流式响应选择不同的处理方式
         if self.use_streaming:
             self.worker_thread = AIStreamWorkerThread(
                 self.ai_service,
                 self.mode,
                 text,
-                aux_prompt=aux_prompt,  # 添加辅助提示词参数
+                aux_prompt=aux_prompt,  
             )
             self.worker_thread.chunkReceived.connect(self.handle_stream_chunk)
             self.worker_thread.finished.connect(self.handle_stream_finished)
@@ -452,7 +418,7 @@ class AIDialog(Dialog):
                 self.ai_service,
                 self.mode,
                 text,
-                aux_prompt=aux_prompt,  # 添加辅助提示词参数
+                aux_prompt=aux_prompt,  
             )
             self.worker_thread.finished.connect(self.handle_ai_result)
             self.worker_thread.error.connect(self.handle_ai_error)
@@ -465,13 +431,11 @@ class AIDialog(Dialog):
             self.worker_thread.stop()
             self.stop_button.setEnabled(False)
 
-            # 重新启用生成按钮和其他控件
             self.generate_button.setEnabled(True)
             self.cancel_button.setEnabled(True)
             if hasattr(self, "prompt_edit"):
                 self.prompt_edit.setReadOnly(False)
 
-            # 显示已停止消息
             if hasattr(self, "state_tooltip") and self.state_tooltip:
                 try:
                     self.state_tooltip.setContent("生成已停止")
@@ -480,7 +444,6 @@ class AIDialog(Dialog):
                 except:
                     pass
                 finally:
-                    # 设置一个短暂的延迟后关闭提示
                     QTimer.singleShot(1000, lambda: self.safely_close_tooltip())
 
     def stop_any_running_threads(self):
@@ -495,19 +458,16 @@ class AIDialog(Dialog):
     def handle_stream_chunk(self, chunk):
         """处理流式响应的文本块"""
         try:
-            # 追加新的文本块到结果
             self.result_text += chunk
 
-            # 更新 UI
             self.result_edit.setText(self.result_text)
 
-            # 滚动到底部
             cursor = self.result_edit.textCursor()
             cursor.movePosition(QTextCursor.End)
             self.result_edit.setTextCursor(cursor)
 
         except Exception:
-            pass  # 移除错误打印
+            pass  
 
     @pyqtSlot()
     def handle_stream_finished(self):
@@ -531,7 +491,7 @@ class AIDialog(Dialog):
                     QTimer.singleShot(1000, lambda: self.safely_close_tooltip())
 
         except Exception:
-            pass  # 移除错误打印
+            pass  
 
     def disable_all_inputs(self):
         """禁用所有输入控件"""
@@ -570,11 +530,10 @@ class AIDialog(Dialog):
                 except:
                     pass
                 finally:
-                    # 设置一个短暂的延迟后关闭提示
                     QTimer.singleShot(1000, lambda: self.safely_close_tooltip())
 
         except Exception as e:
-            pass  # 移除错误打印
+            pass 
 
     @pyqtSlot(str)
     def handle_ai_result(self, result):
@@ -601,7 +560,7 @@ class AIDialog(Dialog):
                     QTimer.singleShot(1000, lambda: self.safely_close_tooltip())
 
         except Exception as e:
-            pass  # 移除错误打印
+            pass 
 
     def closeEvent(self, event):
         """关闭对话框时清理资源"""
@@ -623,7 +582,6 @@ class AIDialog(Dialog):
 
         event.accept()
 
-    # 添加鼠标事件处理，以便可以拖动无边框窗口
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             self.dragPosition = event.globalPos() - self.frameGeometry().topLeft()
@@ -638,7 +596,7 @@ class AIDialog(Dialog):
 class AIHandler:
     """AI 功能处理类"""
 
-    _instance = None  # 类变量，用于存储单例实例
+    _instance = None  
 
     @classmethod
     def get_instance(cls, parent=None):
@@ -650,7 +608,6 @@ class AIHandler:
                 import traceback
 
                 traceback.print_exc()
-                # 创建一个降级版本的AIHandler
                 cls._instance = cls._create_fallback_instance(parent)
         return cls._instance
 
@@ -659,8 +616,6 @@ class AIHandler:
         """创建降级版本的AIHandler实例"""
         handler = object.__new__(cls)
         handler.parent = parent
-        # 创建一个空的AI服务
-        from services.ai_service import AIService
 
         handler.ai_service = AIService.__new__(AIService)
         handler.ai_service._memory_context = ""
@@ -668,14 +623,12 @@ class AIHandler:
         return handler
 
     def __init__(self, parent: CardWidget):
-        # 如果已经有实例，直接返回
         if AIHandler._instance is not None:
             return
 
         self.parent = parent
-        self.ai_service = AIService()  # 初始化 AI 服务
+        self.ai_service = AIService()  
 
-        # 设置单例实例
         AIHandler._instance = self
 
     def show_ai_menu(self, text_edit):
@@ -718,7 +671,6 @@ class AIHandler:
             cursor.selectedText() if cursor.hasSelection() else text_edit.toPlainText()
         )
 
-        # 传递AI服务实例
         dialog = AIDialog(mode, text, self.parent, ai_service=self.ai_service)
         result = dialog.exec_()
 
@@ -733,35 +685,27 @@ class AIHandler:
             else:
                 text_edit.setText(result_text)
         elif mode == "续写":
-            # 获取当前光标位置
             current_cursor = text_edit.textCursor()
             current_position = current_cursor.position()
 
-            # 将光标移动到文本末尾
             current_cursor.movePosition(QTextCursor.End)
             text_edit.setTextCursor(current_cursor)
 
-            # 获取当前文本框的所有内容
             current_text = text_edit.toPlainText()
 
-            # 直接插入续写内容，不添加换行和空格
             (
                 current_cursor.insertText(result_text)
                 if current_text
                 else text_edit.setText(result_text)
             )
         else:
-            # 处理其他模式（朋友圈文案、一句诗、自定义等）
-            # 如果文本框为空，直接设置文本
             if not text_edit.toPlainText().strip():
                 text_edit.setText(result_text)
             else:
-                # 如果文本框不为空，将光标移动到末尾并插入内容
                 current_cursor = text_edit.textCursor()
                 current_cursor.movePosition(QTextCursor.End)
                 text_edit.setTextCursor(current_cursor)
 
-                # 在新行插入内容
                 current_cursor.insertText("\n\n" + result_text)
 
         self._show_success_message(mode)
@@ -784,12 +728,10 @@ class AIHandler:
             import json
             import re
             from datetime import datetime, timedelta
-            
-            # 尝试直接解析JSON
+
             try:
                 todos = json.loads(result)
                 if isinstance(todos, list):
-                    # 确保每个待办事项都有必要的字段
                     for todo in todos:
                         if "task" not in todo:
                             todo["task"] = ""
@@ -800,25 +742,21 @@ class AIHandler:
                     return len(todos), todos
             except:
                 pass
-            
-            # 如果直接解析失败，尝试从文本中提取
+
             todos = []
             lines = result.strip().split('\n')
             
             for line in lines:
-                # 跳过空行
                 if not line.strip():
                     continue
-                    
-                # 尝试匹配常见的待办事项格式
+
                 todo_match = re.search(r'[*\-•]?\s*(.+?)(?:，|,|\s+)(?:截止日期|截止时间|deadline)[:：]?\s*(.+?)(?:，|,|\s+)(?:类别|分类|category)[:：]?\s*(.+?)$', line, re.IGNORECASE)
                 
                 if todo_match:
                     task = todo_match.group(1).strip()
                     deadline = todo_match.group(2).strip()
                     category = todo_match.group(3).strip()
-                    
-                    # 处理相对日期
+
                     if deadline and any(word in deadline for word in ["今天", "明天", "后天", "下周", "下个月"]):
                         now = datetime.now()
                         
@@ -829,13 +767,10 @@ class AIHandler:
                         elif "后天" in deadline:
                             deadline_date = (now + timedelta(days=2)).strftime("%Y-%m-%d")
                         elif "下周" in deadline:
-                            # 简单处理，加7天
                             deadline_date = (now + timedelta(days=7)).strftime("%Y-%m-%d")
                         elif "下个月" in deadline:
-                            # 简单处理，加30天
                             deadline_date = (now + timedelta(days=30)).strftime("%Y-%m-%d")
                         
-                        # 提取时间部分
                         time_match = re.search(r'(\d{1,2})[:.：](\d{1,2})', deadline)
                         if time_match:
                             hour = int(time_match.group(1))
@@ -850,7 +785,6 @@ class AIHandler:
                         "category": category
                     })
                 else:
-                    # 如果没有匹配到完整格式，尝试只提取任务内容
                     task_match = re.search(r'[*\-•]?\s*(.+)', line)
                     if task_match:
                         task = task_match.group(1).strip()
@@ -868,26 +802,22 @@ class AIHandler:
     def extract_todos_from_memo(self, memo_content, user_id):
         """从备忘录内容中提取待办事项"""
         try:
-            # 构建提示词
             system_prompt = self.ai_service.AI_MODES["待办提取"]["system_prompt"]
 
-            # 添加当前日期信息，帮助AI正确推断日期
             from datetime import datetime
             import locale
 
-            # 设置中文环境
             try:
                 locale.setlocale(locale.LC_TIME, "zh_CN.UTF-8")
             except:
                 try:
                     locale.setlocale(locale.LC_TIME, "zh_CN")
                 except:
-                    pass  # 如果设置失败，使用默认环境
+                    pass  
 
             now = datetime.now()
             current_date = now.strftime("%Y-%m-%d")
 
-            # 获取星期几（中文）
             weekday_names = [
                 "星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"
             ]
@@ -910,11 +840,9 @@ class AIHandler:
 ]
 """
 
-            # 使用AI服务生成内容
             result = self.ai_service.generate_content(system_prompt + prompt, mode="自定义")
 
-            # 解析JSON结果
             return self._parse_ai_todo_result(result)
         except Exception:
-            pass  # 移除错误打印
+            pass  
             return 0, []

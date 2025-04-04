@@ -56,7 +56,7 @@ from PyQt5.QtGui import QTextDocument
 import sys
 import os
 import threading
-from Database import DatabaseManager  # 导入数据库管理类
+from Database import DatabaseManager 
 from mainWindow.ui.view.ai_handler import AIHandler
 
 from config import cfg
@@ -95,17 +95,15 @@ class MemoInterface(Ui_memo, QWidget):
         self.db = DatabaseManager()
         self.user_id = user_id
 
-        # 使用AIHandler单例
         self.ai_handler = AIHandler.get_instance(self)
-        if self.user_id:  # 确保有用户ID时才构建上下文
+        if self.user_id:  
             self.ai_handler.ai_service.build_memory_context(self.user_id, self.db)
 
-        # 添加定期更新记忆上下文的机制
         self.memory_update_timer = QTimer(self)
         self.memory_update_timer.timeout.connect(self._update_memory_context)
-        self.memory_update_timer.start(1 * 60 * 1000)  # 每分钟更新一次
+        self.memory_update_timer.start(1 * 60 * 1000) 
 
-        self.memo_id = None  # 添加memo_id属性，用于跟踪当前备忘录的ID
+        self.memo_id = None  
 
         self.frame_2.addAction(
             Action(
@@ -115,22 +113,19 @@ class MemoInterface(Ui_memo, QWidget):
             )
         )
 
-        # 添加分隔符
         self.frame_2.addSeparator()
 
-        # 批量添加动作
         save_action = Action(FluentIcon.SAVE, "保存")
-        save_action.triggered.connect(self.save_memo)  # 连接保存动作
+        save_action.triggered.connect(self.save_memo)
         self.frame_2.addActions(
             [
                 save_action,
                 Action(FluentIcon.DELETE, "清空", triggered=self.clear_memo),
             ]
         )
-        # 添加分隔符
+
         self.frame_2.addSeparator()
 
-        # 添加导出和分享按钮
         self.frame_2.addAction(
             Action(
                 FluentIcon.PRINT,
@@ -164,7 +159,6 @@ class MemoInterface(Ui_memo, QWidget):
             layout.setContentsMargins(30, 40, 30, 20)
             self.frame.setLayout(layout)
 
-        # 创建智能文本编辑器并设置配置
         self.textEdit = SmartTextEdit(self)
 
         layout.addWidget(self.textEdit)
@@ -177,22 +171,15 @@ class MemoInterface(Ui_memo, QWidget):
 
         layout.addWidget(
             self.textEdit, 1, 0
-        )  # 将 textEdit 添加到网格布局的第一行第一列
+        )  
 
-        # self.textBrowser.setStyleSheet(
-        #     "background-color: #F7F7F7; border: 1px solid #E0E0E0; border-radius: 5px;"
-        # )
-
-        # 连接信号
         self.textEdit.textChanged.connect(self.update_markdown_preview)
         self.textEdit.textChanged.connect(self.update_word_count)
 
-        # 初始化显示
         self.update_markdown_preview()
         self.update_word_count()
         self.update_tag_combobox()
 
-        # 初始化待办事项提取器
         self.todo_extractor = TodoExtractor(self)
 
     def _update_memory_context(self):
@@ -205,14 +192,13 @@ class MemoInterface(Ui_memo, QWidget):
             ):
                 self.ai_handler.ai_service.build_memory_context(self.user_id, self.db)
         except Exception:
-            pass  # 移除错误打印
+            pass  
 
     def showEvent(self, event):
         """当窗口显示时调用"""
-        # 更新标签下拉框
+
         self.update_tag_combobox()
 
-        # 调用父类方法
         super().showEvent(event)
 
     def load_user_tags(self):
@@ -233,19 +219,14 @@ class MemoInterface(Ui_memo, QWidget):
 
     def update_tag_combobox(self):
         """更新标签下拉框的选项"""
-        # 保存当前选中的标签
         current_tag = self.lineEdit_2.text()
 
-        # 加载用户的历史标签
         tag_names = self.load_user_tags()
 
-        # 清空现有选项
         self.lineEdit_2.clear()
 
-        # 添加标签选项
         self.lineEdit_2.addItems(tag_names)
 
-        # 如果有原来的标签，则恢复选择
         if current_tag and current_tag in tag_names:
             index = self.lineEdit_2.findText(current_tag)
             if index >= 0:
@@ -254,16 +235,14 @@ class MemoInterface(Ui_memo, QWidget):
     def toggle_markdown_preview(self):
         """切换Markdown预览模式"""
         try:
-            # 获取当前内容
+
             content = self.textEdit.toPlainText()
             self._current_content = content
 
             if not self._markdown_preview_enabled:
-                # 启用Markdown预览
                 self.textEdit.setMarkdown(content)
                 self._markdown_preview_enabled = True
 
-                # 更新按钮文本
                 self.frame_2.actions()[-1].setText("编辑模式")
 
                 # 添加预览状态提示
@@ -277,14 +256,11 @@ class MemoInterface(Ui_memo, QWidget):
                     parent=self,
                 )
             else:
-                # 返回编辑模式
                 self.textEdit.setText(self._current_content)
                 self._markdown_preview_enabled = False
 
-                # 更新按钮文本
                 self.frame_2.actions()[-1].setText("Markdown预览")
 
-                # 添加编辑状态提示
                 InfoBar.info(
                     title="编辑模式",
                     content="已返回编辑模式",
@@ -324,7 +300,7 @@ class MemoInterface(Ui_memo, QWidget):
         category = self.lineEdit_2.text()
 
         if not title or not content:
-            if not silent:  # 只有在非静默模式下才显示警告
+            if not silent:  
                 InfoBar.warning(
                     title="警告",
                     content="标题和内容不能为空！",
@@ -342,13 +318,11 @@ class MemoInterface(Ui_memo, QWidget):
                     self.db.add_tag(self.user_id, category)
                 except Exception as e:
                     print(f"保存标签时出错: {str(e)}")
-            # 根据是否有memo_id决定创建新备忘录还是更新现有备忘录
             if self.memo_id is None:
-                # 创建新备忘录
                 memo_id = self.db.create_memo(self.user_id, title, content, category)
                 if memo_id:
-                    self.memo_id = memo_id  # 保存新创建的备忘录ID
-                    if not silent:  # 只有在非静默模式下才显示成功消息
+                    self.memo_id = memo_id  
+                    if not silent:  
                         InfoBar.success(
                             title="成功",
                             content="备忘录保存成功！",
@@ -360,12 +334,11 @@ class MemoInterface(Ui_memo, QWidget):
                         )
                     return True
             else:
-                # 更新现有备忘录
                 success = self.db.update_memo(
                     self.memo_id, title=title, content=content, category=category
                 )
                 if success:
-                    if not silent:  # 只有在非静默模式下才显示成功消息
+                    if not silent:  
                         InfoBar.success(
                             title="成功",
                             content="备忘录更新成功！",
@@ -377,7 +350,6 @@ class MemoInterface(Ui_memo, QWidget):
                         )
                     return True
 
-            # 如果执行到这里，说明保存/更新失败
             InfoBar.error(
                 title="错误",
                 content="备忘录保存失败！",
@@ -438,8 +410,7 @@ class MemoInterface(Ui_memo, QWidget):
             )
             return
 
-        # 先保存备忘录，确保内容已经存储
-        if self.save_memo(silent=True):  # 静默保存，不显示成功消息
+        if self.save_memo(silent=True): 
             exportMenu = RoundMenu("导出为", self)
             exportMenu.addActions(
                 [
@@ -451,7 +422,6 @@ class MemoInterface(Ui_memo, QWidget):
 
     def show_share_menu(self):
         """显示分享菜单"""
-        # 检查内容是否已填写
         title = self.lineEdit.text()
         content = self.textEdit.toPlainText()
 
@@ -467,8 +437,7 @@ class MemoInterface(Ui_memo, QWidget):
             )
             return
 
-        # 先保存备忘录，确保内容已经存储
-        if self.save_memo(silent=True):  # 静默保存，不显示成功消息
+        if self.save_memo(silent=True):  
             shareMenu = RoundMenu("分享到", self)
             shareMenu.addActions(
                 [
@@ -481,10 +450,8 @@ class MemoInterface(Ui_memo, QWidget):
     def export_to_pdf(self):
         """导出备忘录为PDF文件"""
         try:
-            # 获取默认导出目录
             default_dir = cfg.get(cfg.exportDir)
             if not default_dir or not os.path.exists(default_dir):
-                # 如果配置的目录不存在，使用export文件夹
                 export_dir = os.path.join(
                     os.path.dirname(
                         os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -498,20 +465,17 @@ class MemoInterface(Ui_memo, QWidget):
             default_filename = f"{self.lineEdit.text()}.pdf"
             default_path = os.path.join(default_dir, default_filename)
 
-            # 获取保存路径
             file_path, _ = QFileDialog.getSaveFileName(
                 self, "导出为PDF", default_path, "PDF Files (*.pdf)"
             )
 
-            if not file_path:  # 用户取消了保存
+            if not file_path:  
                 return
 
-            # 创建打印机对象
             printer = QPrinter(QPrinter.HighResolution)
             printer.setOutputFormat(QPrinter.PdfFormat)
             printer.setOutputFileName(file_path)
 
-            # 创建文档内容
             document = QTextDocument()
             category = self.lineEdit_2.text()
             category_text = (
@@ -525,10 +489,8 @@ class MemoInterface(Ui_memo, QWidget):
             """
             document.setHtml(html_content)
 
-            # 将文档打印到PDF
             document.print_(printer)
 
-            # 使用InfoBar显示成功消息
             InfoBar.success(
                 title="导出成功",
                 content=f"备忘录已成功导出为PDF文件",
@@ -540,7 +502,6 @@ class MemoInterface(Ui_memo, QWidget):
             )
 
         except Exception as e:
-            # 使用InfoBar显示错误消息
             InfoBar.warning(
                 title="导出失败",
                 content=f"导出PDF时发生错误：{str(e)}",
@@ -554,10 +515,8 @@ class MemoInterface(Ui_memo, QWidget):
     def export_to_txt(self):
         """导出备忘录为TXT文件"""
         try:
-            # 获取默认导出目录
             default_dir = cfg.get(cfg.exportDir)
             if not default_dir or not os.path.exists(default_dir):
-                # 如果配置的目录不存在，使用export文件夹
                 export_dir = os.path.join(
                     os.path.dirname(
                         os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -571,15 +530,13 @@ class MemoInterface(Ui_memo, QWidget):
             default_filename = f"{self.lineEdit.text()}.txt"
             default_path = os.path.join(default_dir, default_filename)
 
-            # 获取保存路径
             file_path, _ = QFileDialog.getSaveFileName(
                 self, "导出为TXT", default_path, "Text Files (*.txt)"
             )
 
-            if not file_path:  # 用户取消了保存
+            if not file_path: 
                 return
 
-            # 写入TXT文件
             with open(file_path, "w", encoding="utf-8") as f:
                 category = self.lineEdit_2.text()
                 f.write(f"标题: {self.lineEdit.text()}\n\n")
@@ -587,7 +544,6 @@ class MemoInterface(Ui_memo, QWidget):
                 if category:
                     f.write(f"分类: {category}\n")
 
-            # 使用InfoBar显示成功消息
             InfoBar.success(
                 title="导出成功",
                 content=f"备忘录已成功导出为TXT文件",
@@ -599,7 +555,6 @@ class MemoInterface(Ui_memo, QWidget):
             )
 
         except Exception as e:
-            # 使用InfoBar显示错误消息
             InfoBar.warning(
                 title="导出失败",
                 content=f"导出TXT时发生错误：{str(e)}",
@@ -613,33 +568,25 @@ class MemoInterface(Ui_memo, QWidget):
     def share_to(self, platform):
         """分享备忘录到指定平台"""
         try:
-            # 获取当前活动窗口
             parent_widget = QApplication.activeWindow()
 
-            # 准备要分享的内容
             title = self.lineEdit.text()
-            content = self.textEdit.toPlainText()  # 直接使用完整内容
+            content = self.textEdit.toPlainText()  
             category = self.lineEdit_2.text()
 
-            # 创建图片 - 根据内容长度动态调整高度
             width = 800
 
-            # 改进的文本换行处理逻辑
             content_lines = []
             char_width = 16
             chars_per_line = (width - 40) // char_width
 
-            # 先按照换行符分割文本
             paragraphs = content.split("\n")
 
-            # 处理每个段落，进行宽度限制换行
             for paragraph in paragraphs:
-                # 如果是空段落（连续换行），添加一个空行
                 if not paragraph:
                     content_lines.append("")
                     continue
 
-                # 处理非空段落，按宽度限制换行
                 current_line = ""
                 for char in paragraph:
                     current_line += char
@@ -647,45 +594,34 @@ class MemoInterface(Ui_memo, QWidget):
                         content_lines.append(current_line)
                         current_line = ""
 
-                # 添加最后一行（如果有内容）
                 if current_line:
                     content_lines.append(current_line)
 
-            # 计算所需高度 = 标题区域(60px) + 行数*行高(22px) + 底部间距(50px)
             line_height = 22
             total_lines = len(content_lines)
             content_height = total_lines * line_height
             height = 60 + content_height + 50
 
-            # 设置最小高度和最大高度
-            height = max(400, min(height, 2000))  # 最小400px，最大2000px
+            height = max(400, min(height, 2000))  
 
-            # 创建图片
             img = Image.new("RGB", (width, height), color=(255, 255, 255))
             draw = ImageDraw.Draw(img)
 
-            # 尝试加载默认字体，如果失败则使用默认字体
             try:
-                # 使用系统字体
-                title_font = ImageFont.truetype("msyh.ttc", 24)  # 微软雅黑
+                title_font = ImageFont.truetype("msyh.ttc", 24) 
                 content_font = ImageFont.truetype("msyh.ttc", 16)
             except Exception:
-                # 使用默认字体
                 title_font = ImageFont.load_default()
                 content_font = title_font
 
-            # 绘制标题背景
             draw.rectangle([(0, 0), (width, 60)], fill=(0, 120, 212))
 
-            # 绘制标题
             draw.text(
                 (20, 15), f"【备忘录】{title}", fill=(255, 255, 255), font=title_font
             )
 
-            # 修改: 改进绘制内容行逻辑，正确处理空行
             y_pos = 80
             for index, line in enumerate(content_lines):
-                # 安全检查：如果内容将超出图片高度，则停止绘制
                 if y_pos + line_height > height - 40:
                     draw.text(
                         (20, y_pos),
@@ -695,15 +631,11 @@ class MemoInterface(Ui_memo, QWidget):
                     )
                     y_pos += line_height
                     break
-
-                # 只在非空行时绘制文本，空行只增加间距
                 if line:
                     draw.text((20, y_pos), line, fill=(0, 0, 0), font=content_font)
 
-                # 无论行是否为空，都增加垂直位置
                 y_pos += line_height
 
-            # 绘制分类和时间
             time_text = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             category_text = f"分类: {category}" if category else ""
             footer_text = f"{category_text}   修改时间: {time_text}".strip()
@@ -714,7 +646,6 @@ class MemoInterface(Ui_memo, QWidget):
                 font=content_font,
             )
 
-            # 创建临时文件保存图片
             temp_dir = tempfile.gettempdir()
             unique_id = str(uuid.uuid4())[:8]
             timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
@@ -722,7 +653,6 @@ class MemoInterface(Ui_memo, QWidget):
             file_path = os.path.join(temp_dir, file_name)
             img.save(file_path)
 
-            # 显示上传中提示
             InfoBar.info(
                 title="正在上传图片",
                 content="正在将图片上传到云端，请稍候...",
@@ -740,7 +670,6 @@ class MemoInterface(Ui_memo, QWidget):
                 # 生成带图片URL的二维码
                 qr_image = self._generate_qrcode_for_url(image_url, platform)
 
-                # 显示成功消息
                 InfoBar.success(
                     title="分享图片已创建",
                     content=f"请扫描二维码查看图片并分享给{platform}好友",
@@ -751,32 +680,28 @@ class MemoInterface(Ui_memo, QWidget):
                     parent=parent_widget,
                 )
 
-                # 直接使用标题和指导文本作为Dialog的参数
                 dialog = Dialog(
                     f"分享到{platform}",
                     f"请使用{platform}扫描下方二维码查看图片并分享",
                     parent_widget,
                 )
 
-                # 隐藏默认按钮
                 dialog.yesButton.hide()
                 dialog.cancelButton.hide()
                 dialog.buttonLayout.insertStretch(0, 1)
                 dialog.buttonLayout.insertStretch(1)
 
-                # 设置窗口标志以禁止拖动
                 dialog.setWindowFlags(
-                    Qt.Dialog  # 基本对话框
-                    | Qt.WindowTitleHint  # 有标题栏
-                    | Qt.WindowCloseButtonHint  # 有关闭按钮
+                    Qt.Dialog  
+                    | Qt.WindowTitleHint  
+                    | Qt.WindowCloseButtonHint  
                 )
 
-                dialog.setAttribute(Qt.WA_DeleteOnClose, True)  # 关闭时自动删除
+                dialog.setAttribute(Qt.WA_DeleteOnClose, True)  
 
-                # 创建主容器和布局
                 container = QWidget()
                 main_layout = VBoxLayout(container)
-                main_layout.setContentsMargins(20, 0, 20, 20)  # 减小顶部边距
+                main_layout.setContentsMargins(20, 0, 20, 20)  
                 main_layout.setSpacing(15)
 
                 # 二维码卡片 - 使用特殊样式确保二维码可见
@@ -815,11 +740,9 @@ class MemoInterface(Ui_memo, QWidget):
                 url_card = CardWidget()
                 url_layout = VBoxLayout(url_card)
 
-                # 使用BodyLabel替代QLabel
                 url_label = BodyLabel("图片链接:")
                 url_layout.addWidget(url_label)
 
-                # 使用TextEdit来显示可选择的文本，自适应主题
                 url_text = TextEdit()
                 url_text.setPlainText(image_url)
                 url_text.setReadOnly(True)
@@ -828,7 +751,7 @@ class MemoInterface(Ui_memo, QWidget):
 
                 main_layout.addWidget(url_card)
 
-                # 按钮区域 - 使用FluentUI按钮
+                # 按钮区域 
                 button_widget = QWidget()
                 button_layout = QHBoxLayout(button_widget)
                 button_layout.setContentsMargins(0, 0, 0, 0)
@@ -864,12 +787,10 @@ class MemoInterface(Ui_memo, QWidget):
                 if dialog.layout():
                     dialog.layout().addWidget(container)
 
-                # 设置对话框大小
                 dialog.setFixedSize(500, 650)
                 dialog.show()  # 非模态显示
 
             else:
-                # 上传失败，显示本地图片
                 InfoBar.warning(
                     title="云端上传失败",
                     content="将显示本地图片",
@@ -880,7 +801,6 @@ class MemoInterface(Ui_memo, QWidget):
                     parent=parent_widget,
                 )
 
-                # 显示本地图片对话框
                 self._show_local_image_dialog(file_path, platform, parent_widget)
 
         except Exception as e:
@@ -904,24 +824,21 @@ class MemoInterface(Ui_memo, QWidget):
     def _generate_qrcode_for_url(self, url, platform):
         """为URL生成二维码并返回QPixmap"""
         try:
-            # 创建二维码 - 修改参数以提高可扫描性
+            # 创建二维码 
             qr = qrcode.QRCode(
-                version=4,  # 提高版本以容纳更多数据
-                error_correction=qrcode.constants.ERROR_CORRECT_H,  # 提高错误校正级别
-                box_size=12,  # 增加方块大小
-                border=5,  # 增加边框宽度
+                version=4,  
+                error_correction=qrcode.constants.ERROR_CORRECT_H,  
+                box_size=12,  
+                border=5,  
             )
             qr.add_data(url)
             qr.make(fit=True)
 
-            # 生成更大更清晰的二维码图像
             img = qr.make_image(fill_color="black", back_color="white")
 
-            # 确保图像足够大
-            img_size = 324  # 设置一个较大的尺寸
+            img_size = 324  
             img = img.resize((img_size, img_size))
 
-            # 将PIL图像转换为QPixmap
             buffer = BytesIO()
             img.save(buffer, format="PNG")
             buffer.seek(0)
@@ -982,13 +899,13 @@ class MemoInterface(Ui_memo, QWidget):
         dialog.setWindowTitle(f"分享到{platform}")
         # 设置窗口标志以禁止拖动 - 使用固定位置的对话框
         dialog.setWindowFlags(
-            Qt.Dialog  # 基本对话框
-            | Qt.WindowTitleHint  # 有标题栏
-            | Qt.WindowCloseButtonHint  # 有关闭按钮
-            | Qt.MSWindowsFixedSizeDialogHint  # 禁止调整大小 (Windows)
-            | Qt.CustomizeWindowHint  # 自定义窗口 - 结合上面的标志限制功能
+            Qt.Dialog  
+            | Qt.WindowTitleHint  
+            | Qt.WindowCloseButtonHint  
+            | Qt.MSWindowsFixedSizeDialogHint  
+            | Qt.CustomizeWindowHint  
         )
-        dialog.setAttribute(Qt.WA_DeleteOnClose, True)  # 关闭时自动删除
+        dialog.setAttribute(Qt.WA_DeleteOnClose, True) 
         dialog.resize(650, 500)
 
         if parent_widget:
@@ -1013,32 +930,28 @@ class MemoInterface(Ui_memo, QWidget):
         # 按钮布局
         button_layout = QHBoxLayout()
 
-        # 打开图片按钮
         open_button = PrimaryPushButton("打开图片")
         open_button.clicked.connect(lambda: os.startfile(file_path))
         button_layout.addWidget(open_button)
 
-        # 打开文件夹按钮
         open_folder_button = PrimaryPushButton("打开文件夹")
         open_folder_button.clicked.connect(
             lambda: os.startfile(os.path.dirname(file_path))
         )
         button_layout.addWidget(open_folder_button)
 
-        # 复制到剪贴板按钮
         copy_button = PrimaryPushButton("复制图片")
         copy_button.clicked.connect(lambda: self._copy_image_to_clipboard(qimage))
         button_layout.addWidget(copy_button)
 
         layout.addLayout(button_layout)
 
-        # 显示文件路径
         path_label = QLabel(f"图片保存在: {file_path}")
         path_label.setWordWrap(True)
         layout.addWidget(path_label)
 
         dialog.setLayout(layout)
-        dialog.show()  # 使用非模态对话框
+        dialog.show()  
 
     def _copy_image_to_clipboard(self, pixmap):
         """复制图片到剪贴板"""
@@ -1083,11 +996,9 @@ class MemoInterface(Ui_memo, QWidget):
         if not self.user_id:
             InfoBar.error(title="错误", content="请先登录", parent=self)
             return
-        
-        # 获取当前备忘录内容
+
         memo_content = self.textEdit.toPlainText()
-        
-        # 使用待办事项提取器提取待办事项
+
         self.todo_extractor.extract_todos(memo_content, self.user_id, self.ai_handler)
 
 
