@@ -22,6 +22,18 @@ from qfluentwidgets import (
 from Database import DatabaseManager
 
 
+def resource_path(relative_path):
+    """获取资源的绝对路径，适用于开发环境和PyInstaller打包后的环境"""
+    try:
+        # PyInstaller创建临时文件夹，将路径存储在_MEIPASS中
+        base_path = sys._MEIPASS
+    except Exception:
+        # 非打包环境，使用当前路径
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+
 class AccountInterface(QFrame):
     # 定义信号
     loginSuccess = pyqtSignal(dict)
@@ -74,7 +86,7 @@ class AccountInterface(QFrame):
 
         # 尝试加载Logo
         try:
-            self.logo_label.setPixmap(QPixmap("resource/logo.png"))
+            self.logo_label.setPixmap(QPixmap(resource_path("resource/logo.png")))
             self.logo_label.setFixedSize(120, 120)
             self.logo_label.setScaledContents(True)
         except Exception as e:
