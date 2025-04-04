@@ -441,14 +441,6 @@ class AISettingCard(ExpandGroupSettingCard):
             api_key = self.apiKeyEdit.text().strip()
             model_id = self._get_model_id(self.modelComboBox.currentText())
 
-            # 打印调试信息
-            print("正在应用API设置...")
-            print(
-                f"API密钥: {api_key[:3]}{'*' * (len(api_key) - 6)}{api_key[-3:] if len(api_key) > 6 else ''}"
-            )
-            print(f"API密钥长度: {len(api_key)}")
-            print(f"选择的模型: {model_id}")
-
             # 保存到配置
             cfg.set(cfg.apiKey, api_key)
             cfg.set(cfg.aiModel, model_id)
@@ -475,20 +467,13 @@ class AISettingCard(ExpandGroupSettingCard):
             if hasattr(main_window, "memoInterface") and hasattr(
                 main_window.memoInterface, "ai_handler"
             ):
-                print("重新初始化备忘录界面的AI处理器")
                 # 创建新的AIService实例
                 new_ai_service = AIService()
-                # 确保新实例使用了最新的API密钥
-                print(
-                    f"新AI服务使用的API密钥: {new_ai_service.api_key[:3]}{'*' * (len(new_ai_service.api_key) - 6)}{new_ai_service.api_key[-3:] if len(new_ai_service.api_key) > 6 else ''}"
-                )
-                print(f"新AI服务API密钥长度: {len(new_ai_service.api_key)}")
                 main_window.memoInterface.ai_handler.ai_service = new_ai_service
 
             if hasattr(main_window, "todoInterface") and hasattr(
                 main_window.todoInterface, "ai_handler"
             ):
-                print("重新初始化待办界面的AI处理器")
                 # 为待办界面创建新的AIService实例
                 new_ai_service = AIService()
                 main_window.todoInterface.ai_handler.ai_service = new_ai_service
@@ -504,12 +489,6 @@ class AISettingCard(ExpandGroupSettingCard):
                 parent=self.window(),
             )
         except Exception as e:
-            # 打印详细错误信息
-            import traceback
-
-            print(f"应用设置失败: {str(e)}")
-            traceback.print_exc()
-
             # 显示错误消息
             InfoBar.error(
                 title="应用设置失败",

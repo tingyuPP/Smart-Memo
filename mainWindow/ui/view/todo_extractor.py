@@ -333,7 +333,6 @@ class TodoExtractorDialog(Dialog):
                 self.accept()  # 关闭当前对话框
                 new_dialog.exec_()  # 显示新对话框
             except Exception as e:
-                print(f"创建新对话框时出错: {str(e)}")
                 # 如果出错，尝试刷新当前对话框
                 QApplication.processEvents()  # 处理所有挂起的事件
                 self._refresh_ui()
@@ -352,8 +351,8 @@ class TodoExtractorDialog(Dialog):
 
             # 重新设置UI
             self.setup_ui()
-        except RuntimeError as e:
-            print(f"刷新UI时出错: {str(e)}")
+        except RuntimeError:
+            pass  # 移除错误打印
             # 如果出错，尝试重新创建对话框
             self.reject()
             dialog = TodoExtractorDialog(self.todos, self.user_id, self.parent())
@@ -369,8 +368,8 @@ class TodoExtractorDialog(Dialog):
                         item.widget().deleteLater()
                     elif item and item.layout():
                         self._clear_layout(item.layout())
-        except RuntimeError as e:
-            print(f"清除布局时出错: {str(e)}")
+        except RuntimeError:
+            pass  # 移除错误打印
 
     def _on_select_all_changed(self, state):
         """全选/取消全选复选框状态改变时的处理"""
@@ -662,8 +661,8 @@ class TodoExtractor:
             if hasattr(self, "state_tooltip") and self.state_tooltip:
                 self.state_tooltip.close()
                 self.state_tooltip = None
-        except Exception as e:
-            print(f"关闭提示框时出错: {str(e)}")
+        except Exception:
+            pass  # 移除错误打印
 
     def _add_todos_to_database(self, todos, user_id):
         """将待办事项添加到数据库"""
@@ -691,7 +690,7 @@ class TodoExtractor:
                 if todo_id:
                     added_count += 1
 
-            except Exception as e:
-                print(f"添加待办事项时出错: {str(e)}")
+            except Exception:
+                pass  # 移除错误打印
 
         return added_count

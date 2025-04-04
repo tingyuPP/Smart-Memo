@@ -135,10 +135,7 @@ class AIService(QObject):
 
         # 从配置中获取API密钥 - 确保每次都是最新的
         self.api_key = cfg.get(cfg.apiKey)
-        print(
-            f"AIService初始化，使用API密钥: {self.api_key[:3]}{'*' * (len(self.api_key) - 6)}{self.api_key[-3:] if len(self.api_key) > 6 else ''}"
-        )
-
+        
         # 初始化API客户端
         self.client = None
         self._init_api_client()
@@ -153,13 +150,8 @@ class AIService(QObject):
             self.api_key = api_key  # 更新实例变量
 
             if not api_key:
-                print("警告: API密钥未设置，AI功能将不可用")
                 self.client = None
                 return
-
-            # 打印API密钥前几位和后几位，用于调试
-            masked_key = f"{api_key[:3]}{'*' * (len(api_key) - 6)}{api_key[-3:] if len(api_key) > 6 else ''}"
-            print(f"初始化API客户端，使用API密钥: {masked_key}，长度: {len(api_key)}")
 
             # 获取当前选择的模型
             model = cfg.get(cfg.aiModel)
@@ -185,20 +177,14 @@ class AIService(QObject):
 
                 base_url = cfg.get(cfg.customBaseUrl)
                 if not base_url:
-                    print("警告: 自定义模型的基础URL未设置")
                     self.client = None
                     return
                 self.client = OpenAI(api_key=api_key, base_url=base_url)
             else:
-                print(f"警告: 不支持的模型类型 {model}")
                 self.client = None
 
-            print(f"AI服务初始化完成，使用模型: {model}")
-
         except Exception as e:
-            print(f"初始化API客户端时出错: {str(e)}")
             import traceback
-
             traceback.print_exc()
             self.client = None
 
@@ -219,12 +205,10 @@ class AIService(QObject):
     def build_memory_context(self, user_id, db):
         """构建用户的记忆上下文"""
         try:
-
             # 从数据库获取用户的所有备忘录
             memos = db.get_all_memos_by_user(user_id)
 
             if not memos:
-                print("未找到用户备忘录，记忆上下文为空")
                 self._memory_context = ""  # 使用统一的属性名
                 return
 
@@ -258,16 +242,9 @@ class AIService(QObject):
                         break
 
                 combined_context = "\n---\n".join(truncated_parts)
-                print(
-                    f"记忆上下文已截断，保留了 {len(truncated_parts)}/{len(context_parts)} 条备忘录"
-                )
-
-            self._memory_context = combined_context  # 使用统一的属性名
 
         except Exception as e:
-            print(f"构建记忆上下文时出错: {str(e)}")
             import traceback
-
             print(traceback.format_exc())
             self._memory_context = ""  # 使用统一的属性名
 
@@ -294,7 +271,7 @@ class AIService(QObject):
         elif mode == "tab续写":
             enhanced_prompt = f"{system_prompt}\n\n已有内容：\n{user_prompt}\n\n请续写（不要重复上面的内容）："
         else:  # 自定义模式
-            enhanced_prompt = user_prompt
+            enhanced_prompt = f"{system_prompt}\n\n{user_prompt}"
 
         # 添加记忆上下文（如果有）
         if hasattr(self, "_memory_context") and self._memory_context:
@@ -308,7 +285,6 @@ class AIService(QObject):
             """
             # 将记忆上下文添加到系统提示词中
             enhanced_prompt = f"{memory_prompt}\n\n{enhanced_prompt}"
-            print("已添加记忆上下文到提示词")
 
         return enhanced_prompt
 
@@ -317,7 +293,6 @@ class AIService(QObject):
         try:
             # 使用增强的提示词
             full_prompt = self._get_enhanced_prompt(mode, prompt)
-            print("发送给AI的完整提示词：", full_prompt)  # 添加调试信息
             response = self._call_deepseek_api(full_prompt)
             return response
 
@@ -337,22 +312,13 @@ class AIService(QObject):
                 self.errorOccurred.emit(error_msg)
                 return error_msg
 
-            print(f"\n===== AI生成内容 =====")
-            print(f"模式: {mode}")
-            print(
-                f"提示词: {prompt[:50]}..." if len(prompt) > 50 else f"提示词: {prompt}"
-            )
-
             # 获取模式配置
             mode_config = self.AI_MODES.get(mode, self.AI_MODES.get("自定义"))
             system_prompt = mode_config["system_prompt"]
 
             # 检查记忆上下文
-            print(f"检查记忆上下文...")
             if hasattr(self, "_memory_context"):
-                print(f"记忆上下文属性存在")
                 if self._memory_context:
-                    print(f"记忆上下文不为空，长度: {len(self._memory_context)} 字符")
                     memory_prompt = f"""
 以下是用户之前创建的备忘录内容，你可以参考这些内容来更好地理解用户的需求和风格:
 
@@ -362,18 +328,6 @@ class AIService(QObject):
 但如果用户明确要求引用或者上下文高度相关时，可以适当引用，但需要明确指出这是来自用户之前的笔记。
 """
                     system_prompt = f"{memory_prompt}\n\n{system_prompt}"
-                    print("已添加记忆上下文到系统提示词")
-                else:
-                    print("记忆上下文为空")
-                    print("警告：记忆上下文为空或未初始化")
-            else:
-                print("记忆上下文属性不存在")
-                print("警告：记忆上下文为空或未初始化")
-
-            # 打印调试信息
-            print(f"系统提示词长度: {len(system_prompt)} 字符")
-            print(f"用户提示词长度: {len(prompt)} 字符")
-            print("=====================\n")
 
             # 构建完整提示词
             if mode == "续写":
@@ -407,11 +361,6 @@ class AIService(QObject):
 
             # 获取模型ID
             model_id = model_config.get("model_id") if model_config else model
-
-            # 打印调试信息
-            print(f"使用模型: {model_id}")
-            print(f"系统提示词长度: {len(system_prompt)} 字符")
-            print(f"用户提示词长度: {len(full_prompt)} 字符")
 
             # 调用API
             response = self.client.chat.completions.create(
@@ -530,9 +479,6 @@ class AIService(QObject):
 但如果用户明确要求引用或者上下文高度相关时，可以适当引用，但需要明确指出这是来自用户之前的笔记。
 """
                 system_prompt = f"{memory_prompt}\n\n{system_prompt}"
-                print("已添加记忆上下文到系统提示词")
-            else:
-                print("警告：记忆上下文为空或未初始化")
 
             # 构建完整提示词
             if mode == "续写":
@@ -556,10 +502,6 @@ class AIService(QObject):
 
             if not self.client:
                 raise Exception("API 客户端未初始化，请检查API密钥配置")
-
-            # 打印调试信息
-            print(f"系统提示词长度: {len(system_prompt)} 字符")
-            print(f"用户提示词长度: {len(full_prompt)} 字符")
 
             # 构建消息列表
             messages = []

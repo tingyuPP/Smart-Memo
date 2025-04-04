@@ -30,10 +30,9 @@ class SuggestionThread(QThread):
                 result = result[len(last_chars) :]
 
             self.suggestionReady.emit(result)
-        except Exception as e:
-            print(f"生成建议出错: {str(e)}")
+        except Exception:
+            pass  # 移除错误打印
             self.suggestionReady.emit("")
-
 
 class TabContinuationThread(QThread):
     """Tab键续写线程"""
@@ -49,10 +48,9 @@ class TabContinuationThread(QThread):
         try:
             result = self.ai_service.generate_content(self.context, "tab续写")
             self.resultReady.emit(result)
-        except Exception as e:
-            print(f"续写生成出错: {str(e)}")
+        except Exception:
+            pass  # 移除错误打印
             self.resultReady.emit("")
-
 
 class SmartTextEdit(TextEdit):
     def __init__(self, parent=None):
@@ -168,8 +166,8 @@ class SmartTextEdit(TextEdit):
             self.suggestion_thread = SuggestionThread(self.ai_service, context)
             self.suggestion_thread.suggestionReady.connect(self._handle_suggestion)
             self.suggestion_thread.start()
-        except Exception as e:
-            print(f"创建建议线程失败: {str(e)}")
+        except Exception:
+            pass  # 移除错误打印
 
     def _get_context(self, cursor):
         """获取当前上下文"""
