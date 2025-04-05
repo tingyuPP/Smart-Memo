@@ -10,7 +10,6 @@ from cryptography.hazmat.backends import default_backend
 import os
 import sys
 
-
 # TODO: 备忘录信息的类别还没有定义，需要添加一个枚举类别。
 
 
@@ -27,6 +26,7 @@ def resource_path(relative_path):
 
 
 class DatabaseManager:
+
     def __init__(self, db_name="smart_memo.db"):
         """初始化数据库管理器"""
         # 创建数据库连接
@@ -118,11 +118,11 @@ class DatabaseManager:
         self.conn.commit()
 
     def create_user(
-        self,
-        username,
-        password,
-        face_data=None,
-        avatar=resource_path("resource/default_avatar.jpg"),
+            self,
+            username,
+            password,
+            face_data=None,
+            avatar=resource_path("resource/default_avatar.jpg"),
     ):
         """创建用户（密码需要加密）
 
@@ -130,7 +130,6 @@ class DatabaseManager:
             username: 用户名
             password: 密码（将被加密存储）
             face_data: 人脸识别数据（可选）
-            fingerprint_data: 指纹识别数据（可选）
             avatar: 用户头像路径（可选）
 
         返回:
@@ -147,7 +146,8 @@ class DatabaseManager:
 
         try:
 
-            register_time = datetime.now(self.local_tz).strftime("%Y-%m-%d %H:%M:%S")
+            register_time = datetime.now(
+                self.local_tz).strftime("%Y-%m-%d %H:%M:%S")
             self.cursor.execute(
                 """
                 INSERT INTO users 
@@ -212,7 +212,8 @@ class DatabaseManager:
             如果不存在返回None
         """
         try:
-            self.cursor.execute("SELECT * FROM memos WHERE id = ?", (memo_id,))
+            self.cursor.execute("SELECT * FROM memos WHERE id = ?",
+                                (memo_id, ))
             memo = self.cursor.fetchone()
 
             if not memo:
@@ -235,7 +236,8 @@ class DatabaseManager:
     def delete_memos_by_user(self, user_id):
         """删除用户的所有备忘录"""
         try:
-            self.cursor.execute("DELETE FROM memos WHERE user_id = ?", (user_id,))
+            self.cursor.execute("DELETE FROM memos WHERE user_id = ?",
+                                (user_id, ))
             self.conn.commit()
             return True
         except sqlite3.Error as e:
@@ -252,7 +254,7 @@ class DatabaseManager:
             bool: 删除成功返回True，失败返回False
         """
         try:
-            self.cursor.execute("DELETE FROM memos WHERE id = ?", (memo_id,))
+            self.cursor.execute("DELETE FROM memos WHERE id = ?", (memo_id, ))
             self.conn.commit()
             deleted_rows = self.cursor.rowcount
             return deleted_rows > 0
@@ -304,20 +306,19 @@ class DatabaseManager:
                 # 标记为已完成，记录完成时间
                 self.cursor.execute(
                     "UPDATE todos SET is_done = 1, completed_time = datetime('now', 'localtime') WHERE id = ?",
-                    (todo_id,),
+                    (todo_id, ),
                 )
             else:
                 # 标记为未完成，清除完成时间
                 self.cursor.execute(
                     "UPDATE todos SET is_done = 0, completed_time = NULL WHERE id = ?",
-                    (todo_id,),
+                    (todo_id, ),
                 )
             self.conn.commit()
             return self.cursor.rowcount > 0
         except sqlite3.Error as e:
             print(f"更新待办状态失败: {e}")
             return False
-
 
     def get_todos(self, user_id, show_completed=False, category_filter=None):
         """获取用户的待办事项"""
@@ -352,7 +353,7 @@ class DatabaseManager:
             bool: 是否删除成功
         """
         try:
-            self.cursor.execute("DELETE FROM todos WHERE id = ?", (todo_id,))
+            self.cursor.execute("DELETE FROM todos WHERE id = ?", (todo_id, ))
             self.conn.commit()
             return self.cursor.rowcount > 0
         except sqlite3.Error as e:
@@ -370,8 +371,8 @@ class DatabaseManager:
         """
         try:
             self.cursor.execute(
-                "SELECT DISTINCT category FROM todos WHERE user_id = ?", (user_id,)
-            )
+                "SELECT DISTINCT category FROM todos WHERE user_id = ?",
+                (user_id, ))
             return [row[0] for row in self.cursor.fetchall()]
         except sqlite3.Error as e:
             print(f"获取分类失败: {e}")
@@ -379,7 +380,8 @@ class DatabaseManager:
 
     def get_certain_user(self, username):
         """获取特定用户信息"""
-        self.cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+        self.cursor.execute("SELECT * FROM users WHERE username = ?",
+                            (username, ))
         user_data = self.cursor.fetchone()
         user_dict = {
             "id": user_data[0],
@@ -411,19 +413,19 @@ class DatabaseManager:
 
     def get_memo_count(self, user_id):
         """获取用户的备忘录数量"""
-        self.cursor.execute("SELECT COUNT(*) FROM memos WHERE user_id = ?", (user_id,))
+        self.cursor.execute("SELECT COUNT(*) FROM memos WHERE user_id = ?",
+                            (user_id, ))
         return self.cursor.fetchone()[0]
 
     def get_todo_count(self, user_id):
-        self.cursor.execute(
-            "SELECT COUNT(*) FROM todos WHERE user_id = ?", (user_id,))
+        self.cursor.execute("SELECT COUNT(*) FROM todos WHERE user_id = ?",
+                            (user_id, ))
         return self.cursor.fetchone()[0]
-    
+
     def check_password(self, username, password):
         """检查密码是否正确"""
-        self.cursor.execute(
-            "SELECT password FROM users WHERE username = ?", (username,)
-        )
+        self.cursor.execute("SELECT password FROM users WHERE username = ?",
+                            (username, ))
         result = self.cursor.fetchone()
 
         if not result:
@@ -449,9 +451,11 @@ class DatabaseManager:
             return False
 
         # 使用相同参数重新计算哈希
-        hash_obj = hashlib.pbkdf2_hmac(
-            "sha256", password.encode("utf-8"), salt, 100000, dklen=64
-        )
+        hash_obj = hashlib.pbkdf2_hmac("sha256",
+                                       password.encode("utf-8"),
+                                       salt,
+                                       100000,
+                                       dklen=64)
 
         # 使用安全的比较方法，防止时序攻击
         import hmac
@@ -507,7 +511,7 @@ class DatabaseManager:
             bool: 更新成功返回True，失败返回False
         """
         # 首先检查用户是否存在
-        self.cursor.execute("SELECT id FROM users WHERE id = ?", (user_id,))
+        self.cursor.execute("SELECT id FROM users WHERE id = ?", (user_id, ))
         if not self.cursor.fetchone():
             print(f"用户ID {user_id} 不存在")
             return False
@@ -526,7 +530,10 @@ class DatabaseManager:
         ]
 
         # 过滤非法字段
-        update_fields = {k: v for k, v in kwargs.items() if k in allowed_fields}
+        update_fields = {
+            k: v
+            for k, v in kwargs.items() if k in allowed_fields
+        }
 
         if not update_fields:
             print("没有提供有效的更新字段")
@@ -537,29 +544,21 @@ class DatabaseManager:
             update_fields["password"] = self.hash(update_fields["password"])
 
         # 特殊处理生物识别数据 - 如果提供，需要加密
-        if "face_data" in update_fields and update_fields["face_data"] is not None:
+        if "face_data" in update_fields and update_fields[
+                "face_data"] is not None:
             # 如果是JSON格式的特征数据，可能很大，避免加密
-            if update_fields["face_data"].startswith("{") or update_fields[
-                "face_data"
-            ].startswith("["):
+            if update_fields["face_data"].startswith(
+                    "{") or update_fields["face_data"].startswith("["):
                 # 直接保存JSON数据，不加密
                 pass
             else:
                 # 对路径等简单数据进行加密
                 update_fields["face_data"] = self.encrypt(
-                    str(update_fields["face_data"])
-                )
-
-        if (
-            "fingerprint_data" in update_fields
-            and update_fields["fingerprint_data"] is not None
-        ):
-            update_fields["fingerprint_data"] = self.encrypt(
-                str(update_fields["fingerprint_data"])
-            )
+                    str(update_fields["face_data"]))
 
         # 构建UPDATE语句
-        placeholders = ", ".join([f"{field} = ?" for field in update_fields.keys()])
+        placeholders = ", ".join(
+            [f"{field} = ?" for field in update_fields.keys()])
         query = f"UPDATE users SET {placeholders} WHERE id = ?"
 
         # 创建参数列表
@@ -572,7 +571,8 @@ class DatabaseManager:
             self.conn.commit()
 
             # 重新检查用户而不依赖rowcount
-            self.cursor.execute("SELECT id FROM users WHERE id = ?", (user_id,))
+            self.cursor.execute("SELECT id FROM users WHERE id = ?",
+                                (user_id, ))
             if self.cursor.fetchone():
                 print(f"用户ID {user_id} 更新成功")
                 return True
@@ -586,7 +586,8 @@ class DatabaseManager:
     def get_memos(self, user_id=None):
         """获取备忘录列表，可选按用户ID过滤"""
         if user_id:
-            self.cursor.execute("SELECT * FROM memos WHERE user_id = ?", (user_id,))
+            self.cursor.execute("SELECT * FROM memos WHERE user_id = ?",
+                                (user_id, ))
         else:
             self.cursor.execute("SELECT * FROM memos")
 
@@ -611,9 +612,7 @@ class DatabaseManager:
                 WHERE user_id = ?
                 ORDER BY modified_time DESC
                 LIMIT ?
-                """,
-                (user_id, limit)
-            )
+                """, (user_id, limit))
             memos = self.cursor.fetchall()
 
             # 返回解密后的数据
@@ -651,9 +650,7 @@ class DatabaseManager:
                 """SELECT id, tag_name, created_time 
                 FROM tags 
                 WHERE user_id = ? 
-                ORDER BY created_time DESC""", 
-                (user_id,)
-            )
+                ORDER BY created_time DESC""", (user_id, ))
 
             tags = self.cursor.fetchall()
             result = []
@@ -694,8 +691,7 @@ class DatabaseManager:
             # 检查标签是否已存在
             self.cursor.execute(
                 "SELECT id FROM tags WHERE user_id = ? AND tag_name = ?",
-                (user_id, tag_name)
-            )
+                (user_id, tag_name))
 
             existing_tag = self.cursor.fetchone()
             if existing_tag:
@@ -705,8 +701,7 @@ class DatabaseManager:
             # 添加新标签
             self.cursor.execute(
                 "INSERT INTO tags (user_id, tag_name) VALUES (?, ?)",
-                (user_id, tag_name)
-            )
+                (user_id, tag_name))
 
             self.conn.commit()
             new_tag_id = self.cursor.lastrowid
@@ -722,7 +717,7 @@ class DatabaseManager:
         # 首先根据用户名查找用户
         self.cursor.execute(
             "SELECT id, username, password, avatar, register_time FROM users WHERE username = ?",
-            (username,),
+            (username, ),
         )
         user_data = self.cursor.fetchone()
 
@@ -792,7 +787,9 @@ class DatabaseManager:
         # print("len:",len(key))
 
         # 创建加密对象
-        cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+        cipher = Cipher(algorithms.AES(key),
+                        modes.CBC(iv),
+                        backend=default_backend())
         encryptor = cipher.encryptor()
 
         # PKCS7填充
@@ -839,9 +836,9 @@ class DatabaseManager:
             key = b"ThisIsA32ByteKeyForAES256Encrypt"
 
             # 创建解密对象
-            cipher = Cipher(
-                algorithms.AES(key), modes.CBC(iv), backend=default_backend()
-            )
+            cipher = Cipher(algorithms.AES(key),
+                            modes.CBC(iv),
+                            backend=default_backend())
             decryptor = cipher.decryptor()
 
             # 解密
@@ -881,9 +878,7 @@ class DatabaseManager:
                 FROM memos 
                 WHERE user_id = ?
                 ORDER BY modified_time DESC
-                """,
-                (user_id,)
-            )
+                """, (user_id, ))
             memos = self.cursor.fetchall()
 
             # 返回解密后的数据
