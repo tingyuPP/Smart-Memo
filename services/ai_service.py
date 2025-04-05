@@ -47,39 +47,60 @@ class AIService(QObject):
     # 定义 AI 模式配置
     AI_MODES = {
         "润色": {
-            "display_name": "润色笔记",
-            "description": "AI 将对您的备忘录内容进行润色，使其更加清晰、专业，同时保持原意不变。",
-            "system_prompt": "你是一位专业的文字编辑，擅长优化笔记和备忘录内容。请润色以下文本，使其更加清晰、结构化和易于理解，同时保持原意不变。可以改进表达方式，纠正语法错误，优化段落结构，但不要添加新的信息或改变核心内容。直接输出润色后的文本，不要添加任何解释、前言或结语。",
+            "display_name":
+            "润色笔记",
+            "description":
+            "AI 将对您的备忘录内容进行润色，使其更加清晰、专业，同时保持原意不变。",
+            "system_prompt":
+            "你是一位专业的文字编辑，擅长优化笔记和备忘录内容。请润色以下文本，使其更加清晰、结构化和易于理解，同时保持原意不变。可以改进表达方式，纠正语法错误，优化段落结构，但不要添加新的信息或改变核心内容。直接输出润色后的文本，不要添加任何解释、前言或结语。",
         },
         "续写": {
-            "display_name": "扩展笔记",
-            "description": "AI 将基于您的备忘录内容进行扩展，补充相关细节和想法。",
-            "system_prompt": "你是一位专业的内容创作者，擅长扩展和丰富笔记内容。请基于以下已有内容续写后续内容，保持风格一致。扩展内容应当与原文自然衔接，有逻辑性。请不要偏离原始主题，确保扩展内容与原始备忘录的目的一致。直接输出续写的内容，不要添加任何解释、前言或结语。严格避免重复用户已有的文本，只输出新增的内容。",
+            "display_name":
+            "扩展笔记",
+            "description":
+            "AI 将基于您的备忘录内容进行扩展，补充相关细节和想法。",
+            "system_prompt":
+            "你是一位专业的内容创作者，擅长扩展和丰富笔记内容。请基于以下已有内容续写后续内容，保持风格一致。扩展内容应当与原文自然衔接，有逻辑性。请不要偏离原始主题，确保扩展内容与原始备忘录的目的一致。直接输出续写的内容，不要添加任何解释、前言或结语。严格避免重复用户已有的文本，只输出新增的内容。",
         },
         "朋友圈文案": {
-            "display_name": "社交分享版本",
-            "description": "AI 将基于您的备忘录内容，创作一段适合分享到社交媒体的精简版本。",
-            "system_prompt": "你是一位社交媒体内容专家。文案应当保留原始内容的核心信息，但更加生动有趣，字数控制在100字以内。如果没有提供备忘录内容，请创作一段积极向上、富有启发性的短文案，适合日常分享。只输出最终文案内容，不要添加任何解释、前言或结语。",
+            "display_name":
+            "社交分享版本",
+            "description":
+            "AI 将基于您的备忘录内容，创作一段适合分享到社交媒体的精简版本。",
+            "system_prompt":
+            "你是一位社交媒体内容专家。文案应当保留原始内容的核心信息，但更加生动有趣，字数控制在100字以内。如果没有提供备忘录内容，请创作一段积极向上、富有启发性的短文案，适合日常分享。只输出最终文案内容，不要添加任何解释、前言或结语。",
         },
         "一句诗": {
-            "display_name": "诗意总结",
-            "description": "AI 将为您的备忘录创作一句富有诗意的总结或标题。",
-            "system_prompt": "你是一位擅长文字凝练的诗人。请为以下备忘录内容创作一句富有诗意的总结句或标题，能够捕捉内容的核心精神或主题。这句话应当简洁优美，富有意境，可以作为备忘录的点睛之笔或灵感来源。如果没有提供备忘录内容，请创作一句关于思考、记录或生活感悟的诗意句子。只输出这一句话，不要添加任何解释、前言或结语。",
+            "display_name":
+            "诗意总结",
+            "description":
+            "AI 将为您的备忘录创作一句富有诗意的总结或标题。",
+            "system_prompt":
+            "你是一位擅长文字凝练的诗人。请为以下备忘录内容创作一句富有诗意的总结句或标题，能够捕捉内容的核心精神或主题。这句话应当简洁优美，富有意境，可以作为备忘录的点睛之笔或灵感来源。如果没有提供备忘录内容，请创作一句关于思考、记录或生活感悟的诗意句子。只输出这一句话，不要添加任何解释、前言或结语。",
         },
         "自定义": {
-            "display_name": "自定义助手",
-            "description": "请输入您的提示词，AI 将根据您的要求处理备忘录内容。",
-            "system_prompt": "你是一个专业的备忘录助手，擅长帮助用户处理和优化各类笔记内容。请根据用户的提示词处理相关内容，注重实用性和清晰度。你的回答应当简洁明了，便于用户在备忘录中使用。只输出最终处理后的内容，不要添加任何解释、前言或结语。如果用户的指令不明确，请尽量理解用户的意图，提供最有帮助的回应。",
+            "display_name":
+            "自定义助手",
+            "description":
+            "请输入您的提示词，AI 将根据您的要求处理备忘录内容。",
+            "system_prompt":
+            "你是一个专业的备忘录助手，擅长帮助用户处理和优化各类笔记内容。请根据用户的提示词处理相关内容，注重实用性和清晰度。你的回答应当简洁明了，便于用户在备忘录中使用。只输出最终处理后的内容，不要添加任何解释、前言或结语。如果用户的指令不明确，请尽量理解用户的意图，提供最有帮助的回应。",
         },
         "tab续写": {
-            "display_name": "智能续写",
-            "description": "根据当前输入智能续写内容",
-            "system_prompt": "你是一位专业的文字助手。请根据用户提供的文本片段，续写后续内容。续写应当简短（不超过30个字），自然衔接，保持风格一致。严格避免重复用户已有的文本，只输出全新的内容。不要添加任何解释。",
+            "display_name":
+            "智能续写",
+            "description":
+            "根据当前输入智能续写内容",
+            "system_prompt":
+            "你是一位专业的文字助手。请根据用户提供的文本片段，续写后续内容。续写应当简短（不超过30个字），自然衔接，保持风格一致。严格避免重复用户已有的文本，只输出全新的内容。不要添加任何解释。",
         },
         "待办提取": {
-            "display_name": "提取待办事项",
-            "description": "AI 将分析备忘录内容，识别并提取其中的待办事项",
-            "system_prompt": """你是一位专业的任务管理助手。请分析以下文本内容，识别其中可能的待办事项。
+            "display_name":
+            "提取待办事项",
+            "description":
+            "AI 将分析备忘录内容，识别并提取其中的待办事项",
+            "system_prompt":
+            """你是一位专业的任务管理助手。请分析以下文本内容，识别其中可能的待办事项。
 待办事项通常包含需要完成的任务，可能有截止日期。
 
 对于每个识别出的待办事项，请提供以下信息：
@@ -147,9 +168,8 @@ class AIService(QObject):
             if model == "deepseek-chat":
                 from openai import OpenAI
 
-                self.client = OpenAI(
-                    api_key=api_key, base_url="https://api.deepseek.com/v1"
-                )
+                self.client = OpenAI(api_key=api_key,
+                                     base_url="https://api.deepseek.com/v1")
             elif model == "gpt-4o":
                 from openai import OpenAI
 
@@ -345,14 +365,18 @@ class AIService(QObject):
             self.errorOccurred.emit(error_msg)
             return error_msg
 
-    def _call_deepseek_api(
-        self, prompt, system_prompt="你是一个有用的助手，擅长文字创作和润色。"
-    ):
+    def _call_deepseek_api(self, prompt, system_prompt="你是一个有用的助手，擅长文字创作和润色。"):
         """调用 AI API"""
         try:
             messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt},
+                {
+                    "role": "system",
+                    "content": system_prompt
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                },
             ]
 
             model = cfg.get(cfg.aiModel)
@@ -493,7 +517,8 @@ class AIWorkerThread(QThread):
     def run(self):
         try:
             if self.streaming:
-                stream = self.ai_service.generate_content_stream(self.text, self.mode)
+                stream = self.ai_service.generate_content_stream(
+                    self.text, self.mode)
                 full_response = ""
 
                 for chunk in stream:

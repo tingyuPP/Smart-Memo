@@ -23,6 +23,7 @@ from Database import DatabaseManager
 
 
 class MemoInterface(Ui_memo, QWidget):
+
     def __init__(self, parent=None, user_id=None):
         super().__init__(parent=parent)
         self.setupUi(self)
@@ -38,7 +39,8 @@ class MemoInterface(Ui_memo, QWidget):
 
         # 如果有用户ID，构建AI记忆上下文
         if self.user_id:
-            self.ai_handler.ai_service.build_memory_context(self.user_id, self.db)
+            self.ai_handler.ai_service.build_memory_context(
+                self.user_id, self.db)
 
         # 设置AI记忆更新定时器
         self.memory_update_timer = QTimer(self)
@@ -62,20 +64,17 @@ class MemoInterface(Ui_memo, QWidget):
                 FluentIcon.ROBOT,
                 "AI编辑",
                 triggered=lambda: self.ai_handler.show_ai_menu(self.textEdit),
-            )
-        )
+            ))
 
         self.frame_2.addSeparator()
 
         # 保存和清空按钮
         save_action = Action(FluentIcon.SAVE, "保存")
         save_action.triggered.connect(self.save_memo)
-        self.frame_2.addActions(
-            [
-                save_action,
-                Action(FluentIcon.DELETE, "清空", triggered=self.clear_memo),
-            ]
-        )
+        self.frame_2.addActions([
+            save_action,
+            Action(FluentIcon.DELETE, "清空", triggered=self.clear_memo),
+        ])
 
         self.frame_2.addSeparator()
 
@@ -85,16 +84,14 @@ class MemoInterface(Ui_memo, QWidget):
                 FluentIcon.PRINT,
                 "导出为",
                 triggered=self.show_export_menu,
-            )
-        )
+            ))
 
         self.frame_2.addAction(
             Action(
                 FluentIcon.SHARE,
                 "分享到",
                 triggered=self.show_share_menu,
-            )
-        )
+            ))
 
         # 提取待办事项按钮
         self.frame_2.addAction(
@@ -102,8 +99,7 @@ class MemoInterface(Ui_memo, QWidget):
                 FluentIcon.CHECKBOX,
                 "提取待办事项",
                 triggered=self.extract_todos,
-            )
-        )
+            ))
 
     def _setup_ui_components(self):
         """设置UI组件"""
@@ -142,12 +138,10 @@ class MemoInterface(Ui_memo, QWidget):
     def _update_memory_context(self):
         """定期更新AI记忆上下文"""
         try:
-            if (
-                self.user_id
-                and hasattr(self, "ai_handler")
-                and hasattr(self.ai_handler, "ai_service")
-            ):
-                self.ai_handler.ai_service.build_memory_context(self.user_id, self.db)
+            if (self.user_id and hasattr(self, "ai_handler")
+                    and hasattr(self.ai_handler, "ai_service")):
+                self.ai_handler.ai_service.build_memory_context(
+                    self.user_id, self.db)
         except Exception:
             pass
 
@@ -219,7 +213,8 @@ class MemoInterface(Ui_memo, QWidget):
 
             # 创建新备忘录或更新现有备忘录
             if self.memo_id is None:
-                memo_id = self.db.create_memo(self.user_id, title, content, category)
+                memo_id = self.db.create_memo(self.user_id, title, content,
+                                              category)
                 if memo_id:
                     self.memo_id = memo_id
                     if not silent:
@@ -234,9 +229,10 @@ class MemoInterface(Ui_memo, QWidget):
                         )
                     return True
             else:
-                success = self.db.update_memo(
-                    self.memo_id, title=title, content=content, category=category
-                )
+                success = self.db.update_memo(self.memo_id,
+                                              title=title,
+                                              content=content,
+                                              category=category)
                 if success:
                     if not silent:
                         InfoBar.success(
@@ -312,12 +308,10 @@ class MemoInterface(Ui_memo, QWidget):
 
         if self.save_memo(silent=True):
             exportMenu = RoundMenu("导出为", self)
-            exportMenu.addActions(
-                [
-                    Action("PDF", triggered=self.export_to_pdf),
-                    Action("TXT", triggered=self.export_to_txt),
-                ]
-            )
+            exportMenu.addActions([
+                Action("PDF", triggered=self.export_to_pdf),
+                Action("TXT", triggered=self.export_to_txt),
+            ])
             exportMenu.exec_(QCursor.pos())
 
     def show_share_menu(self):
@@ -339,12 +333,10 @@ class MemoInterface(Ui_memo, QWidget):
 
         if self.save_memo(silent=True):
             shareMenu = RoundMenu("分享到", self)
-            shareMenu.addActions(
-                [
-                    Action("微信", triggered=lambda: self.share_to("微信")),
-                    Action("QQ", triggered=lambda: self.share_to("QQ")),
-                ]
-            )
+            shareMenu.addActions([
+                Action("微信", triggered=lambda: self.share_to("微信")),
+                Action("QQ", triggered=lambda: self.share_to("QQ")),
+            ])
             shareMenu.exec_(QCursor.pos())
 
     def export_to_pdf(self):
@@ -378,7 +370,8 @@ class MemoInterface(Ui_memo, QWidget):
             return
 
         memo_content = self.textEdit.toPlainText()
-        self.todo_extractor.extract_todos(memo_content, self.user_id, self.ai_handler)
+        self.todo_extractor.extract_todos(memo_content, self.user_id,
+                                          self.ai_handler)
 
 
 if __name__ == "__main__":

@@ -50,8 +50,7 @@ class TodoExtractThread(QThread):
 
     def run(self):
         count, todos = self.ai_handler.extract_todos_from_memo(
-            self.memo_content, self.user_id
-        )
+            self.memo_content, self.user_id)
         self.resultReady.emit(count, todos)
 
 
@@ -71,14 +70,12 @@ class TodoExtractorDialog(Dialog):
         self.setMaximumSize(16777215, 16777215)
         self.setResizeEnabled(True)
 
-        self.setWindowFlags(
-            Qt.Dialog
-            | Qt.CustomizeWindowHint
-            | Qt.WindowTitleHint
-            | Qt.WindowSystemMenuHint
-            | Qt.WindowMinMaxButtonsHint
-            | Qt.WindowCloseButtonHint
-        )
+        self.setWindowFlags(Qt.Dialog
+                            | Qt.CustomizeWindowHint
+                            | Qt.WindowTitleHint
+                            | Qt.WindowSystemMenuHint
+                            | Qt.WindowMinMaxButtonsHint
+                            | Qt.WindowCloseButtonHint)
 
         self.setAttribute(Qt.WA_TranslucentBackground, False)
         self.setAttribute(Qt.WA_NoSystemBackground, False)
@@ -128,11 +125,8 @@ class TodoExtractorDialog(Dialog):
             except RuntimeError:
                 pass
 
-        if (
-            hasattr(self, "contentLabel")
-            and self.contentLabel
-            and not self.contentLabel.isHidden()
-        ):
+        if (hasattr(self, "contentLabel") and self.contentLabel
+                and not self.contentLabel.isHidden()):
             try:
                 self.contentLabel.setVisible(False)
             except RuntimeError:
@@ -150,7 +144,8 @@ class TodoExtractorDialog(Dialog):
 
         self.select_all_checkbox = CheckBox("全选")
         self.select_all_checkbox.setChecked(True)
-        self.select_all_checkbox.stateChanged.connect(self._on_select_all_changed)
+        self.select_all_checkbox.stateChanged.connect(
+            self._on_select_all_changed)
 
         title_layout.addWidget(self.select_all_checkbox)
 
@@ -161,7 +156,8 @@ class TodoExtractorDialog(Dialog):
         scroll.setObjectName("TodoScrollArea")
         scroll.setMinimumHeight(400)
 
-        scroll.setStyleSheet(f"background-color: {self.bgColor}; border: none;")
+        scroll.setStyleSheet(
+            f"background-color: {self.bgColor}; border: none;")
 
         content_widget = QWidget()
         content_widget.setObjectName("TodoContentWidget")
@@ -186,7 +182,8 @@ class TodoExtractorDialog(Dialog):
 
             checkbox_container = QWidget()
             checkbox_container.setFixedSize(24, 24)
-            checkbox_container.setStyleSheet("background: transparent; border: none;")
+            checkbox_container.setStyleSheet(
+                "background: transparent; border: none;")
 
             checkbox_layout = QVBoxLayout(checkbox_container)
             checkbox_layout.setContentsMargins(0, 0, 0, 0)
@@ -211,7 +208,8 @@ class TodoExtractorDialog(Dialog):
 
             edit_button = PushButton("编辑")
             edit_button.setIcon(FluentIcon.EDIT)
-            edit_button.clicked.connect(lambda _, idx=i: self._edit_todo_item(idx))
+            edit_button.clicked.connect(
+                lambda _, idx=i: self._edit_todo_item(idx))
             task_layout.addWidget(edit_button)
 
             card_layout.addLayout(task_layout)
@@ -256,15 +254,13 @@ class TodoExtractorDialog(Dialog):
 
             card_bg_color = "#2B2B2B" if isDarkTheme() else "#FFFFFF"
             card_border_color = "#3D3D3D" if isDarkTheme() else "#E0E0E0"
-            card.setStyleSheet(
-                f"""
+            card.setStyleSheet(f"""
                 CardWidget {{
                     background-color: {card_bg_color};
                     border: 1px solid {card_border_color};
                     border-radius: 6px;
                 }}
-            """
-            )
+            """)
 
             content_layout.addWidget(card)
 
@@ -301,9 +297,8 @@ class TodoExtractorDialog(Dialog):
                 checkbox_states.append(checkbox.isChecked())
 
             try:
-                new_dialog = TodoExtractorDialog(
-                    self.todos, self.user_id, self.parent()
-                )
+                new_dialog = TodoExtractorDialog(self.todos, self.user_id,
+                                                 self.parent())
 
                 if len(checkbox_states) == len(new_dialog.todo_checkboxes):
                     for i, state in enumerate(checkbox_states):
@@ -332,7 +327,8 @@ class TodoExtractorDialog(Dialog):
             self.setup_ui()
         except RuntimeError:
             self.reject()
-            dialog = TodoExtractorDialog(self.todos, self.user_id, self.parent())
+            dialog = TodoExtractorDialog(self.todos, self.user_id,
+                                         self.parent())
             dialog.exec_()
 
     def _clear_layout(self, layout):
@@ -362,7 +358,8 @@ class TodoExtractorDialog(Dialog):
 
         self.select_all_checkbox.blockSignals(True)
 
-        all_checked = all(checkbox.isChecked() for checkbox in self.todo_checkboxes)
+        all_checked = all(checkbox.isChecked()
+                          for checkbox in self.todo_checkboxes)
 
         if all_checked:
             self.select_all_checkbox.setChecked(True)
@@ -391,8 +388,7 @@ class TodoExtractorDialog(Dialog):
             return
 
         added_count = todo_extractor._add_todos_to_database(
-            selected_todos, self.user_id
-        )
+            selected_todos, self.user_id)
 
         if added_count > 0:
             InfoBar.success(
@@ -566,9 +562,9 @@ class TodoExtractor:
             )
             return
 
-        self.state_tooltip = StateToolTip(
-            "正在处理", "AI正在分析备忘录内容，提取待办事项...", parent=self.parent
-        )
+        self.state_tooltip = StateToolTip("正在处理",
+                                          "AI正在分析备忘录内容，提取待办事项...",
+                                          parent=self.parent)
         self.state_tooltip.move(
             (self.parent.width() - self.state_tooltip.width()) // 2,
             (self.parent.height() - self.state_tooltip.height()) // 2,
@@ -578,8 +574,8 @@ class TodoExtractor:
 
         self.todo_thread = TodoExtractThread(ai_handler, memo_content, user_id)
         self.todo_thread.resultReady.connect(
-            lambda count, todos: self._on_todos_extracted(count, todos, user_id)
-        )
+            lambda count, todos: self._on_todos_extracted(
+                count, todos, user_id))
         self.todo_thread.start()
 
     def _on_todos_extracted(self, count, todos, user_id):
@@ -622,9 +618,10 @@ class TodoExtractor:
                 if not task:
                     continue
 
-                todo_id = db.add_todo(
-                    user_id=user_id, task=task, deadline=deadline, category=category
-                )
+                todo_id = db.add_todo(user_id=user_id,
+                                      task=task,
+                                      deadline=deadline,
+                                      category=category)
 
                 if todo_id:
                     added_count += 1

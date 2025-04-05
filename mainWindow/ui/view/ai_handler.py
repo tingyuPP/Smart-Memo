@@ -69,34 +69,28 @@ class AIHandler:
         # 根据当前编辑器内容显示不同的菜单选项
         if not text_edit.toPlainText().strip():
             # 如果编辑器为空，显示内容生成选项
-            aiMenu.addActions(
-                [
-                    Action(
-                        "为我写一个朋友圈文案",
-                        triggered=lambda: self.handle_ai_func("朋友圈文案", text_edit),
-                    ),
-                    Action(
-                        "为我写一句诗",
-                        triggered=lambda: self.handle_ai_func("一句诗", text_edit),
-                    ),
-                    Action(
-                        "自定义",
-                        triggered=lambda: self.handle_ai_func("自定义", text_edit),
-                    ),
-                ]
-            )
+            aiMenu.addActions([
+                Action(
+                    "为我写一个朋友圈文案",
+                    triggered=lambda: self.handle_ai_func("朋友圈文案", text_edit),
+                ),
+                Action(
+                    "为我写一句诗",
+                    triggered=lambda: self.handle_ai_func("一句诗", text_edit),
+                ),
+                Action(
+                    "自定义",
+                    triggered=lambda: self.handle_ai_func("自定义", text_edit),
+                ),
+            ])
         else:
             # 如果编辑器有内容，显示文本处理选项
-            aiMenu.addActions(
-                [
-                    Action(
-                        "润色", triggered=lambda: self.handle_ai_func("润色", text_edit)
-                    ),
-                    Action(
-                        "续写", triggered=lambda: self.handle_ai_func("续写", text_edit)
-                    ),
-                ]
-            )
+            aiMenu.addActions([
+                Action("润色",
+                       triggered=lambda: self.handle_ai_func("润色", text_edit)),
+                Action("续写",
+                       triggered=lambda: self.handle_ai_func("续写", text_edit)),
+            ])
 
         # 显示菜单
         aiMenu.exec_(QCursor.pos())
@@ -105,9 +99,8 @@ class AIHandler:
         """处理AI功能"""
         # 获取当前选中的文本或全部文本
         cursor = text_edit.textCursor()
-        text = (
-            cursor.selectedText() if cursor.hasSelection() else text_edit.toPlainText()
-        )
+        text = (cursor.selectedText()
+                if cursor.hasSelection() else text_edit.toPlainText())
 
         # 创建并显示AI对话框
         dialog = AIDialog(mode, text, self.parent, ai_service=self.ai_service)
@@ -183,9 +176,8 @@ class AIHandler:
             prompt = AIResultParser.create_todo_prompt(memo_content)
 
             # 生成内容
-            result = self.ai_service.generate_content(
-                system_prompt + prompt, mode="自定义"
-            )
+            result = self.ai_service.generate_content(system_prompt + prompt,
+                                                      mode="自定义")
 
             # 解析结果
             return AIResultParser.parse_todo_result(result)

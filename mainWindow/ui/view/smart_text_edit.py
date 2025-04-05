@@ -24,7 +24,7 @@ class SuggestionThread(QThread):
             result = self.ai_service.generate_content(context, "tab续写")
 
             if result and last_chars and result.startswith(last_chars):
-                result = result[len(last_chars) :]
+                result = result[len(last_chars):]
 
             self.suggestionReady.emit(result)
         except Exception:
@@ -52,6 +52,7 @@ class TabContinuationThread(QThread):
 
 
 class SmartTextEdit(TextEdit):
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.ai_service = AIService()
@@ -102,14 +103,15 @@ class SmartTextEdit(TextEdit):
 
     def _init_ai_modes(self):
         """初始化AI模式"""
-        if (
-            hasattr(self.ai_service, "AI_MODES")
-            and "智能提示" not in self.ai_service.AI_MODES
-        ):
+        if (hasattr(self.ai_service, "AI_MODES")
+                and "智能提示" not in self.ai_service.AI_MODES):
             self.ai_service.AI_MODES["智能提示"] = {
-                "display_name": "智能提示",
-                "description": "根据当前输入智能提示后续内容",
-                "system_prompt": "你是一位专业的编程助手。请根据用户提供的代码或文本片段，预测并补全后续内容。补全应当自然衔接，符合上下文逻辑。只输出补全的内容，不要重复已有的文本，不要添加任何解释。",
+                "display_name":
+                "智能提示",
+                "description":
+                "根据当前输入智能提示后续内容",
+                "system_prompt":
+                "你是一位专业的编程助手。请根据用户提供的代码或文本片段，预测并补全后续内容。补全应当自然衔接，符合上下文逻辑。只输出补全的内容，不要重复已有的文本，不要添加任何解释。",
             }
 
     def _on_cursor_position_changed(self):
@@ -148,7 +150,8 @@ class SmartTextEdit(TextEdit):
 
         try:
             self.suggestion_thread = SuggestionThread(self.ai_service, context)
-            self.suggestion_thread.suggestionReady.connect(self._handle_suggestion)
+            self.suggestion_thread.suggestionReady.connect(
+                self._handle_suggestion)
             self.suggestion_thread.start()
         except Exception:
             pass
@@ -212,14 +215,11 @@ class SmartTextEdit(TextEdit):
 
             for char in self.current_suggestion:
                 test_line = current_line + char
-                max_width = (
-                    first_line_max_width if is_first_line else subsequent_line_max_width
-                )
+                max_width = (first_line_max_width
+                             if is_first_line else subsequent_line_max_width)
 
-                if (
-                    font_metrics.horizontalAdvance(test_line) > max_width
-                    or char == "\n"
-                ):
+                if (font_metrics.horizontalAdvance(test_line) > max_width
+                        or char == "\n"):
                     suggestion_lines.append((current_line, is_first_line))
                     current_line = "" if char == "\n" else char
                     is_first_line = False
@@ -286,7 +286,8 @@ class SmartTextEdit(TextEdit):
         format.setForeground(self.normal_color)
         cursor.mergeCharFormat(format)
 
-        if event.key() not in (Qt.Key_Shift, Qt.Key_Control, Qt.Key_Alt, Qt.Key_Meta):
+        if event.key() not in (Qt.Key_Shift, Qt.Key_Control, Qt.Key_Alt,
+                               Qt.Key_Meta):
             self.suggestion_timer.start()
         format = cursor.charFormat()
         format.setForeground(self.normal_color)
@@ -315,10 +316,13 @@ class SmartTextEdit(TextEdit):
 
             cursor.insertText(self.current_suggestion)
 
-            context = self.toPlainText()[: self.suggestion_start_pos]
-            self.completion_history.append(
-                {"context": context, "completion": self.current_suggestion}
-            )
+            context = self.toPlainText()[:self.suggestion_start_pos]
+            self.completion_history.append({
+                "context":
+                context,
+                "completion":
+                self.current_suggestion
+            })
 
             if len(self.completion_history) > self.max_history_size:
                 self.completion_history.pop(0)
@@ -346,7 +350,8 @@ class SmartTextEdit(TextEdit):
                     insertions = previous_row[j + 1] + 1
                     deletions = current_row[j] + 1
                     substitutions = previous_row[j] + (c1 != c2)
-                    current_row.append(min(insertions, deletions, substitutions))
+                    current_row.append(
+                        min(insertions, deletions, substitutions))
                 previous_row = current_row
             return previous_row[-1]
 
