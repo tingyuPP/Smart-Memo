@@ -307,13 +307,7 @@ class SmartTextEdit(TextEdit):
         try:
             cursor = self.textCursor()
 
-            current_format = cursor.charFormat()
-
-            normal_format = QTextCharFormat()
-            normal_format.setForeground(self.normal_color)
-
-            cursor.setCharFormat(normal_format)
-
+            # 使用当前编辑器的文本颜色而不是创建新的格式
             cursor.insertText(self.current_suggestion)
 
             context = self.toPlainText()[:self.suggestion_start_pos]
