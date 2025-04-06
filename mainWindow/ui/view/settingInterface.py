@@ -184,7 +184,7 @@ class SettingInterface(ScrollArea):
 
             InfoBar.success(
                 title="设置已应用",
-                content="API设置已成功应用，无需重启程序",
+                content="API设置成功应用",
                 parent=self,
             )
         except Exception as e:
