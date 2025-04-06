@@ -9,6 +9,7 @@ from qfluentwidgets import (
     isDarkTheme,
     NavigationWidget,
     SplashScreen,
+    Theme,
 )
 from qfluentwidgets import FluentIcon as FIF
 from mainWindow.ui.view.settingInterface import SettingInterface
@@ -21,6 +22,7 @@ from mainWindow.ui.view.mainpage import MainInterface
 from mainWindow.ui.view.memo import MemoInterface
 from mainWindow.ui.view.todoInterface import TodoInterface
 import os
+from config import cfg
 
 
 def resource_path(relative_path):
@@ -53,16 +55,19 @@ class MainWindow(FluentWindow):
     def __init__(self, user_id=None, username=None):
         super().__init__()
         self.splashScreen = SplashScreen(
-            QIcon(resource_path("resource/logo.png")), self
-        )
+            QIcon(resource_path("resource/images/logo.png")), self)
         self.splashScreen.setIconSize(QSize(200, 200))
 
         try:
             from qframelesswindow import StandardTitleBar
 
             titleBar = StandardTitleBar(self.splashScreen)
-            titleBar.setIcon(QIcon(resource_path("resource/logo.png")))
-            titleBar.setTitle("SmartMemo 启动中...")
+            titleBar.setIcon(QIcon(resource_path("resource/images/logo.png")))
+            titleBar.setTitle("SmartMemo starting...")
+            if (isDarkTheme()):
+                titleBar.titleLabel.setStyleSheet(
+                    "QLabel{background: transparent; color: white; font: 13px 'Segoe UI'; padding: 0 4px}"
+                )
             self.splashScreen.setTitleBar(titleBar)
         except ImportError:
             print("qframelesswindow 库未安装，跳过标题栏添加")
@@ -78,7 +83,8 @@ class MainWindow(FluentWindow):
         self.todoInterface = TodoInterface(self, user_id)
 
         self.initNavigation()
-        self.stackedWidget.currentChanged.connect(self.onCurrentInterfaceChanged)
+        self.stackedWidget.currentChanged.connect(
+            self.onCurrentInterfaceChanged)
         self.todoInterface.todo_count_changed.connect(self.update_todo_count)
         self.homeInterface.memo_count_changed.connect(self.update_memo_count)
 
@@ -92,17 +98,15 @@ class MainWindow(FluentWindow):
 
         self.navigationInterface.addSeparator()
 
-        self.addSubInterface(
-            self.myInterface, FIF.PEOPLE, "个性化", NavigationItemPosition.BOTTOM
-        )
-        self.addSubInterface(
-            self.settingInterface, FIF.SETTING, "设置", NavigationItemPosition.BOTTOM
-        )
+        self.addSubInterface(self.myInterface, FIF.PEOPLE, "个性化",
+                             NavigationItemPosition.BOTTOM)
+        self.addSubInterface(self.settingInterface, FIF.SETTING, "设置",
+                             NavigationItemPosition.BOTTOM)
 
     def initWindow(self):
         self.resize(900, 700)
         self.setMinimumWidth(600)
-        self.setWindowIcon(QIcon(resource_path("resource/logo.png")))
+        self.setWindowIcon(QIcon(resource_path("resource/images/logo.png")))
         self.setWindowTitle("SmartMemo")
 
         self.stackedWidget.currentChanged.connect(self.onInterfaceChanged)
@@ -111,15 +115,16 @@ class MainWindow(FluentWindow):
         current_widget = self.stackedWidget.widget(index)
 
         # 如果从备忘录编辑界面切换到其他界面，且内容不为空，则自动保存
-        if hasattr(self, "memoInterface") and self.memoInterface != current_widget:
+        if hasattr(self,
+                   "memoInterface") and self.memoInterface != current_widget:
             memo = self.memoInterface
-            if memo.memo_id or (
-                memo.lineEdit.text().strip() and memo.textEdit.toPlainText().strip()
-            ):
+            if memo.memo_id or (memo.lineEdit.text().strip()
+                                and memo.textEdit.toPlainText().strip()):
                 memo.save_memo(silent=True)
 
         # 如果切换到了备忘录编辑界面，清空内容以便新建
-        if hasattr(self, "memoInterface") and current_widget == self.memoInterface:
+        if hasattr(self,
+                   "memoInterface") and current_widget == self.memoInterface:
             self.memoInterface.memo_id = None
             self.memoInterface.lineEdit.clear()
             self.memoInterface.textEdit.clear()
@@ -127,11 +132,13 @@ class MainWindow(FluentWindow):
             self.memoInterface.update_word_count()
 
         # 如果切换到了主页，刷新备忘录列表
-        if hasattr(self, "homeInterface") and current_widget == self.homeInterface:
+        if hasattr(self,
+                   "homeInterface") and current_widget == self.homeInterface:
             self.homeInterface.update_memo_list()
 
     def switch_to_newmemo_interface(self):
-        self.navigationInterface.setCurrentItem(self.memoInterface.objectName())
+        self.navigationInterface.setCurrentItem(
+            self.memoInterface.objectName())
         self.switchTo(self.memoInterface)
 
         if hasattr(self, "memoInterface"):
@@ -163,18 +170,12 @@ class MainWindow(FluentWindow):
 
         if original_pixmap.width() != size or original_pixmap.height() != size:
             original_pixmap = original_pixmap.scaled(
-                size, size, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
-            )
-        x = (
-            (size - original_pixmap.width()) // 2
-            if original_pixmap.width() < size
-            else 0
-        )
-        y = (
-            (size - original_pixmap.height()) // 2
-            if original_pixmap.height() < size
-            else 0
-        )
+                size, size, Qt.KeepAspectRatioByExpanding,
+                Qt.SmoothTransformation)
+        x = ((size - original_pixmap.width()) //
+             2 if original_pixmap.width() < size else 0)
+        y = ((size - original_pixmap.height()) //
+             2 if original_pixmap.height() < size else 0)
 
         painter.drawPixmap(x, y, original_pixmap)
 

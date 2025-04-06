@@ -1,45 +1,35 @@
-# Smart-Memo-Manager
+<p align="center">
+  <img src="resource/images/logo.ico" width="100" height="100" style="vertical-align: middle;" />
+</p>
+<h1 align="center">SmartMemo</h1>
 
-TODO:
-- [x] 神秘崩溃bug。
-  ![alt text](image.png)
-- [x] 超过一行的备忘录，在首页显示时非常奇怪。
-- [x] 新建完成一个帖子之后点击保存，切回主页，再切回新建页面仍然是这个帖子。这就导致不能再新建帖子了。
-- [x] 用户输入的字莫名其妙变成灰色。
-- [x] AI自动补全灰色字体，直接点击保存能直接把灰色字体保存下来。
-- [x] 编辑帖子保存之后，主页的预览不会更新。
-- [x] 首页帖子布局应当从上到下排布，而非居中。
-- [x] 主页以及新建页面，界面最好不要固定大小。
-- [x] 分享界面会抽搐（？）
-- [x] 分享界面的PrimaryPushButton的图标颜色不正确。
-- [x] 收藏功能没有显式展现出来，可以有一个五角星的收藏按钮，收藏之后就变黄。（这个放待办事项里再做吧）
-- [x] 搜索功能疑似还没做
-- [x] 删除功能
-- [x] 待办页面
-- [x] 云端同步
-- [x] 续写直接接到原文本后面
-- [x] 排序按钮使用CheckableMenu
-- [x] 首页的导出功能有bug
-- [x] 编辑备忘录界面上的TextEdit还不能实现Markdown实时渲染。不好做，打算搞双面板
-- [x] 为自动补全添加开关、设置多久时间光标不动才补全这种
-- [x] AI的API需要换个平台？或者给用户来选择？
-- [ ] AI功能中还有其他可选项（看手机备忘录），以及添加用户自定义提示词
-- [x] 数据库中需要添加每个用户添加过的历史tag，并在编辑备忘录界面中显示这些tag
-- [x] AI功能中可以添加：通过读取备忘录中的内容，分析其中是否存在待办事项，并把待办事项添加进去
-- [x] 当主题设置为暗黑模式时，登录注册界面有颜色异常。
-  ![111](problem.png)
+<p align="center">
+一个基于PyQt5及PyQt-Fluent-Widgets的智能备忘录管理系统
+</p>
 
-- [x] 当处于暗黑模式下时，分享界面不能变色
-- [x] 启动界面
-- [x] 待办页面未设置透明背景
-- [x] 新建待办的页面会抽搐打不开
-  ![112](bug.gif)
-- [ ] 自动补全功能补全的内容和原文会重叠在一起
-  ![3434](1111111.jpg)
-- [x] 新建待办的页面在暗黑模式下有显示bug
-  ![sddfdsff](dark.png)
-- [ ] AI提取备忘录导入待办有些问题（时间等，时间或许可以搞些和当前时间的比对），也可以添加按钮让用户选择是否选择导入
-  ![adasd](aibug.png)
-- [ ] AI消息框的暗黑模式异常
-![alt text](image-1.png)
-- [ ] 待办事项置顶之后，完成按钮与置顶图标重叠。
+## 快速开始🚀
+
++ 方式1：直接运行Smart-Memo-Manager打包后的可执行程序（推荐） 
+
+  [下载](https://github.com/tingyuPP/Smart-Memo-Manager/releases/tag/release)并解压`Smart-Memo-Manager.zip`后双击`main.exe`即可运行。
+
++ 方式2：通过源码运行
+```shell
+# 首先克隆仓库代码
+git clone https://github.com/tingyuPP/Smart-Memo-Manager.git
+
+# 进入项目目录
+cd Smart-Memo-Manager
+
+# 创建Python 3.12虚拟环境，以VENV为例，也可使用conda等
+python -m venv Smart-Memo-Manager-VENV
+
+# 激活虚拟环境后安装依赖
+pip install -r requirements.txt		
+
+# 运行程序
+python main.py
+```
+
+## 运行示例▶️
+

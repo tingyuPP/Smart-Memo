@@ -81,7 +81,7 @@ class AccountInterface(QFrame):
         self.title_label.setAlignment(Qt.AlignCenter)
 
         try:
-            self.logo_label.setPixmap(QPixmap(resource_path("resource/logo.png")))
+            self.logo_label.setPixmap(QPixmap(resource_path("resource/images/logo.png")))
             self.logo_label.setFixedSize(120, 120)
             self.logo_label.setScaledContents(True)
         except Exception as e:

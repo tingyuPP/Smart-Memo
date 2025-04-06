@@ -44,12 +44,13 @@ class ColorCard(ExpandGroupSettingCard):
         self.addGroupWidget(w)
 
     def set_default_color(self):
-        setThemeColor("#ff10abf9", save=True)
+        setThemeColor("#ff009faa", save=True)
 
     def set_custom_color(self):
-        w = ColorDialog(
-            cfg.get(cfg.themeColor), "选择主题颜色", self.mainWindow, enableAlpha=False
-        )
+        w = ColorDialog(cfg.get(cfg.themeColor),
+                        "选择主题颜色",
+                        self.mainWindow,
+                        enableAlpha=False)
         w.yesButton.setText("确认")
         w.cancelButton.setText("取消")
         w.editLabel.setText("编辑颜色")

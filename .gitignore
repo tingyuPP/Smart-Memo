@@ -179,3 +179,5 @@ PyQt-Fluent-Widgets-master
 1.jpg
 1.*
 export/*
+*.drawio
+config

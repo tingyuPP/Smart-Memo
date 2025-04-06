@@ -26,7 +26,7 @@ class LoginWindow(FramelessWindow):
     def __init__(self):
         super().__init__()
         if cfg.get(cfg.themeMode) == Theme.DARK:
-            with open(resource_path("resource/dark.qss"), encoding="utf-8") as f:
+            with open(resource_path("resource/qss/dark.qss"), encoding="utf-8") as f:
                 self.setStyleSheet(f.read())
 
         self.segmentedWidget = SegmentedWidget(self)
@@ -35,7 +35,7 @@ class LoginWindow(FramelessWindow):
         self.setTitleBar(StandardTitleBar(self))
         self.titleBar.setStyleSheet("background-color: #f0f0f0; ")
         self.setWindowTitle("SmartMemo")
-        self.setWindowIcon(QIcon(resource_path("resource/logo.png")))
+        self.setWindowIcon(QIcon(resource_path("resource/images/logo.png")))
 
         self.accountInterface = AccountInterface(self)
         self.accountInterface.loginSuccess.connect(self.on_login_success)

@@ -23,8 +23,8 @@ class SoundManager:
     def __init__(self):
         self.player = QMediaPlayer()
         self.sounds = {
-            "complete": resource_path("resource/complete.mp3"),
-            "undo": resource_path("resource/undo.mp3"),
+            "complete": resource_path("resource/audio/complete.mp3"),
+            "undo": resource_path("resource/audio/undo.mp3"),
         }
 
     def play(self, sound_name):
