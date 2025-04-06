@@ -139,6 +139,11 @@ class SmartTextEdit(TextEdit):
 
         cursor = self.textCursor()
         position = cursor.position()
+
+        # 检查光标是否在文本末尾
+        if position != len(current_text):
+            return
+
         context = current_text[:position]
 
         if len(context.strip()) < 5:
