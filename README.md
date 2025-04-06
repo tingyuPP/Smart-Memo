@@ -39,31 +39,31 @@ python main.py
 
 ### 备忘录管理
 
-![1](resource\examples\memo.gif)
+<img src="resource\examples\memo.gif" alt="备忘录管理" />
 
 ### AI自动补全
 
-![2](resource\examples\completion.gif)
+<img src="resource\examples\completion.gif" alt="AI自动补全" />
 
 ### AI一键生成文案
 
-![3](resource\examples\generate.gif)
+<img src="resource\examples\generate.gif" alt="AI一键生成文案" />
 
 ### AI自动提取待办事项
 
-![4](resource\examples\todo_extractor.gif)
+<img src="resource\examples\todo_extractor.gif" alt="AI自动提取待办事项" />
 
 ### 待办事项管理
 
-![5](resource\examples\todo.gif)
+<img src="resource\examples\todo.gif" alt="待办事项管理" />
 
 ### 个人信息管理
 
-![6](resource\examples\personal.gif)
+<img src="resource\examples\personal.gif" alt="个人信息管理" />
 
 ### 系统自定义设置
 
-![7](resource\examples\setting.gif)
+<img src="resource\examples\setting.gif" alt="系统自定义设置" />
 
 ## 项目特点🔥
 
