@@ -174,7 +174,7 @@ class MemoInterface(Ui_memo, QWidget):
         if self.user_id:
             self.load_user_tags()  # 先加载最新标签数据
 
-        print("显示窗口，正在更新标签列表...")  # 调试信息
+        # print("显示窗口，正在更新标签列表...")  # 调试信息
         self.update_tag_combobox()
         super().showEvent(event)
 
@@ -199,7 +199,7 @@ class MemoInterface(Ui_memo, QWidget):
         current_tag = self.lineEdit_2.text()
         tag_names = self.load_user_tags()
 
-        print(f"更新标签下拉框，加载了 {len(tag_names)} 个标签: {tag_names}")
+        # print(f"更新标签下拉框，加载了 {len(tag_names)} 个标签: {tag_names}")
 
         self.lineEdit_2.clear()
         self.lineEdit_2.addItems(tag_names)
