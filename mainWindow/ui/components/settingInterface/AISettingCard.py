@@ -201,7 +201,7 @@ class AISettingCard(ExpandGroupSettingCard):
 
             InfoBar.success(
                 title="设置已应用",
-                content="API设置已成功应用，无需重启程序",
+                content="API设置成功应用",
                 orient=Qt.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP,
