@@ -115,7 +115,7 @@ class DatabaseManager:
             username,
             password,
             face_data=None,
-            avatar=resource_path("resource/default_avatar.jpg"),
+            avatar=resource_path("resource/images/default_avatar.jpg"),
     ):
         """创建用户（密码需要加密）"""
 

@@ -55,14 +55,14 @@ class MainWindow(FluentWindow):
     def __init__(self, user_id=None, username=None):
         super().__init__()
         self.splashScreen = SplashScreen(
-            QIcon(resource_path("resource/logo.png")), self)
+            QIcon(resource_path("resource/images/logo.png")), self)
         self.splashScreen.setIconSize(QSize(200, 200))
 
         try:
             from qframelesswindow import StandardTitleBar
 
             titleBar = StandardTitleBar(self.splashScreen)
-            titleBar.setIcon(QIcon(resource_path("resource/logo.png")))
+            titleBar.setIcon(QIcon(resource_path("resource/images/logo.png")))
             titleBar.setTitle("SmartMemo starting...")
             if (isDarkTheme()):
                 titleBar.titleLabel.setStyleSheet(
@@ -106,7 +106,7 @@ class MainWindow(FluentWindow):
     def initWindow(self):
         self.resize(900, 700)
         self.setMinimumWidth(600)
-        self.setWindowIcon(QIcon(resource_path("resource/logo.png")))
+        self.setWindowIcon(QIcon(resource_path("resource/images/logo.png")))
         self.setWindowTitle("SmartMemo")
 
         self.stackedWidget.currentChanged.connect(self.onInterfaceChanged)
