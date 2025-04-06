@@ -6,6 +6,9 @@
 <p align="center">
 一个基于PyQt5及PyQt-Fluent-Widgets的智能备忘录管理系统
 </p>
+## 系统简介
+
+本系统是一个**智能化、安全可靠**的备忘录管理工具。用户可以使用本系统来管理自己的备忘录以及待办事项。系统包含备忘录管理功能，待办事项管理功能，以及AI交互功能等多方面功能，能为用户提供智能、高效的备忘录管理体验。
 
 ## 快速开始🚀
 
@@ -33,3 +36,41 @@ python main.py
 
 ## 运行示例▶️
 
+### 备忘录管理
+
+![](resource\examples\memo.gif)
+
+### AI自动补全
+
+![](resource\examples\completion.gif)
+
+### AI一键生成文案
+
+![](resource\examples\generate.gif)
+
+### AI自动提取待办事项
+
+![](resource\examples\todo_extractor.gif)
+
+### 待办事项管理
+
+![](resource\examples\todo.gif)
+
+### 个人信息管理
+
+![](resource\examples\personal.gif)
+
+### 系统自定义设置
+
+![](resource\examples\setting.gif)
+
+## 项目特点🔥
+
+- **简洁，美观的图形界面**：基于qfluentwidgets构建，界面简洁美观，便于用户操作。
+- **智能助手加持**：将大模型融入笔记工具场景。用户能够在编辑备忘录时让大模型帮忙进行续写，润色等。还能让大模型从备忘录中自动提取
+- **富文本支持**：用户能够使用markdown语法编辑备忘录内容，功能性更强大。
+- **加密保障**：使用AES-256加密算法和哈希算法保障用户数据安全，确保用户隐私不泄露。
+
+## 参考👀
+
+- https://qfluentwidgets.com/
