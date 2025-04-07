@@ -15,7 +15,7 @@
 
 + 方式1：直接运行Smart-Memo-Manager打包后的可执行程序（推荐） 
 
-  [下载](https://github.com/tingyuPP/Smart-Memo-Manager/releases/tag/release)并解压`Smart-Memo-Manager.zip`后双击`main.exe`即可运行。
+  [下载](https://github.com/tingyuPP/Smart-Memo-Manager/releases/tag/latest)并解压`Smart-Memo-Manager.zip`后双击`main.exe`即可运行。
 
 + 方式2：通过源码运行
 ```shell
